@@ -4,9 +4,10 @@ Python SDK scaffold for human-like agent memory.
 
 ## Development
 
-Install the package in editable mode and run the smoke tests:
+Create the uv-managed environment, verify the package import, and run the smoke tests:
 
 ```bash
-python -m pip install -e .
-pytest
+uv sync
+uv run python -c "import hm_arch"
+uv run pytest
 ```
