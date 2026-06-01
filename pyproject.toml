@@ -7,7 +7,7 @@ name = "hm-arch"
 version = "0.0.0"
 description = "Python SDK scaffold for human-like agent memory"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = []
 
 [tool.setuptools.packages.find]
