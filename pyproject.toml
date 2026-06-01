@@ -1,0 +1,7 @@
+[project]
+name = "memashuman"
+version = "0.0.0"
+description = "create a human-like memory for agent"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
