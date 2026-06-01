@@ -13,3 +13,11 @@ uv run pytest
 ```
 
 Runtime dependencies remain empty; `python -m pip install -e .` is enough for runtime imports, while tests run through uv.
+
+## Linear issue comments
+
+Set `LINEAR_API_KEY` to fetch comments for an issue:
+
+```bash
+uv run python examples/fetch_linear_comments.py MEM-6
+```
