@@ -36,6 +36,7 @@ from .forgetting.decay import predict_retention_curve
 from .layers.l1_working import L1WorkingMemory
 from .layers.l2_episodic import L2EpisodicBuffer
 from .layers.l3_semantic import L3SemanticMemory
+from .layers.l4_ltm import L4EpisodicLTM
 from .storage.sqlite import SQLiteStore
 from .storage.vector import _token_overlap_score, _tokenize
 from .types import (
@@ -105,6 +106,15 @@ def _parse_iso_timestamp(iso_str: str) -> datetime:
     return dt
 
 
+def _resolve_archive_root(config: MemoryConfig) -> Path:
+    """Return the filesystem root for L4 gzip archives."""
+    if config.archive_root is not None:
+        return Path(config.archive_root)
+    if config.db_path == ":memory:":
+        return Path("./.agent_memory_data")
+    return Path(config.db_path).parent / "agent_data"
+
+
 def _database_size_mb(db: SQLiteStore) -> float:
     """Approximate on-disk database size in megabytes."""
     path = db.path
@@ -171,6 +181,7 @@ class HMArch:
         self._l1 = L1WorkingMemory()
         self._l2 = L2EpisodicBuffer(self._db)
         self._l3 = L3SemanticMemory(self._db)
+        self._l4 = L4EpisodicLTM(_resolve_archive_root(self._config))
 
     # ------------------------------------------------------------------
     # Primary public interface
@@ -236,8 +247,8 @@ class HMArch:
     ) -> SearchResult:
         """Return the top-*k* memories most relevant to *query*.
 
-        Queries L1 working memory, L2 episodic buffer, and L3 semantic
-        memory.  Candidates from all three layers are merged, deduplicated by
+        Queries L1 working memory, L2 episodic buffer, L3 semantic memory, and
+        L4 archived episodic memories.  Candidates from all layers are merged,
         ``memory_id``, scored as::
 
             score = retention × relevance × layer_priority
@@ -268,7 +279,7 @@ class HMArch:
 
         candidates: list[MemoryItem] = []
         seen_ids: set[str] = set()
-        source_breakdown: dict[int, int] = {1: 0, 2: 0, 3: 0}
+        source_breakdown: dict[int, int] = {1: 0, 2: 0, 3: 0, 4: 0}
 
         # ---- L1: in-memory working memory --------------------------------
         # Pull up to top_k candidates from each layer; the merged pool is
@@ -338,6 +349,31 @@ class HMArch:
                 )
             )
 
+        # ---- L4: archived episodic long-term memory ----------------------
+        l4_hits = self._l4.search(query, top_k=top_k)
+        source_breakdown[4] = len(l4_hits)
+        l4_priority = priorities.get("L4", 0.5)
+        for hit in l4_hits:
+            record = hit.record
+            if record.memory_id in seen_ids:
+                continue
+            seen_ids.add(record.memory_id)
+            rel = hit.relevance
+            score = record.retention * rel * l4_priority
+            metadata = dict(record.metadata)
+            metadata.setdefault("source_l2_memory_id", record.memory_id)
+            candidates.append(
+                MemoryItem(
+                    memory_id=record.memory_id,
+                    layer=4,
+                    content=record.content,
+                    retention=record.retention,
+                    relevance=rel,
+                    score=score,
+                    metadata=metadata,
+                )
+            )
+
         # Sort descending by score; stable sort preserves layer order as tiebreak
         candidates.sort(key=lambda x: -x.score)
 
@@ -363,6 +399,7 @@ class HMArch:
             self._db,
             self._l2,
             self._l3,
+            l4=self._l4,
             config=self._config,
         )
         return engine.run_consolidation_cycle()

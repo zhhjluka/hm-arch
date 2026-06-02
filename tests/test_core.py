@@ -52,6 +52,7 @@ import importlib
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -240,7 +241,7 @@ def test_search_result_has_layer_field(mem: HMArch) -> None:
     assert len(result.results) > 0
     for item in result.results:
         assert hasattr(item, "layer")
-        assert item.layer in (0, 1, 2, 3)
+        assert item.layer in (0, 1, 2, 3, 4)
 
 
 def test_search_result_has_score_field(mem: HMArch) -> None:
@@ -401,6 +402,77 @@ def test_consolidate_updates_last_consolidation_at(mem: HMArch) -> None:
     assert mem.get_stats().last_consolidation_at is None
     mem.consolidate()
     assert mem.get_stats().last_consolidation_at is not None
+
+
+def test_consolidate_archives_stale_l2_and_search_finds_l4(
+    tmp_path: Path,
+) -> None:
+    """End-to-end: stale L2 is archived during consolidate() and searchable as L4."""
+    archive_root = tmp_path / "archives"
+    cfg = MemoryConfig(
+        db_path=str(tmp_path / "mem.db"),
+        archive_root=str(archive_root),
+        replay_sample_ratio=1.0,
+    )
+    mem = HMArch(config=cfg)
+    try:
+        receipt = mem.add("User prefers archived Python tutorials", importance=0.7)
+        old_time = (
+            datetime.now(tz=timezone.utc) - timedelta(days=60)
+        ).isoformat()
+        mem._db.execute(
+            "UPDATE memory_index SET created_at = ? WHERE id = ?",
+            (old_time, receipt.memory_id),
+        )
+
+        report = mem.consolidate()
+        assert report.archived_to_l4 >= 1
+
+        rows = mem._db.query(
+            "SELECT layer, status FROM memory_index WHERE id = ?",
+            (receipt.memory_id,),
+        )
+        assert rows[0]["layer"] == 4
+        assert rows[0]["status"] == "archived"
+
+        result = mem.search("archived Python tutorials", top_k=5)
+        l4_hits = [item for item in result.results if item.layer == 4]
+        assert len(l4_hits) >= 1
+        assert l4_hits[0].metadata.get("source_l2_memory_id") == receipt.memory_id
+    finally:
+        mem.close()
+
+
+def test_l4_ranks_below_active_l2_with_similar_relevance(tmp_path: Path) -> None:
+    archive_root = tmp_path / "archives"
+    cfg = MemoryConfig(
+        db_path=str(tmp_path / "rank.db"),
+        archive_root=str(archive_root),
+        replay_sample_ratio=1.0,
+    )
+    mem = HMArch(config=cfg)
+    try:
+        active = mem.add("shared keyword alpha beta gamma", importance=0.8)
+        archived = mem.add("shared keyword alpha beta gamma copy", importance=0.7)
+        old_time = (
+            datetime.now(tz=timezone.utc) - timedelta(days=60)
+        ).isoformat()
+        mem._db.execute(
+            "UPDATE memory_index SET created_at = ? WHERE id = ?",
+            (old_time, archived.memory_id),
+        )
+        mem.consolidate()
+
+        result = mem.search("shared keyword alpha beta gamma", top_k=5)
+        layers = [item.layer for item in result.results]
+        assert 4 in layers
+        assert 2 in layers
+        l2_score = next(item.score for item in result.results if item.layer == 2)
+        l4_score = next(item.score for item in result.results if item.layer == 4)
+        assert l2_score > l4_score
+        assert active.memory_id != archived.memory_id
+    finally:
+        mem.close()
 
 
 # ---------------------------------------------------------------------------
