@@ -521,3 +521,27 @@ def test_explicit_importance_overrides_default(db: SQLiteStore) -> None:
     mid = l2.encode("override importance", importance=0.7)
     rows = db.query("SELECT importance FROM memory_index WHERE id = ?", (mid,))
     assert rows[0]["importance"] == pytest.approx(0.7)
+
+
+@pytest.mark.parametrize("importance", [-0.1, 1.1])
+def test_invalid_importance_raises(l2: L2EpisodicBuffer, importance: float) -> None:
+    with pytest.raises(ValueError, match="importance must be in"):
+        l2.encode("invalid importance", importance=importance)
+
+
+@pytest.mark.parametrize("default_importance", [-0.1, 1.1])
+def test_invalid_default_importance_raises(
+    db: SQLiteStore, default_importance: float
+) -> None:
+    l2 = L2EpisodicBuffer(db, default_importance=default_importance)
+    with pytest.raises(ValueError, match="importance must be in"):
+        l2.encode("invalid default importance")
+
+
+@pytest.mark.parametrize("initial_strength", [-0.1, 1.1])
+def test_invalid_default_initial_strength_raises(
+    db: SQLiteStore, initial_strength: float
+) -> None:
+    l2 = L2EpisodicBuffer(db, default_initial_strength=initial_strength)
+    with pytest.raises(ValueError, match="initial_strength must be in"):
+        l2.encode("invalid initial strength")

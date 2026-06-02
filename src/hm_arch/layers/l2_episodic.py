@@ -1,7 +1,7 @@
 """L2 Episodic Buffer — durable raw event storage.
 
 L2 is the first persistent memory layer.  Every event encoded by
-:meth:`L2EpisodicBuffer.encode` is written atomically to:
+:meth:`L2EpisodicBuffer.encode` is written to:
 
 1. ``memory_index`` — one row holding retention metadata, importance, status.
 2. ``episodes`` — one row holding the raw content, event type, and optional
@@ -172,9 +172,9 @@ class L2EpisodicBuffer:
     ) -> str:
         """Persist a raw event as an L2 episodic memory.
 
-        Writes atomically to ``memory_index``, ``episodes``, and the vector
-        store.  The caller does not need to flush or commit; ``SQLiteStore``
-        commits after every :meth:`~SQLiteStore.execute` call.
+        Writes to ``memory_index``, ``episodes``, and the vector store.  The
+        caller does not need to flush or commit; ``SQLiteStore`` commits after
+        every :meth:`~SQLiteStore.execute` call.
 
         Parameters
         ----------
@@ -185,7 +185,7 @@ class L2EpisodicBuffer:
         metadata:
             Arbitrary key/value pairs stored in ``memory_index.metadata``.
         importance:
-            Override for the layer-level default importance.  Clamped to
+            Override for the layer-level default importance. Must be in
             ``[0, 1]``.
         emotion_score:
             Optional emotional valence stored in the ``episodes`` row.
@@ -200,6 +200,8 @@ class L2EpisodicBuffer:
         mid = uuid.uuid4().hex
         now_str = _iso_now()
         imp = importance if importance is not None else self._default_importance
+        _validate_unit_interval("importance", imp)
+        _validate_unit_interval("initial_strength", self._default_initial_strength)
         event_type_str = (
             event_type.value if isinstance(event_type, EventType) else str(event_type)
         )
@@ -420,3 +422,9 @@ def _parse_iso(iso_str: str) -> datetime:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt
+
+
+def _validate_unit_interval(name: str, value: float) -> None:
+    """Raise ``ValueError`` when *value* is outside ``[0, 1]``."""
+    if not 0.0 <= value <= 1.0:
+        raise ValueError(f"{name} must be in [0, 1], got {value!r}")
