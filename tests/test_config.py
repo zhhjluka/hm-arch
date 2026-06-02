@@ -35,8 +35,10 @@ REQUIRED_FIELDS = {
     "min_ef",
     "review_trigger_retention",
     # Thresholds
-    "archive_threshold",
-    "delete_threshold",
+    "l2_archive_threshold",
+    "l2_delete_threshold",
+    "l3_archive_threshold",
+    "l3_delete_threshold",
     "redundancy_threshold",
     # Consolidation
     "auto_consolidate",
@@ -47,10 +49,13 @@ REQUIRED_FIELDS = {
     "max_memories_l3",
     "max_skills_l5",
     # Providers
-    "embedding_provider",
-    "embedding_model",
     "llm_provider",
     "llm_model",
+    "llm_api_key",
+    "llm_base_url",
+    "embedding_provider",
+    "embedding_model",
+    "embedding_dim",
     # Database
     "db_path",
     # Retrieval
@@ -74,48 +79,58 @@ def test_default_db_path() -> None:
 
 def test_default_decay_l2() -> None:
     cfg = MemoryConfig()
-    assert cfg.l2_fast_tau > 0
-    assert cfg.l2_slow_tau > cfg.l2_fast_tau, "slow tau must be larger than fast tau"
-    assert 0.0 < cfg.l2_fast_weight < 1.0
+    assert cfg.l2_fast_tau == pytest.approx(24.0)
+    assert cfg.l2_slow_tau == pytest.approx(720.0)
+    assert cfg.l2_fast_weight == pytest.approx(0.30)
 
 
 def test_default_decay_l3() -> None:
     cfg = MemoryConfig()
-    assert cfg.l3_tau > 0
-    assert cfg.l3_beta > 0
+    assert cfg.l3_tau == pytest.approx(168.0)
+    assert cfg.l3_beta == pytest.approx(0.30)
 
 
 def test_default_asm2() -> None:
     cfg = MemoryConfig()
-    assert cfg.initial_ef > cfg.min_ef
-    assert 0.0 < cfg.review_trigger_retention < 1.0
+    assert cfg.initial_ef == pytest.approx(2.5)
+    assert cfg.min_ef == pytest.approx(1.3)
+    assert cfg.review_trigger_retention == pytest.approx(0.50)
 
 
 def test_default_thresholds_ordered() -> None:
     cfg = MemoryConfig()
-    assert cfg.delete_threshold < cfg.archive_threshold < cfg.review_trigger_retention
+    assert cfg.l2_delete_threshold == pytest.approx(0.05)
+    assert cfg.l2_archive_threshold == pytest.approx(0.15)
+    assert cfg.l3_delete_threshold == pytest.approx(0.10)
+    assert cfg.l3_archive_threshold == pytest.approx(0.30)
+    assert cfg.redundancy_threshold == pytest.approx(0.85)
+    assert cfg.l2_delete_threshold < cfg.l2_archive_threshold < cfg.review_trigger_retention
+    assert cfg.l3_delete_threshold < cfg.l3_archive_threshold < cfg.review_trigger_retention
 
 
 def test_default_consolidation_settings() -> None:
     cfg = MemoryConfig()
-    assert isinstance(cfg.auto_consolidate, bool)
-    assert cfg.consolidate_interval_hours > 0
-    assert 0.0 < cfg.replay_sample_ratio <= 1.0
+    assert cfg.auto_consolidate is True
+    assert cfg.consolidate_interval_hours == 24
+    assert cfg.replay_sample_ratio == pytest.approx(0.20)
 
 
 def test_default_storage_caps() -> None:
     cfg = MemoryConfig()
-    assert cfg.max_memories_l2 > 0
-    assert cfg.max_memories_l3 > 0
-    assert cfg.max_skills_l5 > 0
+    assert cfg.max_memories_l2 == 100000
+    assert cfg.max_memories_l3 == 50000
+    assert cfg.max_skills_l5 == 10000
 
 
-def test_default_providers_are_none() -> None:
+def test_default_providers_match_prd() -> None:
     cfg = MemoryConfig()
-    assert cfg.embedding_provider is None
-    assert cfg.embedding_model is None
-    assert cfg.llm_provider is None
-    assert cfg.llm_model is None
+    assert cfg.llm_provider == "deepseek"
+    assert cfg.llm_model == "deepseek-v4-flash"
+    assert cfg.llm_api_key is None
+    assert cfg.llm_base_url is None
+    assert cfg.embedding_provider == "deepseek"
+    assert cfg.embedding_model == "deepseek-v4-flash"
+    assert cfg.embedding_dim == 1536
 
 
 def test_default_layer_priorities_cover_all_layers() -> None:
@@ -160,9 +175,20 @@ def test_presets_are_mutually_distinct() -> None:
 
     def has_unique_value(a: MemoryConfig, b: MemoryConfig) -> bool:
         for f in dataclasses.fields(a):
-            if f.name in {"db_path", "layer_priorities", "initial_ef", "min_ef",
-                          "embedding_provider", "embedding_model", "llm_provider",
-                          "llm_model", "auto_consolidate"}:
+            if f.name in {
+                "db_path",
+                "layer_priorities",
+                "initial_ef",
+                "min_ef",
+                "embedding_provider",
+                "embedding_model",
+                "embedding_dim",
+                "llm_provider",
+                "llm_model",
+                "llm_api_key",
+                "llm_base_url",
+                "auto_consolidate",
+            }:
                 continue
             if getattr(a, f.name) != getattr(b, f.name):
                 return True
@@ -189,8 +215,11 @@ def test_preset_slow_tau_exceeds_fast_tau(name: str) -> None:
 @pytest.mark.parametrize("name", ["code_agent", "chat_agent", "research_agent"])
 def test_preset_threshold_ordering(name: str) -> None:
     cfg = MemoryConfig.preset(name)
-    assert cfg.delete_threshold < cfg.archive_threshold < cfg.review_trigger_retention, (
-        f"{name}: thresholds must satisfy delete < archive < review_trigger"
+    assert cfg.l2_delete_threshold < cfg.l2_archive_threshold < cfg.review_trigger_retention, (
+        f"{name}: L2 thresholds must satisfy delete < archive < review_trigger"
+    )
+    assert cfg.l3_delete_threshold < cfg.l3_archive_threshold < cfg.review_trigger_retention, (
+        f"{name}: L3 thresholds must satisfy delete < archive < review_trigger"
     )
 
 
