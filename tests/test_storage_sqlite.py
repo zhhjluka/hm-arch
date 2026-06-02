@@ -44,6 +44,12 @@ def _index_names(store: SQLiteStore) -> set[str]:
     return {row["name"] for row in rows}
 
 
+def _indexed_columns(store: SQLiteStore, index_name: str) -> list[str]:
+    """Return indexed column names in index order."""
+    rows = store.query(f"PRAGMA index_info({index_name})")
+    return [row["name"] for row in rows]
+
+
 def _col_info(store: SQLiteStore, table: str) -> dict[str, dict]:
     """Return column metadata keyed by column name from PRAGMA table_info."""
     rows = store.query(f"PRAGMA table_info({table})")
@@ -211,7 +217,9 @@ class TestInitializeSchema:
         with SQLiteStore(tmp_path / "sem_idx2.db") as store:
             store.initialize_schema()
             indexes = _index_names(store)
+            columns = _indexed_columns(store, "idx_semantics_relation")
         assert "idx_semantics_relation" in indexes
+        assert columns == ["entity", "relation"]
 
     # --- skills ---
 

@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS semantics (
 );
 
 CREATE INDEX IF NOT EXISTS idx_semantics_entity   ON semantics(entity);
-CREATE INDEX IF NOT EXISTS idx_semantics_relation ON semantics(relation);
+CREATE INDEX IF NOT EXISTS idx_semantics_relation ON semantics(entity, relation);
 
 -- L5 procedural memory / skills.
 CREATE TABLE IF NOT EXISTS skills (
