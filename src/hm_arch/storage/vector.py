@@ -9,12 +9,12 @@ Provides:
 * :class:`LocalVectorStore` — in-process, stdlib-only, fully deterministic
   implementation suitable for offline tests and demos.
 
-No external dependencies are required.  The local store uses a
-token-overlap scoring strategy: both the query and each stored document are
-lowercased and split into alphanumeric tokens; relevance is the fraction of
-query-token occurrences matched in the document.  Ties are broken by document
-id (ascending) so that query results are **stable across repeated calls on
-the same store contents**.
+No external dependencies are required.  The local store uses a token-overlap
+scoring strategy: both the query and each stored document are lowercased and
+split into alphanumeric word tokens plus individual CJK characters.  Relevance
+is the fraction of query-token occurrences matched in the document.  Ties are
+broken by document id (ascending) so that query results are **stable across
+repeated calls on the same store contents**.
 
 Design notes
 ------------
@@ -126,11 +126,11 @@ class VectorStoreProtocol(Protocol):
 # Scoring helpers
 # ---------------------------------------------------------------------------
 
-_TOKEN_RE = re.compile(r"[a-z0-9]+")
+_TOKEN_RE = re.compile(r"[a-z0-9]+|[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 
 
 def _tokenize(text: str) -> list[str]:
-    """Return a list of lowercase alphanumeric tokens extracted from *text*."""
+    """Return lowercase word tokens plus individual CJK characters."""
     return _TOKEN_RE.findall(text.lower())
 
 

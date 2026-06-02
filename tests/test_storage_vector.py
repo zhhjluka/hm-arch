@@ -49,7 +49,10 @@ class TestTokenize:
 
     def test_unicode_non_ascii_excluded(self) -> None:
         tokens = _tokenize("café résumé")
-        assert "caf" in tokens or "cafe" in tokens or tokens == []
+        assert "caf" in tokens or "r" in tokens
+
+    def test_chinese_characters_are_indexed(self) -> None:
+        assert _tokenize("用户偏好 Python") == ["用", "户", "偏", "好", "python"]
 
 
 class TestTokenOverlapScore:
@@ -294,6 +297,14 @@ class TestQuery:
         store.upsert("high", "Python programming language data science python")
         results = store.query("Python data science")
         assert results[0].id == "high"
+
+    def test_query_chinese_memory_text(self) -> None:
+        store = LocalVectorStore()
+        store.upsert("python_pref", "用户偏好 Python，不喜欢 Java")
+        store.upsert("database", "项目数据库使用 SQLite")
+        results = store.query("用户喜欢什么语言")
+        assert results[0].id == "python_pref"
+        assert results[0].score > results[1].score
 
     def test_query_exact_match_scores_higher_than_partial(self) -> None:
         store = LocalVectorStore()
