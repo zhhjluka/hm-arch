@@ -57,7 +57,16 @@ from pathlib import Path
 import pytest
 
 import hm_arch
-from hm_arch import EventType, HMArch, MemoryConfig, MemoryItem, MemoryReceipt, SearchResult
+from hm_arch import (
+    ConsolidationReport,
+    EventType,
+    HMArch,
+    MemoryConfig,
+    MemoryItem,
+    MemoryReceipt,
+    RetentionCurve,
+    SearchResult,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -368,6 +377,55 @@ def test_context_manager_closes_db() -> None:
         m.add("test")
         assert m._db.is_connected
     assert not m._db.is_connected
+
+
+# ---------------------------------------------------------------------------
+# consolidate()
+# ---------------------------------------------------------------------------
+
+
+def test_consolidate_returns_report(mem: HMArch) -> None:
+    mem.add("User prefers Python", event_type=EventType.CONVERSATION)
+    report = mem.consolidate()
+    assert isinstance(report, ConsolidationReport)
+
+
+def test_consolidate_extracts_preference_semantics(mem: HMArch) -> None:
+    mem.add("User prefers Python", event_type=EventType.CONVERSATION, importance=0.9)
+    report = mem.consolidate()
+    assert report.extracted_semantics >= 1
+
+
+def test_consolidate_updates_last_consolidation_at(mem: HMArch) -> None:
+    mem.add("Some episodic fact")
+    assert mem.get_stats().last_consolidation_at is None
+    mem.consolidate()
+    assert mem.get_stats().last_consolidation_at is not None
+
+
+# ---------------------------------------------------------------------------
+# get_retention_curve()
+# ---------------------------------------------------------------------------
+
+
+def test_get_retention_curve_l2(mem: HMArch) -> None:
+    curve = mem.get_retention_curve(layer=2)
+    assert isinstance(curve, RetentionCurve)
+    assert len(curve.days) == len(curve.retention)
+    assert 30 in curve.days
+    day30 = curve.retention[curve.days.index(30)]
+    assert day30 == pytest.approx(0.26, abs=0.02)
+
+
+def test_get_retention_curve_l3(mem: HMArch) -> None:
+    curve = mem.get_retention_curve(layer=3)
+    day30 = curve.retention[curve.days.index(30)]
+    assert day30 == pytest.approx(0.63, abs=0.05)
+
+
+def test_get_retention_curve_invalid_layer_raises(mem: HMArch) -> None:
+    with pytest.raises(ValueError, match="layer 2 or 3"):
+        mem.get_retention_curve(layer=1)
 
 
 # ---------------------------------------------------------------------------

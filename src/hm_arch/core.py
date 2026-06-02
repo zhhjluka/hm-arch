@@ -18,8 +18,8 @@ Usage example::
     memory = HMArch(db_path=":memory:")
     memory.add("用户偏好 Python", event_type=EventType.CONVERSATION)
     results = memory.search("用户喜欢什么语言", top_k=5)
-    for item in results.results:
-        print(item.layer, item.score, item.content)
+    report = memory.consolidate()
+    curve = memory.get_retention_curve(layer=2)
 """
 
 from __future__ import annotations
@@ -31,12 +31,22 @@ from pathlib import Path
 from typing import Iterator, Optional
 
 from .config import MemoryConfig
+from .consolidation.replay import ConsolidationEngine
+from .forgetting.decay import predict_retention_curve
 from .layers.l1_working import L1WorkingMemory
 from .layers.l2_episodic import L2EpisodicBuffer
 from .layers.l3_semantic import L3SemanticMemory
 from .storage.sqlite import SQLiteStore
 from .storage.vector import _token_overlap_score, _tokenize
-from .types import EventType, MemoryItem, MemoryReceipt, MemoryStats, SearchResult
+from .types import (
+    ConsolidationReport,
+    EventType,
+    MemoryItem,
+    MemoryReceipt,
+    MemoryStats,
+    RetentionCurve,
+    SearchResult,
+)
 
 __all__ = ["HMArch"]
 
@@ -339,6 +349,45 @@ class HMArch:
             total_scanned=total_scanned,
             timing_ms=elapsed_ms,
             source_breakdown=source_breakdown,
+        )
+
+    def consolidate(self) -> ConsolidationReport:
+        """Run a consolidation cycle: decay, replay, semantic extraction, reviews.
+
+        Applies layer-specific retention decay, replays a sample of L2 episodes
+        through the offline semantic extractor, upserts triples into L3, and
+        schedules reviews for important low-retention memories.  No external
+        LLM key is required.
+        """
+        engine = ConsolidationEngine(
+            self._db,
+            self._l2,
+            self._l3,
+            config=self._config,
+        )
+        return engine.run_consolidation_cycle()
+
+    def get_retention_curve(
+        self,
+        layer: int = 2,
+        *,
+        days: list[int] | None = None,
+    ) -> RetentionCurve:
+        """Return predicted retention samples for L2 or L3 decay curves.
+
+        Parameters
+        ----------
+        layer:
+            Memory layer index: ``2`` for episodic (biexponential), ``3`` for
+            semantic (power-law).
+        days:
+            Optional sorted day offsets to sample; defaults to
+            ``[1, 3, 7, 14, 30, 60, 90]``.
+        """
+        return predict_retention_curve(
+            layer=layer,
+            config=self._config,
+            days=days,
         )
 
     def get_stats(self) -> MemoryStats:
