@@ -114,6 +114,7 @@ class SemanticFact:
     status: str
     created_at: datetime
     relevance: float = 0.0
+    retention: float = 1.0
     source_episodes: list[str] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
 
@@ -421,6 +422,7 @@ class L3SemanticMemory:
                     status=row["status"],
                     created_at=_parse_iso(row["created_at"]),
                     relevance=hit.score,
+                    retention=row["current_retention"],
                     source_episodes=json.loads(row["source_episodes"] or "[]"),
                     metadata=json.loads(row["metadata"] or "{}"),
                 )
@@ -478,6 +480,7 @@ class L3SemanticMemory:
             status=r["status"],
             created_at=_parse_iso(r["created_at"]),
             relevance=0.0,
+            retention=r["current_retention"],
             source_episodes=json.loads(r["source_episodes"] or "[]"),
             metadata=json.loads(r["metadata"] or "{}"),
         )
