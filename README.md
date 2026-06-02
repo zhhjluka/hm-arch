@@ -34,12 +34,13 @@ with HMArch(db_path=":memory:") as memory:
 
 ## Setup and testing
 
-Install the package in editable mode with dev dependencies, then run the full verification suite (matches the HM-12 acceptance command):
+Install the package in editable mode with dev dependencies, then run the full verification suite (matches the HM-12 / release acceptance command):
 
 ```bash
 python -m pip install -e ".[dev]"
 pytest
 python examples/basic_usage.py
+python examples/release_smoke.py
 python examples/agent_integration.py
 ```
 
@@ -68,6 +69,7 @@ uv run python examples/claude_code_hooks/demo.py
 | `examples/basic_usage.py` | Add/search workflow (offline, in-memory DB) |
 | `examples/agent_integration.py` | Context manager, stats, consolidation |
 | `examples/import_package.py` | Minimal import smoke check |
+| `examples/release_smoke.py` | Public API smoke test (pre-release checklist) |
 | `examples/codex_hooks/` | Codex CLI turn-start, turn-end, idle consolidation hooks |
 | `examples/claude_code_hooks/` | Claude Code hook equivalents (offline demos) |
 
@@ -109,7 +111,18 @@ from hm_arch import (
 )
 ```
 
-See `docs/spec.md` for the full MVP specification.
+See [docs/api.md](docs/api.md) for the full public API reference (methods, dataclasses, config, and layers).
+Regenerate after API changes: `python scripts/generate_api_docs.py`.
+
+See `docs/spec.md` for the product specification.
+
+## Release documentation
+
+| Document | Purpose |
+|----------|---------|
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
+| [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Test, build, tag, and publish steps (PyPI requires explicit approval) |
+| [docs/VERSIONING.md](docs/VERSIONING.md) | How to bump `src/hm_arch/_version.py` |
 
 ## Project layout
 
@@ -117,6 +130,7 @@ See `docs/spec.md` for the full MVP specification.
 src/hm_arch/          SDK source
 tests/                Pytest suite (offline)
 examples/             Runnable demos
+docs/api.md           Public API reference
 docs/spec.md          Product and API spec
 docs/tasks.md         Milestone breakdown
 ```
