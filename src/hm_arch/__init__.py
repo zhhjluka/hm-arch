@@ -5,6 +5,7 @@ from .config import MemoryConfig
 from .types import (
     ConsolidationReport,
     EventType,
+    ForgetResult,
     MemoryItem,
     MemoryReceipt,
     MemoryStats,
@@ -22,4 +23,5 @@ __all__ = [
     "ConsolidationReport",
     "RetentionCurve",
     "MemoryStats",
+    "ForgetResult",
 ]
