@@ -899,6 +899,35 @@ def test_restart_search_excludes_superseded_after_restart() -> None:
 
 
 # ---------------------------------------------------------------------------
+# merge_redundant_active_pairs — cross-key safety
+# ---------------------------------------------------------------------------
+
+
+class TestMergeRedundantActivePairs:
+    """Regression tests for safe redundant-fact merging."""
+
+    def test_same_value_different_entity_not_merged(self, db):
+        l3 = L3SemanticMemory(db)
+        l3.upsert("user", "prefers", "Python")
+        l3.upsert("assistant", "prefers", "Python")
+
+        merged = l3.merge_redundant_active_pairs(0.5)
+
+        assert merged == 0
+        assert l3.count(status="active") == 2
+
+    def test_same_entity_different_relation_not_merged(self, db):
+        l3 = L3SemanticMemory(db)
+        l3.upsert("user", "prefers", "Python")
+        l3.upsert("user", "uses", "Python")
+
+        merged = l3.merge_redundant_active_pairs(0.5)
+
+        assert merged == 0
+        assert l3.count(status="active") == 2
+
+
+# ---------------------------------------------------------------------------
 # Isolation — two independent L3 instances on separate DBs
 # ---------------------------------------------------------------------------
 

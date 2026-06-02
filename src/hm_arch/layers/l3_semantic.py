@@ -514,12 +514,17 @@ class L3SemanticMemory:
         )
 
     def merge_redundant_active_pairs(self, threshold: float) -> int:
-        """Merge active facts whose triple text similarity meets *threshold*.
+        """Merge active facts that share ``(entity, relation)`` and similar values.
+
+        Only pairs with the same entity and relation are considered.  Values
+        must meet or exceed *threshold* token similarity; dissimilar values
+        on the same key remain separate (conflicts are handled by
+        :meth:`upsert`).  Facts with different entities or relations are never
+        merged, even when their combined triple text overlaps.
 
         Pairs are evaluated in deterministic ``memory_id`` order.  The
         canonical fact is the one with higher ``importance``; ties break on
-        ascending ``memory_id``.  Conflicting ``(entity, relation)`` pairs
-        whose values are dissimilar remain separate.
+        ascending ``memory_id``.
 
         Returns the number of facts merged away (superseded).
         """
@@ -535,18 +540,15 @@ class L3SemanticMemory:
                 if fact_b["memory_id"] in removed:
                     continue
                 if (
-                    fact_a["entity"] == fact_b["entity"]
-                    and fact_a["relation"] == fact_b["relation"]
-                    and _symmetric_text_similarity(fact_a["value"], fact_b["value"])
-                    < threshold
+                    fact_a["entity"] != fact_b["entity"]
+                    or fact_a["relation"] != fact_b["relation"]
                 ):
                     continue
 
-                sim = _symmetric_text_similarity(
-                    _triple_text(fact_a["entity"], fact_a["relation"], fact_a["value"]),
-                    _triple_text(fact_b["entity"], fact_b["relation"], fact_b["value"]),
-                )
-                if sim < threshold:
+                if (
+                    _symmetric_text_similarity(fact_a["value"], fact_b["value"])
+                    < threshold
+                ):
                     continue
 
                 canonical, duplicate = self._pick_canonical_pair(fact_a, fact_b)
