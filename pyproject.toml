@@ -38,11 +38,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/hm-arch/hm-arch"
-Documentation = "https://github.com/hm-arch/hm-arch#readme"
-Repository = "https://github.com/hm-arch/hm-arch"
-Issues = "https://github.com/hm-arch/hm-arch/issues"
-Changelog = "https://github.com/hm-arch/hm-arch/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/ZhangHangjianMA/memashuman"
+Documentation = "https://github.com/ZhangHangjianMA/memashuman#readme"
+Repository = "https://github.com/ZhangHangjianMA/memashuman"
+Issues = "https://github.com/ZhangHangjianMA/memashuman/issues"
+Changelog = "https://github.com/ZhangHangjianMA/memashuman/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
