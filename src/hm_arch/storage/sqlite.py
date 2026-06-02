@@ -22,104 +22,94 @@ from typing import Mapping, Sequence, Union
 _Params = Union[Sequence, Mapping]
 
 # ---------------------------------------------------------------------------
-# DDL — one CREATE TABLE IF NOT EXISTS per PRD-required table
+# DDL — PRD-aligned schema
 # ---------------------------------------------------------------------------
 
 _SCHEMA_SQL = """
 -- Central index: one row per persisted memory, regardless of layer.
 CREATE TABLE IF NOT EXISTS memory_index (
-    memory_id   TEXT    PRIMARY KEY,
-    layer       INTEGER NOT NULL,
-    event_type  TEXT,
-    content     TEXT    NOT NULL,
-    importance  REAL    NOT NULL DEFAULT 0.0,
-    initial_strength REAL NOT NULL DEFAULT 1.0,
-    retention   REAL    NOT NULL DEFAULT 1.0,
-    status      TEXT    NOT NULL DEFAULT 'active',
-    created_at  TEXT    NOT NULL,
-    updated_at  TEXT    NOT NULL,
-    meta_json   TEXT    NOT NULL DEFAULT '{}'
+    id               TEXT    PRIMARY KEY,
+    layer            INTEGER NOT NULL,
+    created_at       TEXT    NOT NULL,
+    updated_at       TEXT    NOT NULL,
+    importance       REAL    NOT NULL DEFAULT 0.5,
+    initial_strength REAL    NOT NULL DEFAULT 0.5,
+    current_retention REAL   NOT NULL DEFAULT 1.0,
+    last_accessed_at TEXT,
+    access_count     INTEGER NOT NULL DEFAULT 0,
+    status           TEXT    NOT NULL DEFAULT 'active',
+    superseded_by    TEXT,
+    tags             TEXT    NOT NULL DEFAULT '[]',
+    metadata         TEXT    NOT NULL DEFAULT '{}',
+    content_hash     TEXT
 );
 
 -- L2 episodic buffer: one row per episode, linked to memory_index.
 CREATE TABLE IF NOT EXISTS episodes (
-    episode_id      TEXT    PRIMARY KEY,
-    memory_id       TEXT    NOT NULL REFERENCES memory_index(memory_id),
-    event_type      TEXT,
-    content         TEXT    NOT NULL,
-    importance      REAL    NOT NULL DEFAULT 0.0,
-    retention       REAL    NOT NULL DEFAULT 1.0,
-    ease_factor     REAL    NOT NULL DEFAULT 2.5,
-    review_count    INTEGER NOT NULL DEFAULT 0,
-    next_review_at  TEXT,
-    created_at      TEXT    NOT NULL,
-    updated_at      TEXT    NOT NULL,
-    extra_json      TEXT    NOT NULL DEFAULT '{}'
+    id             TEXT    PRIMARY KEY,
+    memory_id      TEXT    NOT NULL REFERENCES memory_index(id),
+    content        TEXT    NOT NULL,
+    event_type     TEXT    NOT NULL,
+    emotion_score  REAL,
+    context_window TEXT,
+    raw_json       TEXT
 );
 
 -- L3 semantic memory: subject–relation–object triples.
 CREATE TABLE IF NOT EXISTS semantics (
-    semantic_id         TEXT    PRIMARY KEY,
-    memory_id           TEXT    NOT NULL REFERENCES memory_index(memory_id),
-    entity              TEXT    NOT NULL,
-    relation            TEXT    NOT NULL,
-    value               TEXT    NOT NULL,
-    confidence          REAL    NOT NULL DEFAULT 1.0,
-    retention           REAL    NOT NULL DEFAULT 1.0,
-    status              TEXT    NOT NULL DEFAULT 'active',
-    source_episode_id   TEXT,
-    created_at          TEXT    NOT NULL,
-    updated_at          TEXT    NOT NULL,
-    extra_json          TEXT    NOT NULL DEFAULT '{}'
+    id               TEXT    PRIMARY KEY,
+    memory_id        TEXT    NOT NULL REFERENCES memory_index(id),
+    entity           TEXT    NOT NULL,
+    relation         TEXT    NOT NULL,
+    value            TEXT    NOT NULL,
+    confidence       REAL    NOT NULL DEFAULT 1.0,
+    source_episodes  TEXT    NOT NULL DEFAULT '[]',
+    version          INTEGER NOT NULL DEFAULT 1
 );
+
+CREATE INDEX IF NOT EXISTS idx_semantics_entity   ON semantics(entity);
+CREATE INDEX IF NOT EXISTS idx_semantics_relation ON semantics(relation);
 
 -- L5 procedural memory / skills.
 CREATE TABLE IF NOT EXISTS skills (
-    skill_id        TEXT    PRIMARY KEY,
-    name            TEXT    NOT NULL,
-    description     TEXT,
-    content         TEXT    NOT NULL,
-    trigger_pattern TEXT,
-    usage_count     INTEGER NOT NULL DEFAULT 0,
-    last_used_at    TEXT,
-    created_at      TEXT    NOT NULL,
-    updated_at      TEXT    NOT NULL,
-    extra_json      TEXT    NOT NULL DEFAULT '{}'
+    id                  TEXT    PRIMARY KEY,
+    name                TEXT    NOT NULL UNIQUE,
+    description         TEXT,
+    code                TEXT,
+    usage_count         INTEGER NOT NULL DEFAULT 0,
+    last_used_at        TEXT,
+    success_rate        REAL,
+    average_duration_ms REAL
 );
 
--- L6 meta-cognitive store: arbitrary key/value pairs serialised as JSON.
+-- L6 meta-cognitive store: key/value pairs; key is the natural primary key.
 CREATE TABLE IF NOT EXISTS meta_memory (
-    meta_id     TEXT    PRIMARY KEY,
-    key         TEXT    NOT NULL UNIQUE,
-    value_json  TEXT    NOT NULL,
-    created_at  TEXT    NOT NULL,
+    key         TEXT    PRIMARY KEY,
+    value       TEXT    NOT NULL,
+    description TEXT,
     updated_at  TEXT    NOT NULL
 );
 
--- ASM-2 review scheduling queue.
+-- ASM-2 / SM-2 review scheduling queue.
 CREATE TABLE IF NOT EXISTS review_queue (
-    review_id    TEXT    PRIMARY KEY,
-    memory_id    TEXT    NOT NULL REFERENCES memory_index(memory_id),
-    scheduled_at TEXT    NOT NULL,
-    priority     REAL    NOT NULL DEFAULT 0.5,
-    review_type  TEXT    NOT NULL DEFAULT 'retention',
-    created_at   TEXT    NOT NULL,
-    extra_json   TEXT    NOT NULL DEFAULT '{}'
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    memory_id        TEXT    NOT NULL UNIQUE REFERENCES memory_index(id),
+    ef               REAL    NOT NULL,
+    current_interval INTEGER,
+    next_review_at   TEXT    NOT NULL,
+    last_quality     INTEGER,
+    urgency          REAL
 );
+
+CREATE INDEX IF NOT EXISTS idx_review_next ON review_queue(next_review_at, urgency);
 
 -- Audit log of consolidation cycle runs.
 CREATE TABLE IF NOT EXISTS consolidation_log (
-    log_id               TEXT    PRIMARY KEY,
-    started_at           TEXT    NOT NULL,
-    finished_at          TEXT,
-    extracted_semantics  INTEGER NOT NULL DEFAULT 0,
-    merged_duplicates    INTEGER NOT NULL DEFAULT 0,
-    resolved_conflicts   INTEGER NOT NULL DEFAULT 0,
-    archived_to_l4       INTEGER NOT NULL DEFAULT 0,
-    scheduled_reviews    INTEGER NOT NULL DEFAULT 0,
-    marked_deletable     INTEGER NOT NULL DEFAULT 0,
-    duration_seconds     REAL,
-    extra_json           TEXT    NOT NULL DEFAULT '{}'
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at       TEXT    NOT NULL,
+    completed_at     TEXT    NOT NULL,
+    duration_seconds REAL,
+    stats            TEXT    NOT NULL
 );
 """
 
@@ -153,8 +143,10 @@ class SQLiteStore:
         store = SQLiteStore("agent.db")
         store.connect()
         store.initialize_schema()
-        store.execute("INSERT INTO meta_memory VALUES (?,?,?,?,?)",
-                      ("id1","key","value","2024-01-01T00:00:00Z","2024-01-01T00:00:00Z"))
+        store.execute(
+            "INSERT INTO meta_memory (key, value, updated_at) VALUES (?, ?, ?)",
+            ("agent_name", "TestBot", "2024-01-01T00:00:00Z"),
+        )
         rows = store.query("SELECT * FROM meta_memory")
         store.close()
 
@@ -220,10 +212,10 @@ class SQLiteStore:
     # ------------------------------------------------------------------
 
     def initialize_schema(self) -> None:
-        """Create all PRD-required tables (idempotent).
+        """Create all PRD-required tables and indexes (idempotent).
 
         Safe to call on an existing database: ``CREATE TABLE IF NOT EXISTS``
-        means tables that already exist are left untouched.
+        and ``CREATE INDEX IF NOT EXISTS`` leave existing objects untouched.
 
         Raises
         ------
@@ -274,7 +266,7 @@ class SQLiteStore:
         -------
         list[sqlite3.Row]
             All rows returned by the query.  Each row can be accessed by
-            column name (e.g. ``row["memory_id"]``) or by index.
+            column name (e.g. ``row["id"]``) or by index.
         """
         self._require_connection()
         cursor = self._conn.execute(sql, params)  # type: ignore[union-attr]
