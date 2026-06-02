@@ -52,7 +52,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from ..storage.sqlite import SQLiteStore
-from ..storage.vector import LocalVectorStore, VectorStoreProtocol
+from ..storage.vector import (
+    LocalVectorStore,
+    VectorStoreProtocol,
+    _token_overlap_score,
+    _tokenize,
+)
 
 
 __all__ = [
@@ -201,6 +206,7 @@ class L3SemanticMemory:
         source_episodes: list[str] | None = None,
         metadata: dict | None = None,
         importance: float | None = None,
+        similarity_threshold: float | None = None,
     ) -> str:
         """Insert or update a semantic triple ``(entity, relation, value)``.
 
@@ -232,6 +238,10 @@ class L3SemanticMemory:
         importance:
             Override for the layer-level default importance score.  Must be in
             ``[0, 1]``.
+        similarity_threshold:
+            When provided, active triples with the same ``(entity, relation)``
+            whose ``value`` token similarity meets or exceeds this threshold
+            are treated as redundant and merged instead of superseded.
 
         Returns
         -------
@@ -242,6 +252,8 @@ class L3SemanticMemory:
         imp = importance if importance is not None else self._default_importance
         _validate_unit_interval("confidence", conf)
         _validate_unit_interval("importance", imp)
+        if similarity_threshold is not None:
+            _validate_unit_interval("similarity_threshold", similarity_threshold)
 
         episodes_json = json.dumps(list(source_episodes) if source_episodes else [])
         meta_str = json.dumps(dict(metadata) if metadata is not None else {})
@@ -249,10 +261,26 @@ class L3SemanticMemory:
         # --- Step 1: check for exact match (idempotent return) ----------
         existing_id = self._find_active_exact(entity, relation, value)
         if existing_id is not None:
+            self._append_source_episodes(existing_id, source_episodes)
             return existing_id
+
+        # --- Step 1b: merge near-duplicate values on the same key -------
+        if similarity_threshold is not None:
+            similar_id = self._find_active_similar_value(
+                entity, relation, value, similarity_threshold
+            )
+            if similar_id is not None:
+                self._append_source_episodes(similar_id, source_episodes)
+                return similar_id
 
         # --- Step 2: find conflicting active triples --------------------
         conflicts = self._find_active_conflicts(entity, relation, value)
+        if similarity_threshold is not None:
+            conflicts = [
+                c
+                for c in conflicts
+                if _symmetric_text_similarity(value, c["value"]) < similarity_threshold
+            ]
         next_version = 1
         if conflicts:
             # Determine next version from the highest existing version.
@@ -485,6 +513,49 @@ class L3SemanticMemory:
             metadata=json.loads(r["metadata"] or "{}"),
         )
 
+    def merge_redundant_active_pairs(self, threshold: float) -> int:
+        """Merge active facts whose triple text similarity meets *threshold*.
+
+        Pairs are evaluated in deterministic ``memory_id`` order.  The
+        canonical fact is the one with higher ``importance``; ties break on
+        ascending ``memory_id``.  Conflicting ``(entity, relation)`` pairs
+        whose values are dissimilar remain separate.
+
+        Returns the number of facts merged away (superseded).
+        """
+        _validate_unit_interval("threshold", threshold)
+        facts = self._list_active_facts()
+        removed: set[str] = set()
+        merged = 0
+
+        for i, fact_a in enumerate(facts):
+            if fact_a["memory_id"] in removed:
+                continue
+            for fact_b in facts[i + 1 :]:
+                if fact_b["memory_id"] in removed:
+                    continue
+                if (
+                    fact_a["entity"] == fact_b["entity"]
+                    and fact_a["relation"] == fact_b["relation"]
+                    and _symmetric_text_similarity(fact_a["value"], fact_b["value"])
+                    < threshold
+                ):
+                    continue
+
+                sim = _symmetric_text_similarity(
+                    _triple_text(fact_a["entity"], fact_a["relation"], fact_a["value"]),
+                    _triple_text(fact_b["entity"], fact_b["relation"], fact_b["value"]),
+                )
+                if sim < threshold:
+                    continue
+
+                canonical, duplicate = self._pick_canonical_pair(fact_a, fact_b)
+                self._merge_into(canonical["memory_id"], duplicate["memory_id"])
+                removed.add(duplicate["memory_id"])
+                merged += 1
+
+        return merged
+
     def count(self, status: str = "active") -> int:
         """Return the number of L3 triples with the given *status* in SQLite.
 
@@ -525,6 +596,130 @@ class L3SemanticMemory:
         )
         return rows[0]["id"] if rows else None
 
+    def _list_active_facts(self) -> list[dict]:
+        """Return active semantic rows ordered by ``memory_id``."""
+        rows = self._db.query(
+            """
+            SELECT mi.id AS memory_id,
+                   mi.importance,
+                   s.entity,
+                   s.relation,
+                   s.value,
+                   s.source_episodes
+            FROM   memory_index mi
+            JOIN   semantics    s ON s.memory_id = mi.id
+            WHERE  mi.layer  = ?
+              AND  mi.status = 'active'
+            ORDER  BY mi.id
+            """,
+            (self.LAYER_INDEX,),
+        )
+        return [
+            {
+                "memory_id": row["memory_id"],
+                "importance": row["importance"],
+                "entity": row["entity"],
+                "relation": row["relation"],
+                "value": row["value"],
+                "source_episodes": json.loads(row["source_episodes"] or "[]"),
+            }
+            for row in rows
+        ]
+
+    def _find_active_similar_value(
+        self,
+        entity: str,
+        relation: str,
+        value: str,
+        threshold: float,
+    ) -> str | None:
+        """Return the ``memory_id`` of an active near-duplicate value, if any."""
+        rows = self._db.query(
+            """
+            SELECT mi.id AS memory_id,
+                   s.value
+            FROM   memory_index mi
+            JOIN   semantics    s ON s.memory_id = mi.id
+            WHERE  s.entity   = ?
+              AND  s.relation = ?
+              AND  s.value   != ?
+              AND  mi.layer   = ?
+              AND  mi.status  = 'active'
+            ORDER  BY mi.id
+            """,
+            (entity, relation, value, self.LAYER_INDEX),
+        )
+        for row in rows:
+            if _symmetric_text_similarity(value, row["value"]) >= threshold:
+                return row["memory_id"]
+        return None
+
+    def _append_source_episodes(
+        self,
+        memory_id: str,
+        source_episodes: list[str] | None,
+    ) -> None:
+        """Union new episode ids into an active semantic fact."""
+        if not source_episodes:
+            return
+
+        rows = self._db.query(
+            "SELECT source_episodes FROM semantics WHERE memory_id = ?",
+            (memory_id,),
+        )
+        if not rows:
+            return
+
+        existing = json.loads(rows[0]["source_episodes"] or "[]")
+        merged = list(dict.fromkeys([*existing, *source_episodes]))
+        if merged == existing:
+            return
+
+        self._db.execute(
+            """
+            UPDATE semantics
+               SET source_episodes = ?
+             WHERE memory_id = ?
+            """,
+            (json.dumps(merged), memory_id),
+        )
+
+    def _pick_canonical_pair(self, left: dict, right: dict) -> tuple[dict, dict]:
+        """Choose canonical/duplicate facts deterministically."""
+        if left["importance"] > right["importance"]:
+            return left, right
+        if right["importance"] > left["importance"]:
+            return right, left
+        if left["memory_id"] <= right["memory_id"]:
+            return left, right
+        return right, left
+
+    def _merge_into(self, canonical_id: str, duplicate_id: str) -> None:
+        """Merge *duplicate_id* into *canonical_id* and supersede the duplicate."""
+        if canonical_id == duplicate_id:
+            return
+
+        dup_rows = self._db.query(
+            "SELECT source_episodes FROM semantics WHERE memory_id = ?",
+            (duplicate_id,),
+        )
+        if dup_rows:
+            dup_episodes = json.loads(dup_rows[0]["source_episodes"] or "[]")
+            self._append_source_episodes(canonical_id, dup_episodes)
+
+        now_str = _iso_now()
+        self._db.execute(
+            """
+            UPDATE memory_index
+               SET status        = 'superseded',
+                   updated_at    = ?,
+                   superseded_by = ?
+             WHERE id = ?
+            """,
+            (now_str, canonical_id, duplicate_id),
+        )
+        self._vector.delete(duplicate_id)
+
     def _find_active_conflicts(
         self, entity: str, relation: str, value: str
     ) -> list[dict]:
@@ -535,7 +730,8 @@ class L3SemanticMemory:
         rows = self._db.query(
             """
             SELECT mi.id AS memory_id,
-                   s.version
+                   s.version,
+                   s.value
             FROM   memory_index mi
             JOIN   semantics    s ON s.memory_id = mi.id
             WHERE  s.entity   = ?
@@ -546,7 +742,14 @@ class L3SemanticMemory:
             """,
             (entity, relation, value, self.LAYER_INDEX),
         )
-        return [{"memory_id": r["memory_id"], "version": r["version"]} for r in rows]
+        return [
+            {
+                "memory_id": r["memory_id"],
+                "version": r["version"],
+                "value": r["value"],
+            }
+            for r in rows
+        ]
 
     def _fetch_semantic_row(self, memory_id: str) -> dict | None:
         """Fetch a joined memory_index + semantics row for *memory_id*.
@@ -633,6 +836,18 @@ class L3SemanticMemory:
 def _triple_text(entity: str, relation: str, value: str) -> str:
     """Produce the canonical vector-store text for a triple."""
     return f"{entity} {relation} {value}"
+
+
+def _symmetric_text_similarity(left: str, right: str) -> float:
+    """Deterministic token-overlap similarity in ``[0, 1]``."""
+    left_tokens = _tokenize(left)
+    right_tokens = _tokenize(right)
+    if not left_tokens or not right_tokens:
+        return 0.0
+    return max(
+        _token_overlap_score(left_tokens, right_tokens),
+        _token_overlap_score(right_tokens, left_tokens),
+    )
 
 
 def _iso_now() -> str:
