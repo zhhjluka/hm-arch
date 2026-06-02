@@ -39,6 +39,10 @@ CJK support
 Offline / persistence
 * Reopening the same SQLite file preserves searchable memories.
 
+consolidate() / get_retention_curve()
+* consolidate() returns a ConsolidationReport and updates last_consolidation_at.
+* get_retention_curve(layer=2|3) returns a RetentionCurve with matching day samples.
+
 Context manager
 * HMArch works as a context manager; close() is called on __exit__.
 
@@ -57,7 +61,16 @@ from pathlib import Path
 import pytest
 
 import hm_arch
-from hm_arch import EventType, HMArch, MemoryConfig, MemoryItem, MemoryReceipt, SearchResult
+from hm_arch import (
+    ConsolidationReport,
+    EventType,
+    HMArch,
+    MemoryConfig,
+    MemoryItem,
+    MemoryReceipt,
+    RetentionCurve,
+    SearchResult,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -356,6 +369,45 @@ def test_reopening_db_preserves_memories() -> None:
     assert len(result.results) > 0, (
         "Memories should survive close/reopen; got empty results"
     )
+
+
+# ---------------------------------------------------------------------------
+# consolidate() / get_retention_curve()
+# ---------------------------------------------------------------------------
+
+
+def test_consolidate_returns_report(mem: HMArch) -> None:
+    mem.add("User prefers Python", event_type=EventType.CONVERSATION)
+    report = mem.consolidate()
+    assert isinstance(report, ConsolidationReport)
+    assert report.extracted_semantics >= 0
+    assert report.duration_seconds >= 0.0
+
+
+def test_consolidate_updates_last_consolidation_at(mem: HMArch) -> None:
+    mem.add("preference text for extraction")
+    assert mem.get_stats().last_consolidation_at is None
+    mem.consolidate()
+    assert mem.get_stats().last_consolidation_at is not None
+
+
+def test_get_retention_curve_l2(mem: HMArch) -> None:
+    curve = mem.get_retention_curve(layer=2, days=[1, 7, 30])
+    assert isinstance(curve, RetentionCurve)
+    assert curve.days == [1, 7, 30]
+    assert len(curve.retention) == 3
+    assert curve.retention[0] > curve.retention[-1]
+
+
+def test_get_retention_curve_l3(mem: HMArch) -> None:
+    curve = mem.get_retention_curve(layer=3)
+    assert isinstance(curve, RetentionCurve)
+    assert len(curve.days) == len(curve.retention)
+
+
+def test_get_retention_curve_invalid_layer_raises(mem: HMArch) -> None:
+    with pytest.raises(ValueError, match="layer 2 or 3"):
+        mem.get_retention_curve(layer=1)
 
 
 # ---------------------------------------------------------------------------

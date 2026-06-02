@@ -59,6 +59,19 @@ def main() -> None:
                 f"  '{item.content[:60]}'"
             )
 
+        # --- Consolidation and retention curve ------------------------------
+        report = memory.consolidate()
+        print(
+            f"\nConsolidation: extracted={report.extracted_semantics}, "
+            f"scheduled_reviews={report.scheduled_reviews}"
+        )
+
+        curve = memory.get_retention_curve(layer=2, days=[1, 7, 30])
+        print(
+            f"L2 retention curve (days={curve.days}): "
+            f"{[round(r, 2) for r in curve.retention]}"
+        )
+
         print("\nBasic usage example completed successfully.")
 
 

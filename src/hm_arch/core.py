@@ -31,12 +31,22 @@ from pathlib import Path
 from typing import Iterator, Optional
 
 from .config import MemoryConfig
+from .consolidation import ConsolidationEngine
+from .forgetting.decay import predict_retention_curve
 from .layers.l1_working import L1WorkingMemory
 from .layers.l2_episodic import L2EpisodicBuffer
 from .layers.l3_semantic import L3SemanticMemory
 from .storage.sqlite import SQLiteStore
 from .storage.vector import _token_overlap_score, _tokenize
-from .types import EventType, MemoryItem, MemoryReceipt, MemoryStats, SearchResult
+from .types import (
+    ConsolidationReport,
+    EventType,
+    MemoryItem,
+    MemoryReceipt,
+    MemoryStats,
+    RetentionCurve,
+    SearchResult,
+)
 
 __all__ = ["HMArch"]
 
@@ -176,8 +186,8 @@ class HMArch:
         """Store *content* in working memory (L1) and the episodic buffer (L2).
 
         ``add()`` always succeeds without an external LLM key.  L3 semantic
-        extraction is **not** triggered here; it happens during
-        ``consolidate()`` (a later milestone).
+        extraction is **not** triggered here; call :meth:`consolidate` to
+        replay episodic memories and upsert semantic triples.
 
         Parameters
         ----------
@@ -339,6 +349,55 @@ class HMArch:
             total_scanned=total_scanned,
             timing_ms=elapsed_ms,
             source_breakdown=source_breakdown,
+        )
+
+    def consolidate(self) -> ConsolidationReport:
+        """Run a consolidation cycle over persisted memories.
+
+        Applies layer-specific decay, replays a sample of L2 episodes,
+        extracts semantic triples into L3 (offline pattern-based fallback),
+        schedules reviews for important low-retention items, and writes an
+        audit row to ``consolidation_log``.
+
+        Returns
+        -------
+        ConsolidationReport
+            Counts of extracted semantics, scheduled reviews, and related
+            maintenance actions.
+        """
+        engine = ConsolidationEngine(
+            self._db,
+            self._l2,
+            self._l3,
+            config=self._config,
+        )
+        return engine.run_consolidation_cycle()
+
+    def get_retention_curve(
+        self,
+        layer: int,
+        days: Optional[list[int]] = None,
+    ) -> RetentionCurve:
+        """Return predicted retention samples for L2 or L3.
+
+        Parameters
+        ----------
+        layer:
+            Memory layer index: ``2`` for episodic (biexponential decay) or
+            ``3`` for semantic (power-law decay).
+        days:
+            Optional sorted day offsets at which to sample retention.
+            Defaults to ``[1, 3, 7, 14, 30, 60, 90]``.
+
+        Returns
+        -------
+        RetentionCurve
+            Sampled retention values plus suggested review and archive days.
+        """
+        return predict_retention_curve(
+            layer=layer,
+            config=self._config,
+            days=days,
         )
 
     def get_stats(self) -> MemoryStats:
