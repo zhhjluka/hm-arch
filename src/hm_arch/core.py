@@ -25,8 +25,10 @@ Usage example::
 from __future__ import annotations
 
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Optional
+from pathlib import Path
+from typing import Iterator, Optional
 
 from .config import MemoryConfig
 from .layers.l1_working import L1WorkingMemory
@@ -34,7 +36,7 @@ from .layers.l2_episodic import L2EpisodicBuffer
 from .layers.l3_semantic import L3SemanticMemory
 from .storage.sqlite import SQLiteStore
 from .storage.vector import _token_overlap_score, _tokenize
-from .types import EventType, MemoryItem, MemoryReceipt, SearchResult
+from .types import EventType, MemoryItem, MemoryReceipt, MemoryStats, SearchResult
 
 __all__ = ["HMArch"]
 
@@ -42,6 +44,72 @@ __all__ = ["HMArch"]
 def _relevance(query: str, text: str) -> float:
     """Token-overlap relevance score between *query* and *text* in ``[0, 1]``."""
     return _token_overlap_score(_tokenize(query), _tokenize(text))
+
+
+_RETENTION_BUCKETS: tuple[tuple[str, float, float], ...] = (
+    ("0-0.25", 0.0, 0.25),
+    ("0.25-0.5", 0.25, 0.5),
+    ("0.5-0.75", 0.5, 0.75),
+    ("0.75-1.0", 0.75, 1.0000001),
+)
+
+
+def _retention_histogram(db: SQLiteStore) -> dict[str, int]:
+    """Bucket active ``memory_index`` rows by ``current_retention``."""
+    counts = {label: 0 for label, _, _ in _RETENTION_BUCKETS}
+    rows = db.query(
+        "SELECT current_retention FROM memory_index WHERE status = 'active'"
+    )
+    for row in rows:
+        r = float(row["current_retention"])
+        for label, low, high in _RETENTION_BUCKETS:
+            if low <= r < high:
+                counts[label] += 1
+                break
+    return counts
+
+
+def _review_queue_length(db: SQLiteStore) -> int:
+    rows = db.query("SELECT COUNT(*) AS n FROM review_queue")
+    return int(rows[0]["n"]) if rows else 0
+
+
+def _last_consolidation_at(db: SQLiteStore) -> datetime | None:
+    rows = db.query(
+        """
+        SELECT completed_at
+        FROM   consolidation_log
+        ORDER  BY completed_at DESC
+        LIMIT  1
+        """
+    )
+    if not rows:
+        return None
+    return _parse_iso_timestamp(rows[0]["completed_at"])
+
+
+def _parse_iso_timestamp(iso_str: str) -> datetime:
+    dt = datetime.fromisoformat(iso_str)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _database_size_mb(db: SQLiteStore) -> float:
+    """Approximate on-disk database size in megabytes."""
+    path = db.path
+    if path != ":memory:":
+        p = Path(path)
+        if p.is_file():
+            return p.stat().st_size / (1024 * 1024)
+
+    page_rows = db.query("PRAGMA page_count")
+    size_rows = db.query("PRAGMA page_size")
+    if not page_rows or not size_rows:
+        return 0.0
+    pages = int(page_rows[0][0])
+    page_size = int(size_rows[0][0])
+    return (pages * page_size) / (1024 * 1024)
 
 
 class HMArch:
@@ -272,6 +340,59 @@ class HMArch:
             timing_ms=elapsed_ms,
             source_breakdown=source_breakdown,
         )
+
+    def get_stats(self) -> MemoryStats:
+        """Return aggregated statistics about the memory store.
+
+        Counts include in-session L1 items plus persisted L2/L3 rows with
+        ``status = 'active'``.  Retention histogram buckets are computed from
+        ``memory_index.current_retention`` for all active persisted memories.
+        """
+        by_layer = {
+            0: 0,
+            1: self._l1.size,
+            2: self._l2.count(),
+            3: self._l3.count(status="active"),
+        }
+        total_memories = sum(by_layer.values())
+
+        retention_distribution = _retention_histogram(self._db)
+        review_queue_length = _review_queue_length(self._db)
+        last_consolidation_at = _last_consolidation_at(self._db)
+        storage_size_mb = _database_size_mb(self._db)
+
+        return MemoryStats(
+            total_memories=total_memories,
+            by_layer=by_layer,
+            storage_size_mb=storage_size_mb,
+            retention_distribution=retention_distribution,
+            review_queue_length=review_queue_length,
+            last_consolidation_at=last_consolidation_at,
+        )
+
+    @contextmanager
+    def context(self) -> Iterator["HMArch"]:
+        """Save and restore L1 working-memory session state.
+
+        On entry, a snapshot of the current L1 store is taken.  On exit (even
+        when an exception is raised), L1 is restored to that snapshot so
+        ephemeral session additions inside the block do not leak into the
+        outer agent turn.  L2/L3 persisted data is unaffected.
+
+        Examples
+        --------
+        ::
+
+            memory.add("baseline context")
+            with memory.context():
+                memory.add("temporary task note")
+            # L1 is back to the pre-block snapshot; L2 still has both adds.
+        """
+        saved_l1 = self._l1.snapshot()
+        try:
+            yield self
+        finally:
+            self._l1.load_snapshot(saved_l1)
 
     # ------------------------------------------------------------------
     # Connection lifecycle
