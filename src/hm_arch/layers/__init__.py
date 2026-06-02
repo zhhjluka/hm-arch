@@ -19,10 +19,13 @@ buffer, and the durable semantic triple store:
   :meth:`L4EpisodicLTM.retrieve`.
 * :class:`L5ProceduralMemory` — durable SQLite store for procedural skills.
 * :class:`SkillRecord` — return type produced by L5 skill operations.
+* :class:`L6MetaMemory` — usage tracking and deterministic meta policies.
+* :class:`HotMemoryRecord` — return type from :meth:`L6MetaMemory.get_hot_memories`.
+* :class:`StrategyPlan` — return type from :meth:`L6MetaMemory.strategy_plan`.
 
 L0 and L1 have no persistence; they exist only for the lifetime of the
 running process (or until their :meth:`~BaseLayer.clear` method is called).
-L2, L3, and L5 persist to SQLite and survive process restarts.
+L2, L3, L5, and L6 persist to SQLite and survive process restarts.
 L4 persists compressed JSON under ``ltm/YYYY-MM/`` on the filesystem.
 """
 
@@ -33,6 +36,7 @@ from .l2_episodic import EpisodicItem, L2EpisodicBuffer
 from .l3_semantic import SemanticFact, L3SemanticMemory
 from .l4_ltm import ArchivedEpisodic, L4EpisodicLTM
 from .l5_procedural import L5ProceduralMemory, SkillRecord
+from .l6_meta import HotMemoryRecord, L6MetaMemory, StrategyPlan
 
 __all__ = [
     "BaseLayer",
@@ -47,4 +51,7 @@ __all__ = [
     "L4EpisodicLTM",
     "L5ProceduralMemory",
     "SkillRecord",
+    "L6MetaMemory",
+    "HotMemoryRecord",
+    "StrategyPlan",
 ]

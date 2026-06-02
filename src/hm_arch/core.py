@@ -37,6 +37,7 @@ from .layers.l1_working import L1WorkingMemory
 from .layers.l2_episodic import L2EpisodicBuffer
 from .layers.l3_semantic import L3SemanticMemory
 from .layers.l4_ltm import L4EpisodicLTM
+from .layers.l6_meta import L6MetaMemory
 from .storage.sqlite import SQLiteStore
 from .storage.vector import _token_overlap_score, _tokenize
 from .types import (
@@ -182,6 +183,7 @@ class HMArch:
         self._l2 = L2EpisodicBuffer(self._db)
         self._l3 = L3SemanticMemory(self._db)
         self._l4 = L4EpisodicLTM(_resolve_archive_root(self._config))
+        self._l6 = L6MetaMemory(self._db)
 
     # ------------------------------------------------------------------
     # Primary public interface
@@ -377,11 +379,15 @@ class HMArch:
         # Sort descending by score; stable sort preserves layer order as tiebreak
         candidates.sort(key=lambda x: -x.score)
 
+        final_results = candidates[:top_k]
+        for item in final_results:
+            self._l6.track_access(item.memory_id, item.layer)
+
         elapsed_ms = (time.monotonic() - t0) * 1000
         total_scanned = sum(source_breakdown.values())
 
         return SearchResult(
-            results=candidates[:top_k],
+            results=final_results,
             total_scanned=total_scanned,
             timing_ms=elapsed_ms,
             source_breakdown=source_breakdown,
