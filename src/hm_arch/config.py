@@ -1,0 +1,197 @@
+"""Configuration object and built-in presets for HM-Arch.
+
+Field names follow the PRD contract so that later implementation modules
+(decay, retrieval, consolidation) can read config values by canonical name.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Optional
+
+_VALID_PRESETS = {"code_agent", "chat_agent", "research_agent"}
+
+
+@dataclass
+class MemoryConfig:
+    """Runtime configuration for an :class:`HMArch` instance.
+
+    Time constants are expressed in hours, matching the PRD formulas.
+    """
+
+    # -------------------------------------------------------------------
+    # Database
+    # -------------------------------------------------------------------
+    db_path: str = "./.agent_memory.db"
+
+    # -------------------------------------------------------------------
+    # Decay - L2 bi-exponential, hours
+    # -------------------------------------------------------------------
+    l2_fast_tau: float = 24.0
+    """Fast-decay time constant in hours."""
+    l2_slow_tau: float = 720.0
+    """Slow-decay time constant in hours."""
+    l2_fast_weight: float = 0.30
+    """Fraction of strength governed by the fast component (0–1)."""
+
+    # -------------------------------------------------------------------
+    # Decay - L3 power-law, hours
+    # -------------------------------------------------------------------
+    l3_tau: float = 168.0
+    """Scale parameter in hours for the L3 power-law decay."""
+    l3_beta: float = 0.30
+    """Exponent for the L3 power-law decay (larger = faster forgetting)."""
+
+    # -------------------------------------------------------------------
+    # ASM-2 review scheduling
+    # -------------------------------------------------------------------
+    initial_ef: float = 2.5
+    """Initial ease factor for new memories (SM-2 default)."""
+    min_ef: float = 1.3
+    """Minimum ease factor (SM-2 floor)."""
+    review_trigger_retention: float = 0.50
+    """Retention level below which a review is scheduled."""
+
+    # -------------------------------------------------------------------
+    # Archive / delete thresholds
+    # -------------------------------------------------------------------
+    l2_archive_threshold: float = 0.15
+    """L2 retention below which an episodic memory is compressed to L4."""
+    l2_delete_threshold: float = 0.05
+    """L2 retention below which an episodic memory is marked deletable."""
+    l3_archive_threshold: float = 0.30
+    """L3 retention below which a semantic memory is eligible for archiving."""
+    l3_delete_threshold: float = 0.10
+    """L3 retention below which a semantic memory is marked deletable."""
+    redundancy_threshold: float = 0.85
+    """Cosine-similarity above which two memories are considered duplicates."""
+
+    # -------------------------------------------------------------------
+    # Consolidation
+    # -------------------------------------------------------------------
+    auto_consolidate: bool = True
+    """Whether consolidation runs automatically in the background."""
+    consolidate_interval_hours: int = 24
+    """Hours between automatic consolidation cycles."""
+    replay_sample_ratio: float = 0.20
+    """Fraction of eligible L2 episodes replayed per consolidation cycle."""
+
+    # -------------------------------------------------------------------
+    # Storage caps
+    # -------------------------------------------------------------------
+    max_memories_l2: int = 100000
+    """Maximum number of episodes stored in the L2 episodic buffer."""
+    max_memories_l3: int = 50000
+    """Maximum number of triples stored in L3 semantic memory."""
+    max_skills_l5: int = 10000
+    """Maximum number of skill records stored in L5 procedural memory."""
+
+    # -------------------------------------------------------------------
+    # LLM / embedding providers
+    # -------------------------------------------------------------------
+    llm_provider: str = "deepseek"
+    """LLM provider identifier: ``"deepseek"``, ``"openai"``, or ``"local"``."""
+    llm_model: str = "deepseek-v4-flash"
+    """Model name used for importance scoring and semantic extraction."""
+    llm_api_key: Optional[str] = None
+    """Optional API key. ``None`` means provider code should read environment variables."""
+    llm_base_url: Optional[str] = None
+    """Optional provider base URL override."""
+    embedding_provider: str = "deepseek"
+    """Embedding provider identifier."""
+    embedding_model: str = "deepseek-v4-flash"
+    """Model name for embedding generation."""
+    embedding_dim: int = 1536
+    """Embedding dimensionality expected by the configured provider."""
+
+    # -------------------------------------------------------------------
+    # Retrieval
+    # -------------------------------------------------------------------
+    layer_priorities: dict[str, float] = field(
+        default_factory=lambda: {"L0": 1.0, "L1": 0.9, "L2": 0.7, "L3": 0.8}
+    )
+    """Per-layer multipliers applied when computing the final ranking score."""
+
+    @classmethod
+    def preset(cls, name: str) -> "MemoryConfig":
+        """Return a :class:`MemoryConfig` tuned for a specific agent type.
+
+        Parameters
+        ----------
+        name:
+            One of ``"code_agent"``, ``"chat_agent"``, or
+            ``"research_agent"``.
+
+        Raises
+        ------
+        ValueError
+            When *name* is not a known preset.
+        """
+        if name not in _VALID_PRESETS:
+            raise ValueError(
+                f"Unknown preset {name!r}.  "
+                f"Valid presets are: {sorted(_VALID_PRESETS)}"
+            )
+
+        if name == "code_agent":
+            return cls(
+                l2_fast_tau=18.0,
+                l2_slow_tau=480.0,
+                l2_fast_weight=0.35,
+                l3_tau=120.0,
+                l3_beta=0.35,
+                initial_ef=2.5,
+                min_ef=1.3,
+                review_trigger_retention=0.50,
+                l2_archive_threshold=0.15,
+                l2_delete_threshold=0.05,
+                l3_archive_threshold=0.30,
+                l3_delete_threshold=0.10,
+                redundancy_threshold=0.85,
+                auto_consolidate=True,
+                consolidate_interval_hours=12,
+                replay_sample_ratio=0.20,
+                layer_priorities={"L0": 1.0, "L1": 0.95, "L2": 0.75, "L3": 0.85},
+            )
+
+        if name == "chat_agent":
+            return cls(
+                l2_fast_tau=30.0,
+                l2_slow_tau=1000.0,
+                l2_fast_weight=0.30,
+                l3_tau=240.0,
+                l3_beta=0.25,
+                initial_ef=2.5,
+                min_ef=1.3,
+                review_trigger_retention=0.50,
+                l2_archive_threshold=0.15,
+                l2_delete_threshold=0.05,
+                l3_archive_threshold=0.30,
+                l3_delete_threshold=0.10,
+                redundancy_threshold=0.85,
+                auto_consolidate=True,
+                consolidate_interval_hours=24,
+                replay_sample_ratio=0.20,
+                layer_priorities={"L0": 1.0, "L1": 1.0, "L2": 0.65, "L3": 0.75},
+            )
+
+        # research_agent
+        return cls(
+            l2_fast_tau=6.0,
+            l2_slow_tau=200.0,
+            l2_fast_weight=0.30,
+            l3_tau=720.0,
+            l3_beta=0.15,
+            initial_ef=2.8,
+            min_ef=1.3,
+            review_trigger_retention=0.50,
+            l2_archive_threshold=0.15,
+            l2_delete_threshold=0.05,
+            l3_archive_threshold=0.30,
+            l3_delete_threshold=0.10,
+            redundancy_threshold=0.85,
+            auto_consolidate=True,
+            consolidate_interval_hours=6,
+            replay_sample_ratio=0.20,
+            layer_priorities={"L0": 1.0, "L1": 0.85, "L2": 0.80, "L3": 0.95},
+        )
