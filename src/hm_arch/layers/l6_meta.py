@@ -291,7 +291,9 @@ class L6MetaMemory:
         """
         policies = {name: self.get_policy(name) for name in _DEFAULT_POLICIES}
         layer_totals = self._layer_access_totals()
-        hot_threshold = max(1, int(policies.get("hot_access_threshold", "3")))
+        hot_threshold = _parse_hot_access_threshold(
+            policies.get("hot_access_threshold", "3")
+        )
         hot = self.get_hot_memories(limit=1000)
         hot_count = sum(1 for h in hot if h.access_count >= hot_threshold)
 
@@ -391,6 +393,18 @@ class L6MetaMemory:
 # ---------------------------------------------------------------------------
 # Module utilities
 # ---------------------------------------------------------------------------
+
+
+def _parse_hot_access_threshold(raw: str) -> int:
+    """Parse hot_access_threshold; invalid or non-positive values use default 3."""
+    default = int(_DEFAULT_POLICIES["hot_access_threshold"])
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    if value < 1:
+        return default
+    return value
 
 
 def _iso_now() -> str:

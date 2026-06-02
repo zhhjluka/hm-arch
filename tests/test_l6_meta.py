@@ -232,6 +232,21 @@ def test_strategy_plan_returns_structure() -> None:
     assert len(plan.recommendations) >= 1
 
 
+def test_strategy_plan_invalid_hot_threshold_uses_default() -> None:
+    l6 = _make_l6()
+    l6.set_policy("hot_access_threshold", "not-an-int")
+    plan = l6.strategy_plan()
+    assert plan.hot_memory_count == 0
+    assert any("default retrieval" in r.lower() for r in plan.recommendations)
+
+
+def test_strategy_plan_non_positive_hot_threshold_uses_default() -> None:
+    l6 = _make_l6()
+    l6.set_policy("hot_access_threshold", "0")
+    plan = l6.strategy_plan()
+    assert plan.hot_memory_count == 0
+
+
 def test_strategy_plan_hot_recommendation() -> None:
     db = _make_db()
     l2 = L2EpisodicBuffer(db)
