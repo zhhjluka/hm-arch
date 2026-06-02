@@ -28,12 +28,19 @@ name = "hm-arch"
 version = "0.0.0"
 source = { editable = "." }
 
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
 ]
 
 [package.metadata]
+requires-dist = [{ name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3" }]
+provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=9.0.3" }]
