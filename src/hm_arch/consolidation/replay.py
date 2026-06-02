@@ -7,8 +7,8 @@ without any API keys.
 Consolidation cycle steps
 -------------------------
 1. Apply layer-specific decay to ``current_retention`` for all active memories.
-2. Randomly sample a fraction of active L2 episodes (controlled by
-   ``config.replay_sample_ratio``).
+2. Deterministically sample L2 episodes weighted by importance and decay
+   (controlled by ``config.replay_sample_ratio``).
 3. Run each sampled episode through :class:`SemanticExtractor` and upsert any
    extracted triples into L3 semantic memory.
 4. Schedule reviews in ``review_queue`` for important memories whose retention
@@ -25,14 +25,13 @@ from __future__ import annotations
 
 import json
 import math
-import random
 import re
 import time
 from datetime import datetime, timedelta, timezone
 
 from ..config import MemoryConfig
 from ..layers.l2_episodic import L2EpisodicBuffer
-from ..layers.l3_semantic import L3SemanticMemory
+from ..layers.l3_semantic import L3SemanticMemory, _symmetric_text_similarity
 from ..layers.l4_ltm import L4EpisodicLTM
 from ..storage.sqlite import SQLiteStore
 from ..types import ConsolidationReport
@@ -303,7 +302,8 @@ class ConsolidationEngine:
 
     1. Applies layer-specific retention decay to all active L2 and L3
        memories in ``memory_index``.
-    2. Randomly samples ``config.replay_sample_ratio`` of active L2 episodes.
+    2. Deterministically samples ``config.replay_sample_ratio`` of active L2
+       episodes, prioritising important memories with lower retention.
     3. Extracts semantic triples from each sampled episode via the
        :class:`SemanticExtractor` and upserts them into L3.
     4. Schedules ASM-2 reviews for important memories whose retention has
@@ -403,20 +403,49 @@ class ConsolidationEngine:
         # Step 3: Extract and upsert semantic triples.
         extracted = 0
         resolved_conflicts = 0
+        merged_duplicates = 0
+        threshold = self._config.redundancy_threshold
         for ep in episodes:
             triples = self._extractor.extract(ep["content"])
+            ep_created = _parse_iso(ep["created_at"])
             for entity, relation, value in triples:
                 existing = self._l3.get_by_entity_relation(entity, relation)
+                if (
+                    existing is not None
+                    and existing.value != value
+                    and _symmetric_text_similarity(value, existing.value) < threshold
+                    and existing.created_at >= ep_created
+                ):
+                    # Do not let stale replay downgrade a newer semantic fact.
+                    continue
+
+                before_id = existing.memory_id if existing is not None else None
+                before_value = existing.value if existing is not None else None
+
                 self._l3.upsert(
                     entity,
                     relation,
                     value,
                     source_episodes=[ep["memory_id"]],
                     importance=ep["importance"],
+                    similarity_threshold=threshold,
                 )
-                if existing is not None and existing.value != value:
+
+                after = self._l3.get_by_entity_relation(entity, relation)
+                if after is None:
+                    continue
+
+                if before_id is None:
+                    extracted += 1
+                elif before_id == after.memory_id and before_value == after.value:
+                    merged_duplicates += 1
+                elif before_id == after.memory_id and before_value != after.value:
+                    merged_duplicates += 1
+                elif before_id != after.memory_id:
                     resolved_conflicts += 1
-                extracted += 1
+
+        # Step 3b: Merge cross-key redundant semantic facts.
+        merged_duplicates += self._l3.merge_redundant_active_pairs(threshold)
 
         # Step 4: Schedule reviews for important low-retention memories.
         scheduled = self._schedule_reviews()
@@ -432,7 +461,7 @@ class ConsolidationEngine:
 
         report = ConsolidationReport(
             extracted_semantics=extracted,
-            merged_duplicates=0,
+            merged_duplicates=merged_duplicates,
             resolved_conflicts=resolved_conflicts,
             archived_to_l4=archived,
             scheduled_reviews=scheduled,
@@ -495,12 +524,22 @@ class ConsolidationEngine:
                     (new_ret, now_str, row["id"]),
                 )
 
-    def _sample_l2_episodes(self) -> list[dict]:
-        """Return a random subset of active L2 episodes for replay.
+    def _episode_replay_weight(self, episode: dict) -> float:
+        """Compute deterministic replay priority for an L2 episode.
 
-        Sample size is ``ceil(replay_sample_ratio * total_active)``, capped
-        at the total available count.  Returns an empty list when no active
-        L2 episodes exist.
+        Important memories with lower retention receive higher weight so the
+        sleep cycle replays fading but meaningful episodes first.
+        """
+        importance = float(episode["importance"])
+        retention = float(episode["current_retention"])
+        return importance * (1.0 - retention + 0.01)
+
+    def _sample_l2_episodes(self) -> list[dict]:
+        """Return a weighted subset of active L2 episodes for replay.
+
+        Episodes are ranked by :meth:`_episode_replay_weight` (descending),
+        with ``memory_id`` as a deterministic tie-breaker.  The top
+        ``ceil(replay_sample_ratio * total_active)`` episodes are returned.
         """
         rows = self._db.query(
             """
@@ -529,9 +568,13 @@ class ConsolidationEngine:
             for row in rows
         ]
 
+        all_eps.sort(
+            key=lambda ep: (-self._episode_replay_weight(ep), ep["memory_id"])
+        )
+
         k = max(1, math.ceil(len(all_eps) * self._config.replay_sample_ratio))
         k = min(k, len(all_eps))
-        return random.sample(all_eps, k)
+        return all_eps[:k]
 
     def _schedule_reviews(self) -> int:
         """Insert ``review_queue`` rows for important low-retention memories.

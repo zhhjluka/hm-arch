@@ -19,6 +19,7 @@ import pytest
 from hm_arch.config import MemoryConfig
 from hm_arch.consolidation import ConsolidationEngine, SemanticExtractor
 from hm_arch.consolidation.replay import _l2_retention, _l3_retention
+from hm_arch import HMArch
 from hm_arch.layers.l2_episodic import L2EpisodicBuffer
 from hm_arch.layers.l3_semantic import L3SemanticMemory
 from hm_arch.layers.l4_ltm import L4EpisodicLTM
@@ -661,6 +662,144 @@ class TestL4ArchiveIntegration:
         assert l4.retrieve(mid) is None
         rows = db.query("SELECT status FROM memory_index WHERE id = ?", (mid,))
         assert rows[0]["status"] == "active"
+
+
+# ===========================================================================
+# Weighted L2 replay sampling
+# ===========================================================================
+
+
+class TestWeightedL2Replay:
+    """Verify deterministic importance × decay weighted replay sampling."""
+
+    def test_important_stale_episode_replayed_before_fresh_minor(self, db, l2, l3):
+        config = MemoryConfig(replay_sample_ratio=0.5)
+        engine = ConsolidationEngine(db, l2, l3, config=config)
+
+        stale_id = l2.encode("User prefers Python", importance=0.9)
+        fresh_id = l2.encode("User uses Docker", importance=0.3)
+        _set_old_created_at(db, stale_id, days_ago=15)
+
+        report = engine.run_consolidation_cycle()
+
+        assert report.extracted_semantics == 1
+        assert l3.get_by_entity_relation("user", "prefers") is not None
+        assert l3.get_by_entity_relation("user", "uses") is None
+
+    def test_weighted_sampling_is_deterministic(self, db, l2, l3):
+        config = MemoryConfig(replay_sample_ratio=0.5)
+        engine = ConsolidationEngine(db, l2, l3, config=config)
+
+        stale_id = l2.encode("User prefers Python", importance=0.9)
+        l2.encode("User uses Docker", importance=0.3)
+        _set_old_created_at(db, stale_id, days_ago=15)
+
+        first = engine._sample_l2_episodes()
+        second = engine._sample_l2_episodes()
+        assert [ep["memory_id"] for ep in first] == [ep["memory_id"] for ep in second]
+
+
+# ===========================================================================
+# Redundant semantic merge
+# ===========================================================================
+
+
+class TestRedundantSemanticMerge:
+    """Verify near-duplicate semantic facts merge instead of duplicating."""
+
+    def test_near_duplicate_values_merge(self, db, l2, l3, engine):
+        canonical = "alpha beta gamma delta epsilon zeta"
+        near_dup = "alpha beta gamma delta epsilon zeta eta"
+
+        l3.upsert("user", "prefers", canonical, source_episodes=["seed"])
+        l2.encode(f"User prefers {near_dup}", importance=0.8)
+
+        report = engine.run_consolidation_cycle()
+
+        assert report.merged_duplicates >= 1
+        assert l3.count(status="active") == 1
+        fact = l3.get_by_entity_relation("user", "prefers")
+        assert fact is not None
+        assert "seed" in fact.source_episodes
+
+    def test_conflicting_values_still_supersede(self, db, l2, l3, config_full_sample):
+        engine = ConsolidationEngine(db, l2, l3, config=config_full_sample)
+
+        l2.encode("User prefers Python", importance=0.8)
+        engine.run_consolidation_cycle()
+
+        l2.encode("User prefers Java", importance=0.9)
+        report = engine.run_consolidation_cycle()
+
+        assert report.resolved_conflicts >= 1
+        assert l3.count(status="superseded") >= 1
+        active = l3.get_by_entity_relation("user", "prefers")
+        assert active is not None
+        assert active.value == "Java"
+
+
+# ===========================================================================
+# 7-day simulated agent scenario
+# ===========================================================================
+
+
+class TestSevenDayAgentSimulation:
+    """End-to-end offline simulation of a week-long coding-agent memory loop."""
+
+    def test_seven_day_sleep_cycle(self, tmp_path: Path):
+        archive_root = tmp_path / "archives"
+        db_path = tmp_path / "agent.db"
+        config = MemoryConfig(
+            replay_sample_ratio=1.0,
+            archive_root=str(archive_root),
+            db_path=str(db_path),
+        )
+        memory = HMArch(config=config)
+
+        preference_ids: list[str] = []
+        code_ids: list[str] = []
+
+        for day in range(7):
+            pref_id = memory.add(
+                "User prefers Python",
+                event_type=EventType.CONVERSATION,
+                importance=0.85,
+            ).memory_id
+            code_id = memory.add(
+                f"Fixed regression in module day-{day}",
+                event_type=EventType.CODE,
+                importance=0.55,
+            ).memory_id
+            preference_ids.append(pref_id)
+            code_ids.append(code_id)
+
+            _set_old_created_at(memory._db, pref_id, days_ago=15 + day)
+            _set_old_created_at(memory._db, code_id, days_ago=60 + day)
+
+            report = memory.consolidate()
+            assert isinstance(report, ConsolidationReport)
+            assert report.duration_seconds >= 0
+
+        final_stats = memory.get_stats()
+        assert final_stats.by_layer[3] >= 1
+        assert final_stats.review_queue_length >= 1
+
+        rows = memory._db.query("SELECT COUNT(*) AS n FROM consolidation_log")
+        assert rows[0]["n"] == 7
+
+        pref_fact = memory._l3.get_by_entity_relation("user", "prefers")
+        assert pref_fact is not None
+        assert pref_fact.value == "Python"
+
+        search = memory.search("user prefers Python", top_k=10)
+        assert search.source_breakdown.get(3, 0) >= 1
+
+        archived_rows = memory._db.query(
+            "SELECT COUNT(*) AS n FROM memory_index WHERE layer = 4 AND status = 'archived'"
+        )
+        assert archived_rows[0]["n"] >= 1
+
+        memory.close()
 
 
 # ===========================================================================
