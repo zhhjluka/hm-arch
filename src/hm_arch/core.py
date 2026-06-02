@@ -24,17 +24,21 @@ Usage example::
 
 from __future__ import annotations
 
+import copy
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Optional
+from pathlib import Path
+from typing import Generator, Optional
 
 from .config import MemoryConfig
+from .layers.base import LayerItem
 from .layers.l1_working import L1WorkingMemory
 from .layers.l2_episodic import L2EpisodicBuffer
 from .layers.l3_semantic import L3SemanticMemory
 from .storage.sqlite import SQLiteStore
 from .storage.vector import _token_overlap_score, _tokenize
-from .types import EventType, MemoryItem, MemoryReceipt, SearchResult
+from .types import EventType, MemoryItem, MemoryReceipt, MemoryStats, SearchResult
 
 __all__ = ["HMArch"]
 
@@ -272,6 +276,118 @@ class HMArch:
             timing_ms=elapsed_ms,
             source_breakdown=source_breakdown,
         )
+
+    def get_stats(self) -> MemoryStats:
+        """Return aggregated memory statistics for inspection and monitoring.
+
+        Counts active memories per layer (L1 in-memory, L2/L3 from SQLite),
+        reports on-disk storage size, summarises retention values, and
+        surfaces consolidation metadata from the database.
+        """
+        by_layer = {
+            0: 0,
+            1: self._l1.size,
+            2: self._l2.count(),
+            3: self._l3.count(),
+        }
+        total_memories = sum(by_layer.values())
+
+        retention_distribution = self._retention_distribution()
+        review_queue_length = self._review_queue_length()
+        last_consolidation_at = self._last_consolidation_at()
+
+        return MemoryStats(
+            total_memories=total_memories,
+            by_layer=by_layer,
+            storage_size_mb=self._storage_size_mb(),
+            retention_distribution=retention_distribution,
+            review_queue_length=review_queue_length,
+            last_consolidation_at=last_consolidation_at,
+        )
+
+    @contextmanager
+    def context(self) -> Generator[None, None, None]:
+        """Save and restore L1 working-memory session state.
+
+        Use this when an agent sub-task should temporarily add working-memory
+        items without polluting the parent session.  L2/L3 persisted memories
+        are unaffected; only the in-memory L1 snapshot is saved on entry and
+        restored on exit.
+
+        Examples
+        --------
+        ::
+
+            memory.add("parent context")
+            with memory.context():
+                memory.add("temporary sub-task note")
+            # L1 again contains only "parent context"
+        """
+        saved: list[LayerItem] = copy.deepcopy(self._l1.snapshot())
+        try:
+            yield
+        finally:
+            self._l1.restore_snapshot(saved)
+
+    # ------------------------------------------------------------------
+    # Stats helpers
+    # ------------------------------------------------------------------
+
+    _RETENTION_BUCKETS: tuple[tuple[str, float, float], ...] = (
+        ("0-0.25", 0.0, 0.25),
+        ("0.25-0.5", 0.25, 0.5),
+        ("0.5-0.75", 0.5, 0.75),
+        ("0.75-1.0", 0.75, 1.000001),
+    )
+
+    def _retention_distribution(self) -> dict[str, int]:
+        """Histogram of ``current_retention`` for active indexed memories."""
+        buckets = {label: 0 for label, _, _ in self._RETENTION_BUCKETS}
+        rows = self._db.query(
+            "SELECT current_retention FROM memory_index WHERE status = 'active'"
+        )
+        for row in rows:
+            value = float(row["current_retention"])
+            for label, low, high in self._RETENTION_BUCKETS:
+                if low <= value < high:
+                    buckets[label] += 1
+                    break
+        return buckets
+
+    def _review_queue_length(self) -> int:
+        rows = self._db.query("SELECT COUNT(*) AS n FROM review_queue")
+        return int(rows[0]["n"]) if rows else 0
+
+    def _last_consolidation_at(self) -> datetime | None:
+        rows = self._db.query(
+            """
+            SELECT completed_at
+            FROM   consolidation_log
+            ORDER  BY completed_at DESC
+            LIMIT  1
+            """
+        )
+        if not rows:
+            return None
+        dt = datetime.fromisoformat(rows[0]["completed_at"])
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+
+    def _storage_size_mb(self) -> float:
+        """Approximate database size in megabytes."""
+        db_path = self._db.path
+        if db_path != ":memory:":
+            path = Path(db_path)
+            if path.exists():
+                return path.stat().st_size / (1024 * 1024)
+            return 0.0
+
+        page_count_rows = self._db.query("PRAGMA page_count")
+        page_size_rows = self._db.query("PRAGMA page_size")
+        page_count = int(page_count_rows[0][0]) if page_count_rows else 0
+        page_size = int(page_size_rows[0][0]) if page_size_rows else 0
+        return (page_count * page_size) / (1024 * 1024)
 
     # ------------------------------------------------------------------
     # Connection lifecycle

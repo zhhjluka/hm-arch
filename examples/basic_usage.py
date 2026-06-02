@@ -59,6 +59,17 @@ def main() -> None:
                 f"  '{item.content[:60]}'"
             )
 
+        print("\n--- Stats ---")
+        stats = memory.get_stats()
+        print(f"  total={stats.total_memories} by_layer={stats.by_layer}")
+        print(f"  storage={stats.storage_size_mb:.4f} MB")
+
+        print("\n--- context() demo ---")
+        l1_before = memory._l1.size
+        with memory.context():
+            memory.add("temporary note during sub-task")
+        assert memory._l1.size == l1_before
+
         print("\nBasic usage example completed successfully.")
 
 

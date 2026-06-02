@@ -108,6 +108,19 @@ class L1WorkingMemory(BaseLayer):
         """Remove all items from working memory."""
         self._store.clear()
 
+    def restore_snapshot(self, items: list[LayerItem]) -> None:
+        """Replace the current store with a copy of *items* (oldest-first order).
+
+        Used by :meth:`~hm_arch.core.HMArch.context` to save and restore L1
+        session state across nested agent sub-tasks.  Items beyond
+        :attr:`capacity` are truncated, keeping the most recent entries.
+        """
+        self._store.clear()
+        if len(items) > self._capacity:
+            items = items[-self._capacity :]
+        for item in items:
+            self._store.append(item)
+
     # ------------------------------------------------------------------
     # Properties
     # ------------------------------------------------------------------
