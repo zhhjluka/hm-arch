@@ -20,6 +20,7 @@ from hm_arch.consolidation import ConsolidationEngine, SemanticExtractor
 from hm_arch.consolidation.replay import _l2_retention, _l3_retention
 from hm_arch.layers.l2_episodic import L2EpisodicBuffer
 from hm_arch.layers.l3_semantic import L3SemanticMemory
+from hm_arch.layers.l4_ltm import L4EpisodicLTM
 from hm_arch.storage.sqlite import SQLiteStore
 from hm_arch.types import ConsolidationReport, EventType
 
@@ -559,19 +560,26 @@ class TestReviewQueueAcceptance:
 class TestMarkDeletable:
     """Verify that very-low-retention memories are flagged as 'deletable'."""
 
-    def test_very_old_l2_memory_marked_deletable(self, db, l2, engine):
-        """L2 retention at 90 days ≈ 0.025, below the 0.05 delete threshold."""
+    def test_very_old_l2_memory_archived_to_l4(self, db, l2, l3, tmp_path, config_full_sample):
+        """L2 retention at 90 days is below archive threshold; moves to L4."""
+        l4 = L4EpisodicLTM(tmp_path / "ltm")
+        engine = ConsolidationEngine(
+            db, l2, l3, l4=l4, config=config_full_sample
+        )
         mid = l2.encode("Ancient event", importance=0.5)
         _set_old_created_at(db, mid, days_ago=90)
 
         report = engine.run_consolidation_cycle()
 
-        assert report.marked_deletable >= 1
+        assert report.archived_to_l4 >= 1
 
         rows = db.query(
-            "SELECT status FROM memory_index WHERE id = ?", (mid,)
+            "SELECT status, metadata FROM memory_index WHERE id = ?", (mid,)
         )
-        assert rows[0]["status"] == "deletable"
+        assert rows[0]["status"] == "archived"
+        meta = json.loads(rows[0]["metadata"])
+        assert meta["source_l2_memory_id"] == mid
+        assert l4.retrieve(mid) is not None
 
     def test_moderate_l2_memory_not_marked_deletable(self, db, l2, engine):
         """L2 retention at 15 days ≈ 0.42, above the 0.05 delete threshold."""
@@ -585,23 +593,27 @@ class TestMarkDeletable:
         )
         assert rows[0]["status"] == "active"
 
-    def test_deletable_memories_not_in_l2_sample(self, db, l2, l3, engine):
-        """Memories already marked deletable by a previous cycle are excluded from replay."""
+    def test_archived_memories_not_in_l2_sample(
+        self, db, l2, l3, tmp_path, config_full_sample
+    ):
+        """Memories archived in a previous cycle are excluded from replay."""
+        l4 = L4EpisodicLTM(tmp_path / "ltm")
+        engine = ConsolidationEngine(
+            db, l2, l3, l4=l4, config=config_full_sample
+        )
         mid = l2.encode("Old preference mention", importance=0.5)
         _set_old_created_at(db, mid, days_ago=90)
 
-        # First cycle marks it deletable.
         engine.run_consolidation_cycle()
 
         rows = db.query(
             "SELECT status FROM memory_index WHERE id = ?", (mid,)
         )
-        assert rows[0]["status"] == "deletable"
+        assert rows[0]["status"] == "archived"
 
-        # Second cycle should not see it in the active L2 pool.
         report2 = engine.run_consolidation_cycle()
-        # No new triples from a deleted memory.
         assert report2.extracted_semantics == 0
+        assert report2.archived_to_l4 == 0
 
 
 # ===========================================================================

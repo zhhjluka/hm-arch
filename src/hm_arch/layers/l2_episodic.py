@@ -322,6 +322,10 @@ class L2EpisodicBuffer:
     # Convenience introspection
     # ------------------------------------------------------------------
 
+    def evict_from_vector_index(self, memory_id: str) -> None:
+        """Remove *memory_id* from the vector index (e.g. after L4 archival)."""
+        self._vector.delete(memory_id)
+
     def count(self) -> int:
         """Return the number of active L2 episodes stored in SQLite."""
         rows = self._db.query(

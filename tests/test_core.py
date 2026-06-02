@@ -240,7 +240,7 @@ def test_search_result_has_layer_field(mem: HMArch) -> None:
     assert len(result.results) > 0
     for item in result.results:
         assert hasattr(item, "layer")
-        assert item.layer in (0, 1, 2, 3)
+        assert item.layer in (0, 1, 2, 3, 4)
 
 
 def test_search_result_has_score_field(mem: HMArch) -> None:

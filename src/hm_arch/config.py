@@ -23,6 +23,9 @@ class MemoryConfig:
     # Database
     # -------------------------------------------------------------------
     db_path: str = "./.agent_memory.db"
+    ltm_root: Optional[str] = None
+    """Filesystem root for L4 gzip archives (``ltm/`` tree).  When ``None``,
+    derived from :attr:`db_path` (sibling ``{stem}_ltm`` directory)."""
 
     # -------------------------------------------------------------------
     # Decay - L2 bi-exponential, hours
@@ -108,7 +111,13 @@ class MemoryConfig:
     # Retrieval
     # -------------------------------------------------------------------
     layer_priorities: dict[str, float] = field(
-        default_factory=lambda: {"L0": 1.0, "L1": 0.9, "L2": 0.7, "L3": 0.8}
+        default_factory=lambda: {
+            "L0": 1.0,
+            "L1": 0.9,
+            "L2": 0.7,
+            "L3": 0.8,
+            "L4": 0.5,
+        }
     )
     """Per-layer multipliers applied when computing the final ranking score."""
 
@@ -151,7 +160,13 @@ class MemoryConfig:
                 auto_consolidate=True,
                 consolidate_interval_hours=12,
                 replay_sample_ratio=0.20,
-                layer_priorities={"L0": 1.0, "L1": 0.95, "L2": 0.75, "L3": 0.85},
+                layer_priorities={
+                    "L0": 1.0,
+                    "L1": 0.95,
+                    "L2": 0.75,
+                    "L3": 0.85,
+                    "L4": 0.5,
+                },
             )
 
         if name == "chat_agent":
@@ -172,7 +187,13 @@ class MemoryConfig:
                 auto_consolidate=True,
                 consolidate_interval_hours=24,
                 replay_sample_ratio=0.20,
-                layer_priorities={"L0": 1.0, "L1": 1.0, "L2": 0.65, "L3": 0.75},
+                layer_priorities={
+                    "L0": 1.0,
+                    "L1": 1.0,
+                    "L2": 0.65,
+                    "L3": 0.75,
+                    "L4": 0.5,
+                },
             )
 
         # research_agent
@@ -193,5 +214,11 @@ class MemoryConfig:
             auto_consolidate=True,
             consolidate_interval_hours=6,
             replay_sample_ratio=0.20,
-            layer_priorities={"L0": 1.0, "L1": 0.85, "L2": 0.80, "L3": 0.95},
+            layer_priorities={
+                "L0": 1.0,
+                "L1": 0.85,
+                "L2": 0.80,
+                "L3": 0.95,
+                "L4": 0.5,
+            },
         )

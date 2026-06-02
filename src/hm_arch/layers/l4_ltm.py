@@ -12,9 +12,10 @@ timestamp.  The filename hash is deterministic from ``memory_id``, so
 
 Design notes
 ------------
-* L4 is **filesystem-backed**; it does not write to SQLite (that wiring arrives
-  in HM-19).
-* No search or consolidation integration in this milestone — only archive I/O.
+* L4 is **filesystem-backed**; :class:`~hm_arch.core.HMArch` marks archived rows
+  in SQLite ``memory_index`` and routes :meth:`search` here.
+* Consolidation moves eligible L2 episodes below ``l2_archive_threshold`` into
+  this store via :meth:`archive`.
 * Thread-safety is not guaranteed; callers must synchronise if needed.
 """
 
@@ -27,6 +28,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from ..storage.vector import _token_overlap_score, _tokenize
 
 
 __all__ = [
@@ -266,6 +269,32 @@ class L4EpisodicLTM:
         records = [_read_archive_file(path) for path in matches]
         records.sort(key=lambda r: r.archived_at or datetime.min.replace(tzinfo=timezone.utc))
         return records[-1]
+
+    def search(self, query: str, top_k: int = 5) -> list[tuple[ArchivedEpisodic, float]]:
+        """Return up to *top_k* archived episodes ranked by token-overlap relevance.
+
+        Scans every ``.json.gz`` file under ``ltm/``.  Results are sorted by
+        relevance descending; ties break on ``memory_id`` for stable ordering.
+        """
+        if top_k <= 0:
+            return []
+
+        query_tokens = _tokenize(query)
+        if not query_tokens:
+            return []
+
+        scored: list[tuple[ArchivedEpisodic, float, str]] = []
+        for entry in self.list_archives():
+            record = self.retrieve(entry.memory_id)
+            if record is None:
+                continue
+            rel = _token_overlap_score(query_tokens, _tokenize(record.content))
+            if rel <= 0.0:
+                continue
+            scored.append((record, rel, record.memory_id))
+
+        scored.sort(key=lambda item: (-item[1], item[2]))
+        return [(record, rel) for record, rel, _ in scored[:top_k]]
 
     def list_archives(self) -> list[ArchiveResult]:
         """Return metadata for every ``.json.gz`` file under ``ltm/``.
