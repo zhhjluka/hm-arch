@@ -4,10 +4,32 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hm-arch"
-version = "0.0.0"
-description = "Python SDK scaffold for human-like agent memory"
+dynamic = ["version"]
+description = "Offline-first human-like memory SDK for coding agents (L0–L6, SQLite, consolidation)"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "HM-Arch contributors" }]
+keywords = [
+    "agent-memory",
+    "coding-agents",
+    "sqlite",
+    "episodic-memory",
+    "semantic-memory",
+    "consolidation",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = []
 
 [project.optional-dependencies]
@@ -15,8 +37,18 @@ dev = [
     "pytest>=9.0.3",
 ]
 
+[project.urls]
+Homepage = "https://github.com/hm-arch/hm-arch"
+Documentation = "https://github.com/hm-arch/hm-arch#readme"
+Repository = "https://github.com/hm-arch/hm-arch"
+Issues = "https://github.com/hm-arch/hm-arch/issues"
+Changelog = "https://github.com/hm-arch/hm-arch/blob/main/CHANGELOG.md"
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "hm_arch._version.__version__" }
 
 [dependency-groups]
 dev = [
