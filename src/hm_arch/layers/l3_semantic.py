@@ -347,7 +347,10 @@ class L3SemanticMemory:
         Retrieval is a two-step process:
 
         1. Query the vector store for candidate ``memory_id`` values ranked by
-           token-overlap relevance.
+           token-overlap relevance.  Any ``entity`` / ``relation`` filters are
+           pushed into the vector query as a ``metadata_filter`` so that
+           high-scoring unrelated documents cannot displace the filtered match
+           from the result window.
         2. For each candidate, join ``memory_index`` and ``semantics`` in
            SQLite to confirm the row is still active and to fetch full content.
 
@@ -360,11 +363,16 @@ class L3SemanticMemory:
             underlying :class:`~hm_arch.storage.vector.LocalVectorStore`
             tokenises CJK characters individually.
         top_k:
-            Maximum number of results to return.
+            Maximum number of results to return.  Returns ``[]`` immediately
+            when ``top_k <= 0``.
         entity:
             When provided, only triples with this exact entity are returned.
+            Passed as a ``metadata_filter`` to the vector store so that
+            unrelated documents cannot crowd out the match.
         relation:
             When provided, only triples with this exact relation are returned.
+            Passed as a ``metadata_filter`` to the vector store so that
+            unrelated documents cannot crowd out the match.
 
         Returns
         -------
@@ -373,9 +381,23 @@ class L3SemanticMemory:
             (latest-value) fact for any ``(entity, relation)`` key appears
             first because superseded triples are excluded.
         """
-        # Use a generous top_k in the vector store to account for post-filter
-        # pruning (entity/relation filters).
-        vector_hits = self._vector.query(query, top_k=max(top_k * 4, 20))
+        if top_k <= 0:
+            return []
+
+        # Push entity/relation filters into the vector query so that
+        # many high-scoring unrelated facts cannot displace the target from
+        # the top-k window.  With filter pushdown, top_k candidates are
+        # sufficient (no need for the previous 4× over-fetch heuristic).
+        metadata_filter: dict | None = None
+        _filter: dict = {}
+        if entity is not None:
+            _filter["entity"] = entity
+        if relation is not None:
+            _filter["relation"] = relation
+        if _filter:
+            metadata_filter = _filter
+
+        vector_hits = self._vector.query(query, top_k=top_k, metadata_filter=metadata_filter)
         if not vector_hits:
             return []
 
@@ -386,10 +408,6 @@ class L3SemanticMemory:
                 continue
             row = self._fetch_semantic_row(hit.id)
             if row is None:
-                continue
-            if entity is not None and row["entity"] != entity:
-                continue
-            if relation is not None and row["relation"] != relation:
                 continue
             seen.add(hit.id)
             results.append(

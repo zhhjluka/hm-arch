@@ -545,6 +545,101 @@ def test_search_relation_filter(l3: L3SemanticMemory) -> None:
 
 
 # ---------------------------------------------------------------------------
+# search() — filter pushdown regression tests
+# (>20 unrelated triples that score higher must not hide the filtered match)
+# ---------------------------------------------------------------------------
+
+
+def test_search_entity_filter_not_lost_among_many_unrelated(
+    l3: L3SemanticMemory,
+) -> None:
+    """Entity filter pushdown: target is found even when 25 unrelated triples
+    all score higher on the query string.
+
+    The needle triple has low token-overlap with the query ("common term
+    value"), while every bulk triple has high overlap (entity and value contain
+    all three query tokens).  Without filter pushdown the old code's 20-item
+    window would fill entirely with bulk triples, silently dropping the needle.
+    With filter pushdown the vector store only considers needle_entity triples,
+    so top_k=1 is sufficient.
+    """
+    # 25 bulk triples — each contains all three query tokens in its text
+    # ("bulk{i} common term value"), giving a high overlap score.
+    for i in range(25):
+        l3.upsert(f"bulk{i}", "common", "term value")
+
+    # Needle triple — entity differs; its text ("needle_entity likes
+    # needle_value") shares only "value" with the query, ranking far below
+    # the 25 bulk triples without a filter.
+    needle_id = l3.upsert("needle_entity", "likes", "needle_value")
+
+    results = l3.search("common term value", top_k=1, entity="needle_entity")
+    ids = [r.memory_id for r in results]
+    assert needle_id in ids, (
+        "entity filter pushdown must surface needle_entity triple even when "
+        "25 higher-scoring unrelated triples exist"
+    )
+    assert all(r.entity == "needle_entity" for r in results)
+
+
+def test_search_relation_filter_not_lost_among_many_unrelated(
+    l3: L3SemanticMemory,
+) -> None:
+    """Relation filter pushdown: target is found even when 25 unrelated triples
+    all score higher on the query string.
+
+    Mirrors the entity-filter regression test but filters on relation instead.
+    """
+    for i in range(25):
+        l3.upsert(f"bulk{i}", "common", "term value")
+
+    needle_id = l3.upsert("user", "needle_relation", "needle_value")
+
+    results = l3.search("common term value", top_k=1, relation="needle_relation")
+    ids = [r.memory_id for r in results]
+    assert needle_id in ids, (
+        "relation filter pushdown must surface needle_relation triple even when "
+        "25 higher-scoring unrelated triples exist"
+    )
+    assert all(r.relation == "needle_relation" for r in results)
+
+
+def test_search_combined_entity_relation_filter_pushdown(
+    l3: L3SemanticMemory,
+) -> None:
+    """Both entity and relation filters are pushed down simultaneously."""
+    for i in range(25):
+        l3.upsert(f"bulk{i}", "common", "term value")
+
+    needle_id = l3.upsert("needle_entity", "needle_relation", "needle_value")
+
+    results = l3.search(
+        "common term value",
+        top_k=1,
+        entity="needle_entity",
+        relation="needle_relation",
+    )
+    ids = [r.memory_id for r in results]
+    assert needle_id in ids, (
+        "combined entity+relation filter pushdown must surface the needle triple"
+    )
+
+
+def test_search_top_k_zero_returns_empty(l3: L3SemanticMemory) -> None:
+    """top_k=0 returns an empty list immediately."""
+    l3.upsert("user", "likes", "Python")
+    results = l3.search("Python", top_k=0)
+    assert results == []
+
+
+def test_search_top_k_negative_returns_empty(l3: L3SemanticMemory) -> None:
+    """Negative top_k returns an empty list immediately."""
+    l3.upsert("user", "likes", "Python")
+    results = l3.search("Python", top_k=-5)
+    assert results == []
+
+
+# ---------------------------------------------------------------------------
 # search() — CJK (Chinese/Japanese/Korean) support
 # ---------------------------------------------------------------------------
 
