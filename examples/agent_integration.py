@@ -17,9 +17,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from hm_arch import EventType, HMArch
-from hm_arch.consolidation import ConsolidationEngine
-from hm_arch.config import MemoryConfig
+from hm_arch import EventType, HMArch, MemoryConfig
 
 
 def main() -> None:
@@ -58,13 +56,7 @@ def main() -> None:
             )
 
             # --- Offline consolidation (optional enrichment) -------------
-            engine = ConsolidationEngine(
-                memory._db,
-                memory._l2,
-                memory._l3,
-                config=config,
-            )
-            report = engine.run_consolidation_cycle()
+            report = memory.consolidate()
             print(
                 f"Consolidation: extracted={report.extracted_semantics}, "
                 f"reviews_scheduled={report.scheduled_reviews}"

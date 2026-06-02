@@ -59,6 +59,20 @@ def main() -> None:
                 f"  '{item.content[:60]}'"
             )
 
+        # --- Consolidation (offline semantic extraction) --------------------
+        report = memory.consolidate()
+        print(
+            f"\n--- Consolidation: extracted={report.extracted_semantics}, "
+            f"reviews_scheduled={report.scheduled_reviews}"
+        )
+
+        curve = memory.get_retention_curve(layer=2)
+        day30_idx = curve.days.index(30) if 30 in curve.days else -1
+        if day30_idx >= 0:
+            print(
+                f"L2 30-day predicted retention: {curve.retention[day30_idx]:.2f}"
+            )
+
         print("\nBasic usage example completed successfully.")
 
 
