@@ -34,7 +34,14 @@ Phase 2 adds:
 
 ## Cursor Delegation Rules
 
-Each issue should be assigned to Cursor as one bounded PR.
+Each issue should be dispatched to Cursor as one bounded PR.
+
+Dispatch uses the single-trigger rule:
+
+- keep labels `offline-tests`, `codex-review`, and `cursor-ready`
+- move the issue to `In Progress`
+- do not set Linear `delegate` to Cursor
+- post one complete `@Cursor please implement ...` comment
 
 Every Cursor issue must include:
 
@@ -50,7 +57,7 @@ Codex owns:
 - Contract review against PRD and `docs/spec.md`
 - Running the full test suite before merge
 - Updating Linear/GitHub status
-- Dispatching the next issue after merge
+- Dispatching the next issue after merge using the single `@Cursor` comment trigger
 
 ## Quality Gates
 

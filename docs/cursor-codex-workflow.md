@@ -36,6 +36,25 @@ Codex should:
 - Fix cross-module wiring when multiple Cursor issues meet.
 - Escalate only true product decisions to Luka.
 
+## Cursor Dispatch Rule
+
+Use exactly one Cursor trigger per issue.
+
+Preferred dispatch pattern:
+
+1. Keep the issue labels: `offline-tests`, `codex-review`, `cursor-ready`.
+2. Move the issue to `In Progress`.
+3. Do **not** set Linear `delegate` to Cursor.
+4. Add one complete `@Cursor please implement ...` comment with scope,
+   acceptance criteria, out-of-scope notes, and verification commands.
+
+Rationale:
+
+- Setting Linear `delegate = Cursor` and also posting an `@Cursor` comment can
+  start two Cursor Cloud Agent jobs for the same issue.
+- The `@Cursor` comment is the single source of execution instructions.
+- If duplicate PRs still appear, Codex reviews both and keeps the better one.
+
 ## Linear Issue Template
 
 ```md
