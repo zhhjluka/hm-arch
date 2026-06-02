@@ -31,6 +31,7 @@ record_skill_result()
 * Failure updates success_rate to 0.0 on first record.
 * Success then failure yields 0.5 mean.
 * Updates average_duration_ms when duration supplied.
+* Mixed outcomes with/without duration_ms keep duration mean correct.
 * Unknown skill raises ValueError.
 * Negative duration_ms raises ValueError.
 * Lookup by skill name works.
@@ -249,6 +250,17 @@ def test_record_duration_updates_average() -> None:
     skill = l5.get_skill("git_push")
     assert skill is not None
     assert skill.average_duration_ms == pytest.approx(150.0)
+
+
+def test_record_duration_ignores_outcomes_without_duration() -> None:
+    """Regression: optional duration_ms must not inflate the duration denominator."""
+    l5 = _make_l5()
+    l5.store_skill("git_push")
+    l5.record_skill_result("git_push", True, duration_ms=100.0)
+    l5.record_skill_result("git_push", True)
+    skill = l5.record_skill_result("git_push", True, duration_ms=300.0)
+    assert skill.average_duration_ms == pytest.approx(200.0)
+    assert skill.success_rate == pytest.approx(1.0)
 
 
 def test_record_unknown_skill_raises() -> None:

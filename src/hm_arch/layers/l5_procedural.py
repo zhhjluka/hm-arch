@@ -12,9 +12,10 @@ Usage and outcome statistics
 ----------------------------
 * :meth:`match_skill` increments ``usage_count`` and sets ``last_used_at``.
 * :meth:`record_skill_result` updates ``success_rate`` and ``average_duration_ms``
-  using a simple cumulative mean.  The number of recorded outcomes per skill is
-  tracked in ``meta_memory`` under keys ``hm_arch.l5.result_count.<skill_id>`` so
-  averages remain correct after process restarts.
+  using simple cumulative means.  Outcome and duration sample counts are tracked
+  separately in ``meta_memory`` (``hm_arch.l5.result_count.<skill_id>`` and
+  ``hm_arch.l5.duration_count.<skill_id>``) so optional ``duration_ms`` does not
+  skew duration averages.
 
 Design notes
 ------------
@@ -40,6 +41,7 @@ __all__ = [
 
 _LAYER: int = 5
 _RESULT_COUNT_KEY_PREFIX = "hm_arch.l5.result_count."
+_DURATION_COUNT_KEY_PREFIX = "hm_arch.l5.duration_count."
 
 
 # ---------------------------------------------------------------------------
@@ -284,7 +286,8 @@ class L5ProceduralMemory:
 
         Updates ``success_rate`` as the arithmetic mean of all recorded outcomes
         for this skill.  When *duration_ms* is provided, ``average_duration_ms``
-        is updated with the arithmetic mean of supplied durations.
+        is updated with the arithmetic mean over outcomes that supplied a
+        duration only (outcomes without *duration_ms* do not affect it).
 
         Parameters
         ----------
@@ -316,22 +319,26 @@ class L5ProceduralMemory:
             raise ValueError(f"skill not found: {skill_id_or_name!r}")
 
         skill_id = row["id"]
-        n = self._load_result_count(skill_id)
+        outcome_n = self._load_meta_count(_RESULT_COUNT_KEY_PREFIX, skill_id)
         outcome = 1.0 if success else 0.0
         prior_rate = row["success_rate"]
         if prior_rate is None:
             new_rate = outcome
         else:
-            new_rate = (float(prior_rate) * n + outcome) / (n + 1)
+            new_rate = (float(prior_rate) * outcome_n + outcome) / (outcome_n + 1)
 
         new_avg = row["average_duration_ms"]
         if duration_ms is not None:
+            duration_n = self._load_meta_count(_DURATION_COUNT_KEY_PREFIX, skill_id)
             if new_avg is None:
                 new_avg = float(duration_ms)
             else:
-                new_avg = (float(new_avg) * n + float(duration_ms)) / (n + 1)
+                new_avg = (float(new_avg) * duration_n + float(duration_ms)) / (
+                    duration_n + 1
+                )
+            self._save_meta_count(_DURATION_COUNT_KEY_PREFIX, skill_id, duration_n + 1)
 
-        self._save_result_count(skill_id, n + 1)
+        self._save_meta_count(_RESULT_COUNT_KEY_PREFIX, skill_id, outcome_n + 1)
         self._db.execute(
             """
             UPDATE skills
@@ -391,20 +398,20 @@ class L5ProceduralMemory:
             relevance=relevance,
         )
 
-    def _result_count_key(self, skill_id: str) -> str:
-        return f"{_RESULT_COUNT_KEY_PREFIX}{skill_id}"
+    def _meta_count_key(self, prefix: str, skill_id: str) -> str:
+        return f"{prefix}{skill_id}"
 
-    def _load_result_count(self, skill_id: str) -> int:
+    def _load_meta_count(self, prefix: str, skill_id: str) -> int:
         rows = self._db.query(
             "SELECT value FROM meta_memory WHERE key = ?",
-            (self._result_count_key(skill_id),),
+            (self._meta_count_key(prefix, skill_id),),
         )
         if not rows:
             return 0
         return int(rows[0]["value"])
 
-    def _save_result_count(self, skill_id: str, count: int) -> None:
-        key = self._result_count_key(skill_id)
+    def _save_meta_count(self, prefix: str, skill_id: str, count: int) -> None:
+        key = self._meta_count_key(prefix, skill_id)
         now = _iso_now()
         self._db.execute(
             """
