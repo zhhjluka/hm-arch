@@ -57,6 +57,8 @@ This repo also supports [uv](https://docs.astral.sh/uv/) for a locked dev enviro
 uv sync
 uv run pytest
 uv run python examples/basic_usage.py
+uv run python examples/codex_hooks/demo.py
+uv run python examples/claude_code_hooks/demo.py
 ```
 
 ## Examples
@@ -66,6 +68,28 @@ uv run python examples/basic_usage.py
 | `examples/basic_usage.py` | Add/search workflow (offline, in-memory DB) |
 | `examples/agent_integration.py` | Context manager, stats, consolidation |
 | `examples/import_package.py` | Minimal import smoke check |
+| `examples/codex_hooks/` | Codex CLI turn-start, turn-end, idle consolidation hooks |
+| `examples/claude_code_hooks/` | Claude Code hook equivalents (offline demos) |
+
+## Agent hook integration
+
+HM-Arch ships **portable hook examples** for coding agents. They run fully offline and do not install themselves into Codex or Claude Code — copy the patterns into your own `.codex/hooks.json` or `.claude/settings.json` when ready.
+
+| Concern | Codex | Claude Code |
+|---------|-------|-------------|
+| Turn-start context injection | `examples/codex_hooks/turn_start.py` → `UserPromptSubmit` | `examples/claude_code_hooks/turn_start.py` → `UserPromptSubmit` |
+| Turn-end conversation recording | `examples/codex_hooks/turn_end.py` → `Stop` | `examples/claude_code_hooks/turn_end.py` → `Stop` |
+| Idle consolidation | `examples/codex_hooks/idle_consolidate.py` | `examples/claude_code_hooks/idle_consolidate.py` → `TeammateIdle` |
+
+Set `HM_ARCH_DB_PATH` to choose the SQLite file (defaults to `./.hm_arch_agent_memory.db` under the process working directory — no home-directory paths).
+
+```bash
+uv run pytest tests/test_agent_hooks.py
+uv run python examples/codex_hooks/demo.py
+uv run python examples/claude_code_hooks/demo.py
+```
+
+See `examples/codex_hooks/README.md` and `examples/claude_code_hooks/README.md` for sample hook JSON fragments.
 
 ## Public API
 
