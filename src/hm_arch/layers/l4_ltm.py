@@ -12,9 +12,8 @@ timestamp.  The filename hash is deterministic from ``memory_id``, so
 
 Design notes
 ------------
-* L4 is **filesystem-backed**; it does not write to SQLite (that wiring arrives
-  in HM-19).
-* No search or consolidation integration in this milestone — only archive I/O.
+* L4 is **filesystem-backed**; SQLite ``memory_index`` rows are marked
+  ``status='archived'`` and ``layer=4`` when consolidation moves a memory here.
 * Thread-safety is not guaranteed; callers must synchronise if needed.
 """
 
@@ -28,9 +27,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from ..storage.vector import _token_overlap_score, _tokenize
+
 
 __all__ = [
     "ArchivedEpisodic",
+    "ArchivedSearchHit",
     "ArchiveResult",
     "PurgeResult",
     "L4EpisodicLTM",
@@ -77,6 +79,22 @@ class ArchivedEpisodic:
     importance: float
     metadata: dict = field(default_factory=dict)
     archived_at: datetime | None = None
+
+
+@dataclass
+class ArchivedSearchHit:
+    """An archived episodic memory matched by :meth:`L4EpisodicLTM.search`.
+
+    Attributes
+    ----------
+    record:
+        The restored :class:`ArchivedEpisodic` payload.
+    relevance:
+        Token-overlap relevance score in ``[0, 1]`` for the query.
+    """
+
+    record: ArchivedEpisodic
+    relevance: float
 
 
 @dataclass
@@ -287,6 +305,26 @@ class L4EpisodicLTM:
                 )
             )
         return entries
+
+    def search(self, query: str, top_k: int = 5) -> list[ArchivedSearchHit]:
+        """Return up to *top_k* archived episodes most relevant to *query*.
+
+        Scores each on-disk archive by deterministic token overlap (same
+        strategy as the local vector fallback).  Results are sorted by
+        relevance descending.
+        """
+        query_tokens = _tokenize(query)
+        hits: list[ArchivedSearchHit] = []
+
+        for entry in self.list_archives():
+            record = self.retrieve(entry.memory_id)
+            if record is None:
+                continue
+            rel = _token_overlap_score(query_tokens, _tokenize(record.content))
+            hits.append(ArchivedSearchHit(record=record, relevance=rel))
+
+        hits.sort(key=lambda h: (-h.relevance, h.record.memory_id))
+        return hits[:top_k]
 
     def purge(self, memory_id: str) -> PurgeResult:
         """Remove all on-disk archive files for ``memory_id``.

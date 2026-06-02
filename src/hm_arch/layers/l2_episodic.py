@@ -330,6 +330,10 @@ class L2EpisodicBuffer:
         )
         return rows[0][0] if rows else 0
 
+    def remove_from_vector_index(self, memory_id: str) -> bool:
+        """Remove *memory_id* from the vector index without deleting SQLite rows."""
+        return self._vector.delete(memory_id)
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------

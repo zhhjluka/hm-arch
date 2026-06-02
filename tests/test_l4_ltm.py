@@ -265,3 +265,22 @@ def test_importable_from_layers_package() -> None:
     from hm_arch.layers import L4EpisodicLTM as L4FromPkg
 
     assert L4FromPkg is L4EpisodicLTM
+
+
+# ---------------------------------------------------------------------------
+# search()
+# ---------------------------------------------------------------------------
+
+
+def test_search_returns_ranked_hits(l4: L4EpisodicLTM) -> None:
+    l4.archive("alpha", "Python programming language", retention=0.1, importance=0.5)
+    l4.archive("beta", "unrelated database topic", retention=0.1, importance=0.5)
+
+    hits = l4.search("Python language", top_k=2)
+    assert len(hits) == 2
+    assert hits[0].record.memory_id == "alpha"
+    assert hits[0].relevance >= hits[1].relevance
+
+
+def test_search_empty_archive(l4: L4EpisodicLTM) -> None:
+    assert l4.search("anything") == []

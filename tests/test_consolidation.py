@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
@@ -20,6 +21,7 @@ from hm_arch.consolidation import ConsolidationEngine, SemanticExtractor
 from hm_arch.consolidation.replay import _l2_retention, _l3_retention
 from hm_arch.layers.l2_episodic import L2EpisodicBuffer
 from hm_arch.layers.l3_semantic import L3SemanticMemory
+from hm_arch.layers.l4_ltm import L4EpisodicLTM
 from hm_arch.storage.sqlite import SQLiteStore
 from hm_arch.types import ConsolidationReport, EventType
 
@@ -57,6 +59,16 @@ def config_full_sample():
 @pytest.fixture()
 def engine(db, l2, l3, config_full_sample):
     return ConsolidationEngine(db, l2, l3, config=config_full_sample)
+
+
+@pytest.fixture()
+def l4(tmp_path: Path):
+    return L4EpisodicLTM(tmp_path)
+
+
+@pytest.fixture()
+def engine_with_l4(db, l2, l3, l4, config_full_sample):
+    return ConsolidationEngine(db, l2, l3, l4=l4, config=config_full_sample)
 
 
 # ---------------------------------------------------------------------------
@@ -602,6 +614,53 @@ class TestMarkDeletable:
         report2 = engine.run_consolidation_cycle()
         # No new triples from a deleted memory.
         assert report2.extracted_semantics == 0
+
+
+# ===========================================================================
+# L4 archive integration (HM-19)
+# ===========================================================================
+
+
+class TestL4ArchiveIntegration:
+    """Verify consolidation archives low-retention L2 episodes to L4."""
+
+    def test_archives_l2_below_threshold(self, db, l2, engine_with_l4, l4):
+        mid = l2.encode("Ancient preference detail", importance=0.6)
+        _set_old_created_at(db, mid, days_ago=60)
+
+        report = engine_with_l4.run_consolidation_cycle()
+
+        assert report.archived_to_l4 >= 1
+        assert l4.retrieve(mid) is not None
+
+        rows = db.query(
+            "SELECT layer, status, metadata FROM memory_index WHERE id = ?",
+            (mid,),
+        )
+        assert rows[0]["layer"] == 4
+        assert rows[0]["status"] == "archived"
+        meta = json.loads(rows[0]["metadata"])
+        assert meta["source_l2_memory_id"] == mid
+
+    def test_archived_memory_not_in_active_l2_count(self, db, l2, engine_with_l4):
+        mid = l2.encode("Stale episodic note", importance=0.5)
+        _set_old_created_at(db, mid, days_ago=60)
+        assert l2.count() == 1
+
+        engine_with_l4.run_consolidation_cycle()
+
+        assert l2.count() == 0
+
+    def test_moderate_retention_not_archived(self, db, l2, engine_with_l4, l4):
+        mid = l2.encode("Moderately old event", importance=0.5)
+        _set_old_created_at(db, mid, days_ago=15)
+
+        report = engine_with_l4.run_consolidation_cycle()
+
+        assert report.archived_to_l4 == 0
+        assert l4.retrieve(mid) is None
+        rows = db.query("SELECT status FROM memory_index WHERE id = ?", (mid,))
+        assert rows[0]["status"] == "active"
 
 
 # ===========================================================================

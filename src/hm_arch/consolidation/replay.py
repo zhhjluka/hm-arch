@@ -15,7 +15,9 @@ Consolidation cycle steps
    has fallen below ``config.review_trigger_retention``.
 5. Mark memories below the delete threshold as ``'deletable'`` (no physical
    deletion — this is flagging only).
-6. Write an audit row to ``consolidation_log`` and return a
+6. Archive eligible L2 memories below ``l2_archive_threshold`` to L4 when
+   configured.
+7. Write an audit row to ``consolidation_log`` and return a
    :class:`~hm_arch.types.ConsolidationReport`.
 """
 
@@ -31,6 +33,7 @@ from datetime import datetime, timedelta, timezone
 from ..config import MemoryConfig
 from ..layers.l2_episodic import L2EpisodicBuffer
 from ..layers.l3_semantic import L3SemanticMemory
+from ..layers.l4_ltm import L4EpisodicLTM
 from ..storage.sqlite import SQLiteStore
 from ..types import ConsolidationReport
 
@@ -305,9 +308,12 @@ class ConsolidationEngine:
        :class:`SemanticExtractor` and upserts them into L3.
     4. Schedules ASM-2 reviews for important memories whose retention has
        dropped below ``config.review_trigger_retention``.
-    5. Marks memories below the layer-specific delete threshold as
+    5. Archives eligible L2 memories below ``config.l2_archive_threshold`` to
+       L4 when an :class:`~hm_arch.layers.l4_ltm.L4EpisodicLTM` instance is
+       supplied.
+    6. Marks memories below the layer-specific delete threshold as
        ``'deletable'`` (no physical deletion — flagging only).
-    6. Writes an audit row to ``consolidation_log`` and returns a
+    7. Writes an audit row to ``consolidation_log`` and returns a
        :class:`~hm_arch.types.ConsolidationReport`.
 
     Parameters
@@ -321,6 +327,9 @@ class ConsolidationEngine:
     l3:
         An :class:`~hm_arch.layers.l3_semantic.L3SemanticMemory` backed by
         the same database.
+    l4:
+        Optional :class:`~hm_arch.layers.l4_ltm.L4EpisodicLTM` for archiving
+        low-retention L2 episodes.  When ``None``, the archive step is skipped.
     config:
         Runtime configuration.  Defaults are used when ``None``.
     extractor:
@@ -354,12 +363,14 @@ class ConsolidationEngine:
         db: SQLiteStore,
         l2: L2EpisodicBuffer,
         l3: L3SemanticMemory,
+        l4: L4EpisodicLTM | None = None,
         config: MemoryConfig | None = None,
         extractor: SemanticExtractor | None = None,
     ) -> None:
         self._db = db
         self._l2 = l2
         self._l3 = l3
+        self._l4 = l4
         self._config = config or MemoryConfig()
         self._extractor = extractor or SemanticExtractor()
 
@@ -410,7 +421,10 @@ class ConsolidationEngine:
         # Step 4: Schedule reviews for important low-retention memories.
         scheduled = self._schedule_reviews()
 
-        # Step 5: Flag memories below the delete threshold.
+        # Step 5: Archive eligible L2 memories to L4.
+        archived = self._archive_eligible_l2_to_l4()
+
+        # Step 6: Flag memories below the delete threshold.
         deletable = self._mark_deletable()
 
         duration = time.monotonic() - t0
@@ -420,7 +434,7 @@ class ConsolidationEngine:
             extracted_semantics=extracted,
             merged_duplicates=0,
             resolved_conflicts=resolved_conflicts,
-            archived_to_l4=0,
+            archived_to_l4=archived,
             scheduled_reviews=scheduled,
             marked_deletable=deletable,
             duration_seconds=duration,
@@ -566,6 +580,75 @@ class ConsolidationEngine:
             inserted += cursor.rowcount
 
         return inserted
+
+    def _archive_eligible_l2_to_l4(self) -> int:
+        """Compress active L2 episodes below the archive threshold into L4.
+
+        For each eligible memory the episode is written to the L4 gzip archive,
+        ``memory_index`` is updated to ``status='archived'`` and ``layer=4``,
+        and the L2 vector index entry is removed so only L4 search surfaces it.
+
+        Returns the number of memories archived.
+        """
+        if self._l4 is None:
+            return 0
+
+        cfg = self._config
+        now_str = _iso_now()
+
+        rows = self._db.query(
+            """
+            SELECT mi.id,
+                   mi.created_at,
+                   mi.updated_at,
+                   mi.importance,
+                   mi.current_retention,
+                   mi.metadata,
+                   e.content
+            FROM   memory_index mi
+            JOIN   episodes     e ON e.memory_id = mi.id
+            WHERE  mi.layer  = 2
+              AND  mi.status = 'active'
+              AND  mi.current_retention < ?
+            """,
+            (cfg.l2_archive_threshold,),
+        )
+
+        archived = 0
+        for row in rows:
+            metadata = json.loads(row["metadata"] or "{}")
+            metadata["source_l2_memory_id"] = row["id"]
+
+            created_at = _parse_iso(row["created_at"])
+            updated_raw = row["updated_at"]
+            updated_at = _parse_iso(updated_raw) if updated_raw else None
+
+            self._l4.archive(
+                row["id"],
+                row["content"],
+                layer=2,
+                created_at=created_at,
+                updated_at=updated_at,
+                retention=row["current_retention"],
+                importance=row["importance"],
+                metadata=metadata,
+            )
+
+            self._db.execute(
+                """
+                UPDATE memory_index
+                   SET status     = 'archived',
+                       layer      = 4,
+                       metadata   = ?,
+                       updated_at = ?
+                 WHERE id = ?
+                """,
+                (json.dumps(metadata), now_str, row["id"]),
+            )
+            self._l2.remove_from_vector_index(row["id"])
+            archived += 1
+
+        return archived
 
     def _mark_deletable(self) -> int:
         """Flag active memories below the delete threshold as ``'deletable'``.

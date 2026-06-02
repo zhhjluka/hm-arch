@@ -58,6 +58,7 @@ REQUIRED_FIELDS = {
     "embedding_dim",
     # Database
     "db_path",
+    "archive_root",
     # Retrieval
     "layer_priorities",
 }
@@ -135,9 +136,10 @@ def test_default_providers_match_prd() -> None:
 
 def test_default_layer_priorities_cover_all_layers() -> None:
     cfg = MemoryConfig()
-    assert set(cfg.layer_priorities.keys()) >= {"L0", "L1", "L2", "L3"}
+    assert set(cfg.layer_priorities.keys()) >= {"L0", "L1", "L2", "L3", "L4"}
     for layer, priority in cfg.layer_priorities.items():
         assert 0.0 < priority <= 1.0, f"{layer} priority {priority} out of (0, 1]"
+    assert cfg.layer_priorities["L4"] == pytest.approx(0.5)
 
 
 # ---------------------------------------------------------------------------
@@ -226,9 +228,10 @@ def test_preset_threshold_ordering(name: str) -> None:
 @pytest.mark.parametrize("name", ["code_agent", "chat_agent", "research_agent"])
 def test_preset_layer_priorities_valid(name: str) -> None:
     cfg = MemoryConfig.preset(name)
-    assert set(cfg.layer_priorities.keys()) >= {"L0", "L1", "L2", "L3"}
+    assert set(cfg.layer_priorities.keys()) >= {"L0", "L1", "L2", "L3", "L4"}
     for layer, priority in cfg.layer_priorities.items():
         assert 0.0 < priority <= 1.0, f"{name}: {layer} priority {priority} out of (0,1]"
+    assert cfg.layer_priorities["L4"] == pytest.approx(0.5)
 
 
 # ---------------------------------------------------------------------------
