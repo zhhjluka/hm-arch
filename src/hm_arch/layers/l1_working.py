@@ -108,6 +108,25 @@ class L1WorkingMemory(BaseLayer):
         """Remove all items from working memory."""
         self._store.clear()
 
+    def load_snapshot(self, items: list[LayerItem]) -> None:
+        """Replace working memory with a copy of *items* (oldest → newest).
+
+        Used by :meth:`~hm_arch.core.HMArch.context` to restore session state
+        after a scoped block.  Each item is shallow-copied so later mutations
+        to the restored store do not affect the saved snapshot.
+        """
+        self._store.clear()
+        for item in items:
+            self._store.append(
+                LayerItem(
+                    memory_id=item.memory_id,
+                    layer=item.layer,
+                    content=item.content,
+                    added_at=item.added_at,
+                    metadata=dict(item.metadata),
+                )
+            )
+
     # ------------------------------------------------------------------
     # Properties
     # ------------------------------------------------------------------
