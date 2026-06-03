@@ -30,9 +30,9 @@ The developer PRD defines **two** tables. Benchmarks report both; primary
 | `consolidate()` | < **5 s** | Same 10k L2 scale |
 
 Each run records `contract_compliance` in the JSON report with `observed`, `limit`,
-and `pass` for **both** tables. Week 9 rows are stretch goals; current local-fallback
-builds meet them on typical hardware but only the test-benchmark table is required
-for MEM-31 acceptance.
+and `pass` for **both** tables. Week 9 rows are stretch goals only — the JSON report
+records pass/fail per metric without substituting limits. MEM-31 acceptance uses the
+test-benchmark table only.
 
 Constants: `benchmarks/prd_targets.py` (`PrdTestBenchmarkTargets`, `PrdWeek9OptimizationTargets`).
 
@@ -41,7 +41,8 @@ Constants: `benchmarks/prd_targets.py` (`PrdTestBenchmarkTargets`, `PrdWeek9Opti
 | Scenario | PRD expectation | Benchmark |
 |----------|-----------------|-----------|
 | 7-day semantic extraction | 50 **conversation** events/day, 1 `consolidate()`/day, day-7 L3 accuracy **> 80%** | `seven_day_semantic` in harness |
-| L4 long-run archive | 10,000 L2 injected; archived count ≈ `L2 × (1 − 0.26)` | `l4_archive_10k_prd` (74% old / 26% young age mix) |
+| L4 long-run archive (10k inject) | 10,000 L2 injected; archived ≈ `L2 × (1 − 0.26)` ±5% | `l4_archive_10k_prd` in benchmark suite |
+| L4 long-run archive (30-day sim) | After 30 nightly consolidations; archived ≈ `episodes × 0.74` ±20% | `tests/prd_benchmarks/test_prd_thirty_day_archive.py` (slow, `benchmark` marker) |
 | 30-day retention | L2 ≈ 0.26, L3 ≈ 0.63 at 30 days | `tests/test_simulation_30_day.py` (fast CI) |
 
 7-day accuracy: expected triples are derived from episode text (unique `agent{day}_{i}`
@@ -67,6 +68,12 @@ Benchmarks are excluded via `addopts = -m "not benchmark"`.
 uv run pytest tests/prd_benchmarks -m benchmark -v
 uv run python scripts/run_prd_benchmarks.py
 uv run python scripts/run_prd_benchmarks.py --output /tmp/prd_benchmark.json
+```
+
+### 30-day L4 archive ratio only (slow)
+
+```bash
+uv run pytest tests/prd_benchmarks/test_prd_thirty_day_archive.py -m benchmark -v
 ```
 
 ### MEM-31 verification bundle

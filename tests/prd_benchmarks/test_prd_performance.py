@@ -8,6 +8,7 @@ Run explicitly (not part of default CI)::
 Long-run retention and archive expectations for 30 days are covered by::
 
     uv run pytest tests/test_simulation_30_day.py
+    uv run pytest tests/prd_benchmarks/test_prd_thirty_day_archive.py -m benchmark -v
 """
 
 from __future__ import annotations

@@ -278,6 +278,69 @@ def run_l4_archive_10k_prd_scenario(
     }
 
 
+def run_thirty_day_l4_archive_ratio_scenario(
+    memory: HMArch, targets: PrdPerformanceTargets
+) -> dict[str, Any]:
+    """30-day coding-agent loop; archived L4 ≈ L2_episode_total × (1 − 0.26).
+
+    Mirrors ``tests/test_simulation_30_day.py`` episode mix and nightly
+    ``consolidate()`` cadence. Uses a wider relative tolerance than the
+    deterministic 10k mixed-age inject (see ``thirty_day_l4_archive_tolerance_relative``).
+    """
+    preference_switch_day = 15
+    for day in range(30):
+        if day < preference_switch_day:
+            pref_id = memory.add(
+                "User prefers Python",
+                event_type=EventType.CONVERSATION,
+                importance=0.85,
+            ).memory_id
+            _set_old_created_at(memory._db, pref_id, days_ago=15 + day)
+        elif day == preference_switch_day:
+            memory.add(
+                "User prefers TypeScript",
+                event_type=EventType.CONVERSATION,
+                importance=0.9,
+            )
+        code_id = memory.add(
+            f"Refactored auth module on simulated day {day}",
+            event_type=EventType.CODE,
+            importance=0.55,
+        ).memory_id
+        _set_old_created_at(memory._db, code_id, days_ago=45 + day)
+        memory.consolidate()
+
+    l2_total = int(memory._db.query("SELECT COUNT(*) AS n FROM episodes")[0]["n"])
+    archived_l4 = int(
+        memory._db.query(
+            "SELECT COUNT(*) AS n FROM memory_index WHERE layer = 4 AND status = 'archived'"
+        )[0]["n"]
+    )
+    active_l2 = int(
+        memory._db.query(
+            "SELECT COUNT(*) AS n FROM memory_index WHERE layer = 2 AND status = 'active'"
+        )[0]["n"]
+    )
+    expected_archived = l2_total * (1.0 - targets.l2_retention_30d_reference)
+    tolerance_rel = targets.thirty_day_l4_archive_tolerance_relative
+    if expected_archived > 0:
+        relative_delta = abs(archived_l4 - expected_archived) / expected_archived
+    else:
+        relative_delta = 0.0 if archived_l4 == 0 else 1.0
+    within_tolerance = relative_delta <= tolerance_rel
+    return {
+        "l2_episode_total": l2_total,
+        "archived_l4_count": archived_l4,
+        "active_l2_count": active_l2,
+        "expected_archived_count": expected_archived,
+        "archive_fraction_observed": archived_l4 / l2_total if l2_total else 0.0,
+        "archive_fraction_expected": 1.0 - targets.l2_retention_30d_reference,
+        "relative_delta": relative_delta,
+        "tolerance_relative": tolerance_rel,
+        "within_tolerance": within_tolerance,
+    }
+
+
 def run_l4_archive_scenario(memory: HMArch, *, episode_count: int = 200) -> dict[str, Any]:
     """Archive eligible stale L2 rows and measure L4 filesystem usage."""
     ids: list[str] = []

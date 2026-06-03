@@ -50,6 +50,8 @@ class PrdPerformanceTargets:
     seven_day_replay_sample_ratio: float = 1.0
     l2_retention_30d_reference: float = 0.26
     l4_archive_fraction_tolerance: float = 0.05
+    # 30-day agent simulation: wider band (stochastic mix of pref/code ages).
+    thirty_day_l4_archive_tolerance_relative: float = 0.20
     l4_archive_old_fraction: float = 0.74
     l4_archive_old_days: int = 90
     l4_archive_young_days: int = 30
