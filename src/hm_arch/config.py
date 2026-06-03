@@ -81,6 +81,12 @@ class MemoryConfig:
     """Fraction of eligible L2 episodes replayed per consolidation cycle."""
 
     # -------------------------------------------------------------------
+    # In-memory layer caps
+    # -------------------------------------------------------------------
+    l0_capacity: int = 7
+    """Maximum items in the L0 sensory register (FIFO eviction)."""
+
+    # -------------------------------------------------------------------
     # Storage caps
     # -------------------------------------------------------------------
     max_memories_l2: int = 100000

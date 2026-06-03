@@ -37,9 +37,9 @@ def test_get_stats_returns_memory_stats(mem: HMArch) -> None:
 def test_get_stats_empty_store(mem: HMArch) -> None:
     stats = mem.get_stats()
     assert stats.total_memories == 0
-    assert stats.by_layer[1] == 0
-    assert stats.by_layer[2] == 0
-    assert stats.by_layer[3] == 0
+    for layer in range(7):
+        assert stats.by_layer[layer] == 0
+    assert stats.archive_storage_mb >= 0.0
     assert stats.review_queue_length == 0
     assert stats.last_consolidation_at is None
 
@@ -48,9 +48,10 @@ def test_get_stats_counts_after_add(mem: HMArch) -> None:
     mem.add("first")
     mem.add("second")
     stats = mem.get_stats()
+    assert stats.by_layer[0] == 2
     assert stats.by_layer[1] == 2
     assert stats.by_layer[2] == 2
-    assert stats.total_memories == 4
+    assert stats.total_memories == 6
 
 
 def test_get_stats_includes_l3_semantics(mem: HMArch) -> None:

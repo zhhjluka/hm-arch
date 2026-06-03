@@ -184,6 +184,8 @@ class MemoryStats:
     last_consolidation_at:
         Timestamp of the most recent consolidation cycle, or ``None`` if
         consolidation has not yet run.
+    archive_storage_mb:
+        On-disk size of L4 gzip archives under the archive root, in megabytes.
     """
 
     total_memories: int
@@ -192,6 +194,7 @@ class MemoryStats:
     retention_distribution: dict
     review_queue_length: int
     last_consolidation_at: datetime | None
+    archive_storage_mb: float = 0.0
 
 
 @dataclass
