@@ -521,8 +521,6 @@ last_consolidation_at:
 
 ## `ForgetResult`
 
-Type for future `forget()` API; exported for contract stability.
-
 Result returned by :py:meth:`HMArch.forget`.
 
 Attributes
