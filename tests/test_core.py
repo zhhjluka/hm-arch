@@ -145,9 +145,10 @@ def test_add_receipt_decay_estimate_nonempty(mem: HMArch) -> None:
     assert len(receipt.decay_estimate) > 0
 
 
-def test_add_receipt_default_importance_is_half(mem: HMArch) -> None:
+def test_add_receipt_default_importance_is_autoscored(mem: HMArch) -> None:
     receipt = mem.add("Hello world")
-    assert receipt.importance == pytest.approx(0.5)
+    assert 0.0 <= receipt.importance <= 1.0
+    assert receipt.importance == pytest.approx(0.5, abs=0.1)
 
 
 # ---------------------------------------------------------------------------

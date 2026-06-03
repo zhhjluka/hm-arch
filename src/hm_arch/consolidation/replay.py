@@ -30,6 +30,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 from ..config import MemoryConfig
+from ..forgetting.strength import apply_strength_to_retention
 from ..forgetting.time import SystemTimeProvider, TimeProvider
 from ..layers.l2_episodic import L2EpisodicBuffer
 from ..layers.l3_semantic import L3SemanticMemory, _symmetric_text_similarity
@@ -498,7 +499,7 @@ class ConsolidationEngine:
 
         rows = self._db.query(
             """
-            SELECT id, layer, created_at, current_retention
+            SELECT id, layer, created_at, current_retention, initial_strength
             FROM   memory_index
             WHERE  status = 'active'
               AND  layer  IN (2, 3)
@@ -511,11 +512,13 @@ class ConsolidationEngine:
             created = _parse_iso(row["created_at"])
             elapsed_h = max(0.0, (now - created).total_seconds() / 3600.0)
 
+            strength = float(row["initial_strength"])
             if layer == 2:
-                new_ret = _l2_retention(elapsed_h, self._config)
+                layer_ret = _l2_retention(elapsed_h, self._config)
             else:
-                new_ret = _l3_retention(elapsed_h, self._config)
+                layer_ret = _l3_retention(elapsed_h, self._config)
 
+            new_ret = apply_strength_to_retention(layer_ret, strength)
             new_ret = max(0.0, min(1.0, new_ret))
             if abs(new_ret - row["current_retention"]) > 1e-9:
                 self._db.execute(

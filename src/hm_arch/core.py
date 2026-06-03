@@ -43,6 +43,14 @@ from .forgetting.decay import (
     predict_memory_retention_curve,
     predict_retention_curve,
 )
+from .forgetting.strength import (
+    compute_initial_strength,
+    count_l2_repetitions,
+    reinforcement_delta,
+    score_local_emotion,
+    score_local_importance,
+    strength_bounds,
+)
 from .forgetting.time import SystemTimeProvider, TimeProvider
 from .layers.base import LayerItem
 from .layers.l0_sensory import L0SensoryRegister
@@ -336,12 +344,33 @@ class HMArch:
                 f"max_memories_l2 limit ({self._config.max_memories_l2}) reached"
             )
 
+        strength_min, strength_max, _, _ = strength_bounds(self._config)
+        imp = (
+            importance
+            if importance is not None
+            else score_local_importance(
+                content, event_type=event_type, metadata=metadata
+            )
+        )
+        emotion = score_local_emotion(content, event_type=event_type)
+        repetition = count_l2_repetitions(self._db, content)
+        strength = compute_initial_strength(
+            importance=imp,
+            emotion=emotion,
+            repetition_count=repetition,
+            consistency="neutral",
+            strength_min=strength_min,
+            strength_max=strength_max,
+        )
+
         # L2 episodic buffer — persisted to SQLite, survives restarts
         l2_mid = self._l2.encode(
             content,
             event_type=event_type,
             metadata=metadata,
-            importance=importance,
+            importance=imp,
+            emotion_score=emotion,
+            initial_strength=strength,
         )
 
         l0_meta = dict(metadata) if metadata is not None else {}
@@ -351,13 +380,22 @@ class HMArch:
         # L1 uses the same memory_id as L2 so forget() can remove both layers
         self._l1.add(content, metadata=metadata, memory_id=l2_mid)
 
-        imp = importance if importance is not None else 0.5
+        sample_days = [1, 7, 30]
+        curve = predict_memory_retention_curve(
+            layer=2,
+            initial_strength=strength,
+            config=self._config,
+            days=sample_days,
+        )
+        decay_estimate = {
+            f"{d}d": curve.retention[i] for i, d in enumerate(curve.days)
+        }
         receipt = MemoryReceipt(
             memory_id=l2_mid,
             layer=2,
             importance=imp,
-            initial_strength=1.0,
-            decay_estimate={"1d": 0.92, "7d": 0.65, "30d": 0.26},
+            initial_strength=strength,
+            decay_estimate=decay_estimate,
             consolidation_scheduled=self._time.now(),
         )
         self._run_lifecycle_tick()
@@ -583,6 +621,13 @@ class HMArch:
         final_results = filtered[:effective_top_k]
         for item in final_results:
             self._l6.track_access(item.memory_id, item.layer)
+            reinforce_id = item.memory_id
+            if item.layer in (0, 1):
+                linked = item.metadata.get("source_l2_memory_id")
+                if isinstance(linked, str) and linked:
+                    reinforce_id = linked
+            if item.layer in (2, 3) or reinforce_id != item.memory_id:
+                self._reinforce_after_retrieval(reinforce_id, item.relevance)
 
         elapsed_ms = (time.monotonic() - t0) * 1000
         total_scanned = sum(source_breakdown.values())
@@ -626,6 +671,41 @@ class HMArch:
 
     def _run_lifecycle_tick(self) -> None:
         self._forgetting.run_lifecycle_tick()
+
+    def _reinforce_after_retrieval(self, memory_id: str, relevance: float) -> None:
+        """Boost strength/retention after a successful search hit (L2/L3)."""
+        strength_min, strength_max, rate, threshold = strength_bounds(self._config)
+        if relevance < threshold:
+            return
+        rows = self._db.query(
+            """
+            SELECT initial_strength, current_retention
+            FROM   memory_index
+            WHERE  id = ? AND status = 'active'
+            """,
+            (memory_id,),
+        )
+        if not rows:
+            return
+        new_strength, new_retention = reinforcement_delta(
+            initial_strength=float(rows[0]["initial_strength"]),
+            current_retention=float(rows[0]["current_retention"]),
+            relevance=relevance,
+            rate=rate,
+            strength_max=strength_max,
+        )
+        new_strength = max(strength_min, new_strength)
+        now = self._time.now().isoformat()
+        self._db.execute(
+            """
+            UPDATE memory_index
+               SET initial_strength = ?,
+                   current_retention = ?,
+                   updated_at = ?
+             WHERE id = ?
+            """,
+            (new_strength, new_retention, now, memory_id),
+        )
 
     def forget(
         self,

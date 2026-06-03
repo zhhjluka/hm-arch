@@ -51,6 +51,12 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from ..forgetting.strength import (
+    apply_conflict_superseded_penalty,
+    apply_consistent_strength_boost,
+    compute_initial_strength,
+    score_local_importance,
+)
 from ..storage.sqlite import SQLiteStore
 from ..storage.vector import (
     LocalVectorStore,
@@ -266,6 +272,7 @@ class L3SemanticMemory:
         existing_id = self._find_active_exact(entity, relation, value)
         if existing_id is not None:
             self._append_source_episodes(existing_id, source_episodes)
+            apply_consistent_strength_boost(self._db, existing_id)
             return existing_id
 
         # --- Step 1b: merge near-duplicate values on the same key -------
@@ -275,6 +282,7 @@ class L3SemanticMemory:
             )
             if similar_id is not None:
                 self._append_source_episodes(similar_id, source_episodes)
+                apply_consistent_strength_boost(self._db, similar_id)
                 return similar_id
 
         # --- Step 2: find conflicting active triples --------------------
@@ -306,6 +314,19 @@ class L3SemanticMemory:
         # --- Step 3: insert the new triple (needs memory_id first) -----
         mid = uuid.uuid4().hex
         now_str = _iso_now()
+        triple_text = _triple_text(entity, relation, value)
+        if importance is not None:
+            effective_importance = imp
+        else:
+            effective_importance = max(
+                imp, score_local_importance(triple_text)
+            )
+        initial_strength = compute_initial_strength(
+            importance=effective_importance,
+            emotion=0.5,
+            repetition_count=0,
+            consistency="neutral",
+        )
 
         self._db.execute(
             """
@@ -320,9 +341,9 @@ class L3SemanticMemory:
                 self.LAYER_INDEX,
                 now_str,
                 now_str,
-                imp,
-                1.0,
-                1.0,
+                effective_importance,
+                initial_strength,
+                initial_strength,
                 "active",
                 "[]",
                 meta_str,
@@ -362,6 +383,7 @@ class L3SemanticMemory:
                     """,
                     (now_str, mid, conflict["memory_id"]),
                 )
+                apply_conflict_superseded_penalty(self._db, conflict["memory_id"])
                 # Remove superseded entry from vector store so it is not
                 # returned by future search() calls.
                 self._vector.delete(conflict["memory_id"])

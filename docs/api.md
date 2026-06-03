@@ -400,6 +400,10 @@ Time constants are expressed in hours, matching the PRD formulas.
 | `deletion_safety_period_hours` | `'int'` | (default: `168`)|
 | `forgetting_score_threshold` | `'float'` | (default: `0.35`)|
 | `replay_sample_ratio` | `'float'` | (default: `0.2`)|
+| `strength_min` | `'float'` | (default: `0.25`)|
+| `strength_max` | `'float'` | (default: `1.0`)|
+| `retrieval_reinforcement_rate` | `'float'` | (default: `0.06`)|
+| `retrieval_relevance_threshold` | `'float'` | (default: `0.25`)|
 | `l0_capacity` | `'int'` | (default: `7`)|
 | `max_memories_l2` | `'int'` | (default: `100000`)|
 | `max_memories_l3` | `'int'` | (default: `50000`)|
@@ -747,6 +751,38 @@ Forgetting_Score =
 
 `HMArch.forget(memory_id=None)` applies this score during the global scan.
 Automated physical cleanup waits for `deletion_safety_period_hours`.
+
+### Memory strength modulation (HM-29)
+
+Deterministic local scoring adjusts ``initial_strength`` at encode time; retention
+decay multiplies the layer curve by that strength; successful search hits
+reinforce the linked L2/L3 row.
+
+**Initial strength** (clamped to ``[strength_min, strength_max]`` on
+``MemoryConfig``, defaults ``0.25`` / ``1.0``)::
+
+    S = clamp(1.0 + M_imp + M_emo + M_rep + M_con, strength_min, strength_max)
+
+| Modifier | Formula | Bounds |
+|----------|---------|--------|
+| Importance | ``0.20 * (importance - 0.5)`` | ``[-0.10, +0.10]`` |
+| Emotion | ``0.15 * (emotion - 0.5)`` | ``[-0.075, +0.075]`` |
+| Repetition | ``min(0.12, 0.04 * repetition_count)`` | ``[0, +0.12]`` |
+| Consistency | ``+0.08`` on consistent L3 reinforcement; ``0`` at L2 encode | |
+
+**Retention** at elapsed hours *t*::
+
+    R(t) = min(1.0, R_layer(t) * initial_strength)
+
+**Retrieval reinforcement** (relevance ≥ ``retrieval_relevance_threshold``,
+default ``0.25``)::
+
+    ΔS = retrieval_reinforcement_rate * relevance * (1 - S)
+
+Superseded conflicting L3 facts receive ``-0.12`` on ``current_retention`` only.
+
+Public helpers live in ``hm_arch.forgetting.strength`` (also re-exported from
+``hm_arch.forgetting``).
 
 ---
 

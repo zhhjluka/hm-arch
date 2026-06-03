@@ -171,6 +171,7 @@ class L2EpisodicBuffer:
         metadata: dict | None = None,
         importance: float | None = None,
         emotion_score: float | None = None,
+        initial_strength: float | None = None,
         context_window: str | None = None,
     ) -> str:
         """Persist a raw event as an L2 episodic memory.
@@ -192,6 +193,9 @@ class L2EpisodicBuffer:
             ``[0, 1]``.
         emotion_score:
             Optional emotional valence stored in the ``episodes`` row.
+        initial_strength:
+            Override for encoded strength/retention. Must be in ``[0, 1]``.
+            When omitted, ``default_initial_strength`` is used.
         context_window:
             Optional free-text snapshot of the surrounding context.
 
@@ -203,8 +207,13 @@ class L2EpisodicBuffer:
         mid = uuid.uuid4().hex
         now_str = self._time.now().isoformat()
         imp = importance if importance is not None else self._default_importance
+        strength = (
+            initial_strength
+            if initial_strength is not None
+            else self._default_initial_strength
+        )
         _validate_unit_interval("importance", imp)
-        _validate_unit_interval("initial_strength", self._default_initial_strength)
+        _validate_unit_interval("initial_strength", strength)
         event_type_str = (
             event_type.value if isinstance(event_type, EventType) else str(event_type)
         )
@@ -226,8 +235,8 @@ class L2EpisodicBuffer:
                 now_str,
                 now_str,
                 imp,
-                self._default_initial_strength,
-                self._default_initial_strength,
+                strength,
+                strength,
                 "active",
                 "[]",
                 meta_str,
