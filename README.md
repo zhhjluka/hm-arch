@@ -57,6 +57,7 @@ This repo also supports [uv](https://docs.astral.sh/uv/) for a locked dev enviro
 ```bash
 uv sync
 uv run pytest
+uv run pytest tests/prd_benchmarks -m benchmark -v   # optional PRD scale benchmarks
 uv run python examples/basic_usage.py
 uv run python examples/codex_hooks/demo.py
 uv run python examples/claude_code_hooks/demo.py
@@ -125,6 +126,10 @@ See [docs/api.md](docs/api.md) for the full public API reference (methods, datac
 Regenerate after API changes: `python scripts/generate_api_docs.py`.
 
 See `docs/spec.md` for the product specification.
+
+PRD scale and performance benchmarks (10k L2, latency p95, storage, 7-day scenario) are
+documented in [docs/benchmarks.md](docs/benchmarks.md). They are excluded from default
+`pytest` via the `benchmark` marker.
 
 ## Release documentation
 
