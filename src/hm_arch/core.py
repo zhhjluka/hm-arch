@@ -37,11 +37,13 @@ from typing import Iterator, Optional, Union
 from .config import MemoryConfig
 from .consolidation.replay import ConsolidationEngine
 from .context import AgentContext
+from .forgetting.controller import ForgettingController
 from .forgetting.decay import (
     _DEFAULT_DAYS,
     predict_memory_retention_curve,
     predict_retention_curve,
 )
+from .forgetting.time import SystemTimeProvider, TimeProvider
 from .layers.base import LayerItem
 from .layers.l0_sensory import L0SensoryRegister
 from .layers.l1_working import L1WorkingMemory
@@ -249,10 +251,13 @@ class HMArch:
         self,
         db_path: str = "./.agent_memory.db",
         config: Optional[MemoryConfig] = None,
+        *,
+        time_provider: TimeProvider | None = None,
     ) -> None:
         if config is None:
             config = MemoryConfig(db_path=db_path)
         self._config = config
+        self._time = time_provider or SystemTimeProvider()
 
         self._db = SQLiteStore(self._config.db_path)
         self._db.connect()
@@ -260,7 +265,7 @@ class HMArch:
 
         self._l0 = L0SensoryRegister(capacity=self._config.l0_capacity)
         self._l1 = L1WorkingMemory()
-        self._l2 = L2EpisodicBuffer(self._db)
+        self._l2 = L2EpisodicBuffer(self._db, time_provider=self._time)
         self._l3 = L3SemanticMemory(
             self._db, max_memories=self._config.max_memories_l3
         )
@@ -269,6 +274,14 @@ class HMArch:
             self._db, max_skills=self._config.max_skills_l5
         )
         self._l6 = L6MetaMemory(self._db)
+
+        self._forgetting = ForgettingController(
+            self._db,
+            self._config,
+            time_provider=self._time,
+            consolidate_fn=self.consolidate,
+            forget_fn=lambda memory_id: self.forget(memory_id),
+        )
 
     # ------------------------------------------------------------------
     # Primary public interface
@@ -327,14 +340,16 @@ class HMArch:
         self._l1.add(content, metadata=metadata, memory_id=l2_mid)
 
         imp = importance if importance is not None else 0.5
-        return MemoryReceipt(
+        receipt = MemoryReceipt(
             memory_id=l2_mid,
             layer=2,
             importance=imp,
             initial_strength=1.0,
             decay_estimate={"1d": 0.92, "7d": 0.65, "30d": 0.26},
-            consolidation_scheduled=datetime.now(tz=timezone.utc),
+            consolidation_scheduled=self._time.now(),
         )
+        self._run_lifecycle_tick()
+        return receipt
 
     def search(
         self,
@@ -393,6 +408,7 @@ class HMArch:
         )
 
         effective_top_k = self._effective_search_top_k(top_k)
+        self._forgetting.set_context_query(query)
 
         t0 = time.monotonic()
         priorities = self._config.layer_priorities
@@ -559,6 +575,8 @@ class HMArch:
         elapsed_ms = (time.monotonic() - t0) * 1000
         total_scanned = sum(source_breakdown.values())
 
+        self._run_lifecycle_tick()
+
         return SearchResult(
             results=final_results,
             total_scanned=total_scanned,
@@ -581,8 +599,16 @@ class HMArch:
             self._l3,
             l4=self._l4,
             config=consolidation_config,
+            time_provider=self._time,
         )
         return engine.run_consolidation_cycle()
+
+    def run_lifecycle(self) -> None:
+        """Run auto-consolidation and conservative physical cleanup once."""
+        self._run_lifecycle_tick()
+
+    def _run_lifecycle_tick(self) -> None:
+        self._forgetting.run_lifecycle_tick()
 
     def forget(
         self,

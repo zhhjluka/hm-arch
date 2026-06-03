@@ -30,6 +30,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 from ..config import MemoryConfig
+from ..forgetting.time import SystemTimeProvider, TimeProvider
 from ..layers.l2_episodic import L2EpisodicBuffer
 from ..layers.l3_semantic import L3SemanticMemory, _symmetric_text_similarity
 from ..layers.l4_ltm import L4EpisodicLTM
@@ -76,9 +77,10 @@ def _l3_retention(elapsed_hours: float, cfg: MemoryConfig) -> float:
 # ---------------------------------------------------------------------------
 
 
-def _iso_now() -> str:
+def _iso_now(time_provider: TimeProvider | None = None) -> str:
     """Return the current UTC time as an ISO 8601 string."""
-    return datetime.now(tz=timezone.utc).isoformat()
+    provider = time_provider or SystemTimeProvider()
+    return provider.now().isoformat()
 
 
 def _parse_iso(iso_str: str) -> datetime:
@@ -366,6 +368,7 @@ class ConsolidationEngine:
         l4: L4EpisodicLTM | None = None,
         config: MemoryConfig | None = None,
         extractor: SemanticExtractor | None = None,
+        time_provider: TimeProvider | None = None,
     ) -> None:
         self._db = db
         self._l2 = l2
@@ -373,6 +376,7 @@ class ConsolidationEngine:
         self._l4 = l4
         self._config = config or MemoryConfig()
         self._extractor = extractor or SemanticExtractor()
+        self._time = time_provider or SystemTimeProvider()
 
     # ------------------------------------------------------------------
     # Primary public interface
@@ -392,7 +396,7 @@ class ConsolidationEngine:
             Summary of what the cycle did.
         """
         t0 = time.monotonic()
-        started_at = _iso_now()
+        started_at = _iso_now(self._time)
 
         # Step 1: Apply decay to all active memories.
         self._update_retention_all()
@@ -457,7 +461,7 @@ class ConsolidationEngine:
         deletable = self._mark_deletable()
 
         duration = time.monotonic() - t0
-        completed_at = _iso_now()
+        completed_at = _iso_now(self._time)
 
         report = ConsolidationReport(
             extracted_semantics=extracted,
@@ -490,7 +494,7 @@ class ConsolidationEngine:
         where the computed retention differs from the stored value (by more
         than 1e-9) are written back to avoid unnecessary I/O.
         """
-        now = datetime.now(tz=timezone.utc)
+        now = self._time.now()
 
         rows = self._db.query(
             """
@@ -501,7 +505,7 @@ class ConsolidationEngine:
             """
         )
 
-        now_str = _iso_now()
+        now_str = _iso_now(self._time)
         for row in rows:
             layer = row["layer"]
             created = _parse_iso(row["created_at"])
@@ -593,7 +597,7 @@ class ConsolidationEngine:
         Returns the number of new rows inserted.
         """
         cfg = self._config
-        next_review = (datetime.now(tz=timezone.utc) + timedelta(days=1)).isoformat()
+        next_review = (self._time.now() + timedelta(days=1)).isoformat()
 
         eligible_rows = self._db.query(
             """
@@ -637,7 +641,7 @@ class ConsolidationEngine:
             return 0
 
         cfg = self._config
-        now_str = _iso_now()
+        now_str = _iso_now(self._time)
 
         rows = self._db.query(
             """
@@ -701,38 +705,45 @@ class ConsolidationEngine:
         * L2: ``config.l2_delete_threshold`` (default 0.05)
         * L3: ``config.l3_delete_threshold`` (default 0.10)
 
-        No rows are physically deleted — this is a status flag only.
+        Each flagged row records ``deletable_at`` in metadata for the safety
+        period enforced by :class:`~hm_arch.forgetting.controller.ForgettingController`.
 
         Returns the total number of rows updated.
         """
         cfg = self._config
-        now_str = _iso_now()
+        now_str = _iso_now(self._time)
+        marked = 0
 
-        cur_l2 = self._db.execute(
+        rows = self._db.query(
             """
-            UPDATE memory_index
-               SET status     = 'deletable',
-                   updated_at = ?
-             WHERE layer   = 2
-               AND status  = 'active'
-               AND current_retention < ?
+            SELECT id, layer, metadata, current_retention
+            FROM   memory_index
+            WHERE  status = 'active'
+              AND  layer IN (2, 3)
+              AND  (
+                    (layer = 2 AND current_retention < ?)
+                 OR (layer = 3 AND current_retention < ?)
+              )
             """,
-            (now_str, cfg.l2_delete_threshold),
+            (cfg.l2_delete_threshold, cfg.l3_delete_threshold),
         )
 
-        cur_l3 = self._db.execute(
-            """
-            UPDATE memory_index
-               SET status     = 'deletable',
-                   updated_at = ?
-             WHERE layer   = 3
-               AND status  = 'active'
-               AND current_retention < ?
-            """,
-            (now_str, cfg.l3_delete_threshold),
-        )
+        for row in rows:
+            metadata = json.loads(row["metadata"] or "{}")
+            metadata["deletable_at"] = now_str
+            self._db.execute(
+                """
+                UPDATE memory_index
+                   SET status     = 'deletable',
+                       metadata   = ?,
+                       updated_at = ?
+                 WHERE id = ?
+                """,
+                (json.dumps(metadata), now_str, row["id"]),
+            )
+            marked += 1
 
-        return cur_l2.rowcount + cur_l3.rowcount
+        return marked
 
     def _log_cycle(
         self,

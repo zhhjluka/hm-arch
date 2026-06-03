@@ -12,6 +12,12 @@ from .asm2 import (
     should_review,
     update_ef,
 )
+from .context_aware import (
+    ContextAwareScore,
+    MemoryForgettingInput,
+    compute_context_aware_score,
+)
+from .controller import ForgettingController, LifecycleResult
 from .decay import (
     l2_retention,
     l2_retention_from_config,
@@ -20,6 +26,7 @@ from .decay import (
     predict_memory_retention_curve,
     predict_retention_curve,
 )
+from .time import ManualTimeProvider, SystemTimeProvider, TimeProvider
 
 __all__ = [
     # decay
@@ -35,4 +42,13 @@ __all__ = [
     "next_interval",
     "schedule_review",
     "should_review",
+    # lifecycle
+    "ContextAwareScore",
+    "MemoryForgettingInput",
+    "compute_context_aware_score",
+    "ForgettingController",
+    "LifecycleResult",
+    "TimeProvider",
+    "SystemTimeProvider",
+    "ManualTimeProvider",
 ]

@@ -33,6 +33,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from ..forgetting.time import SystemTimeProvider, TimeProvider
 from ..storage.sqlite import SQLiteStore
 from ..storage.vector import LocalVectorStore, VectorStoreProtocol
 from ..types import EventType
@@ -145,10 +146,12 @@ class L2EpisodicBuffer:
         vector_store: VectorStoreProtocol | None = None,
         default_importance: float = 0.5,
         default_initial_strength: float = 1.0,
+        time_provider: TimeProvider | None = None,
     ) -> None:
         self._db = db
         self._default_importance = default_importance
         self._default_initial_strength = default_initial_strength
+        self._time = time_provider or SystemTimeProvider()
 
         if vector_store is not None:
             self._vector: VectorStoreProtocol = vector_store
@@ -198,7 +201,7 @@ class L2EpisodicBuffer:
             The ``memory_id`` (UUID4 hex string) assigned to this episode.
         """
         mid = uuid.uuid4().hex
-        now_str = _iso_now()
+        now_str = self._time.now().isoformat()
         imp = importance if importance is not None else self._default_importance
         _validate_unit_interval("importance", imp)
         _validate_unit_interval("initial_strength", self._default_initial_strength)
