@@ -37,11 +37,13 @@ from typing import Iterator, Optional, Union
 from .config import MemoryConfig
 from .consolidation.replay import ConsolidationEngine
 from .context import AgentContext
+from .forgetting.controller import ForgettingController
 from .forgetting.decay import (
     _DEFAULT_DAYS,
     predict_memory_retention_curve,
     predict_retention_curve,
 )
+from .forgetting.time import SystemTimeProvider, TimeProvider
 from .layers.base import LayerItem
 from .layers.l0_sensory import L0SensoryRegister
 from .layers.l1_working import L1WorkingMemory
@@ -249,10 +251,25 @@ class HMArch:
         self,
         db_path: str = "./.agent_memory.db",
         config: Optional[MemoryConfig] = None,
+        *,
+        time_provider: Optional[TimeProvider] = None,
     ) -> None:
+        """Create an :class:`HMArch` memory store.
+
+        Parameters
+        ----------
+        db_path:
+            SQLite database path.  Ignored when *config* is supplied.
+        config:
+            Optional runtime configuration.
+        time_provider:
+            Injectable clock for deterministic lifecycle tests.  Defaults to
+            :class:`~hm_arch.forgetting.time.SystemTimeProvider`.
+        """
         if config is None:
             config = MemoryConfig(db_path=db_path)
         self._config = config
+        self._time = time_provider or SystemTimeProvider()
 
         self._db = SQLiteStore(self._config.db_path)
         self._db.connect()
@@ -260,7 +277,7 @@ class HMArch:
 
         self._l0 = L0SensoryRegister(capacity=self._config.l0_capacity)
         self._l1 = L1WorkingMemory()
-        self._l2 = L2EpisodicBuffer(self._db)
+        self._l2 = L2EpisodicBuffer(self._db, time_provider=self._time)
         self._l3 = L3SemanticMemory(
             self._db, max_memories=self._config.max_memories_l3
         )
@@ -269,6 +286,14 @@ class HMArch:
             self._db, max_skills=self._config.max_skills_l5
         )
         self._l6 = L6MetaMemory(self._db)
+
+        self._forgetting = ForgettingController(
+            self._db,
+            self._config,
+            time_provider=self._time,
+            consolidate_fn=self.consolidate,
+            forget_fn=lambda memory_id: self.forget(memory_id),
+        )
 
     # ------------------------------------------------------------------
     # Primary public interface
@@ -327,14 +352,16 @@ class HMArch:
         self._l1.add(content, metadata=metadata, memory_id=l2_mid)
 
         imp = importance if importance is not None else 0.5
-        return MemoryReceipt(
+        receipt = MemoryReceipt(
             memory_id=l2_mid,
             layer=2,
             importance=imp,
             initial_strength=1.0,
             decay_estimate={"1d": 0.92, "7d": 0.65, "30d": 0.26},
-            consolidation_scheduled=datetime.now(tz=timezone.utc),
+            consolidation_scheduled=self._time.now(),
         )
+        self._run_lifecycle_tick()
+        return receipt
 
     def search(
         self,
@@ -393,6 +420,7 @@ class HMArch:
         )
 
         effective_top_k = self._effective_search_top_k(top_k)
+        self._forgetting.set_context_query(query)
 
         t0 = time.monotonic()
         priorities = self._config.layer_priorities
@@ -559,6 +587,8 @@ class HMArch:
         elapsed_ms = (time.monotonic() - t0) * 1000
         total_scanned = sum(source_breakdown.values())
 
+        self._run_lifecycle_tick()
+
         return SearchResult(
             results=final_results,
             total_scanned=total_scanned,
@@ -581,8 +611,21 @@ class HMArch:
             self._l3,
             l4=self._l4,
             config=consolidation_config,
+            time_provider=self._time,
         )
         return engine.run_consolidation_cycle()
+
+    def run_lifecycle(self) -> None:
+        """Run one automatic lifecycle tick.
+
+        Applies due auto-consolidation (when enabled) and conservative
+        physical cleanup for score-qualified ``deletable`` rows past
+        ``deletion_safety_period_hours``.
+        """
+        self._run_lifecycle_tick()
+
+    def _run_lifecycle_tick(self) -> None:
+        self._forgetting.run_lifecycle_tick()
 
     def forget(
         self,
@@ -590,12 +633,19 @@ class HMArch:
         *,
         force: bool = False,
     ) -> ForgetResult:
-        """Forget one memory or run a global deletable-memory scan.
+        """Forget one memory or run a context-aware global forgetting scan.
 
         When *memory_id* is provided, only that memory is considered.  When
-        ``memory_id`` is ``None``, every row with ``status='deletable'`` is
-        processed (and, when *force* is ``True``, active rows below the layer
-        delete threshold are included as well).
+        ``memory_id`` is ``None``, eligible rows are evaluated with the PRD
+        context-aware forgetting score (retention, relevance, redundancy,
+        contradiction, privacy).  Only candidates whose composite score meets
+        ``config.forgetting_score_threshold`` are removed.
+
+        With ``memory_id is None`` and ``force=False``, only ``deletable`` rows
+        are scanned.  With ``force=True``, active rows below the layer delete
+        threshold are included as well.  Automated lifecycle physical cleanup
+        still waits for ``deletion_safety_period_hours``; this method performs
+        immediate removal for score-qualified candidates.
 
         L2 memories below the archive threshold are moved to L4 when possible;
         otherwise they are marked ``deleted``.  Archived L4 rows purge the gzip
@@ -607,10 +657,7 @@ class HMArch:
         memory_id:
             Target memory identifier, or ``None`` for a global scan.
         force:
-            When ``True``, forget eligible memories even if they are still
-            ``active`` (below the layer delete threshold).  When ``False``,
-            only ``deletable`` rows (or a single memory below threshold) are
-            affected.
+            When ``True``, include active low-retention rows in the global scan.
 
         Returns
         -------
@@ -619,10 +666,13 @@ class HMArch:
         """
         if memory_id is not None:
             rows = self._fetch_memory_rows(memory_id=memory_id)
+            use_context_gate = False
         elif force:
             rows = self._fetch_memory_rows(global_forget=True, include_active=True)
+            use_context_gate = True
         else:
             rows = self._fetch_memory_rows(global_forget=True, include_active=False)
+            use_context_gate = True
 
         details: list[dict] = []
         forgotten = 0
@@ -631,10 +681,16 @@ class HMArch:
         freed_bytes = 0
 
         for row in rows:
-            action, layer, nbytes = self._forget_one_row(row, force=force)
+            record = dict(row)
+            if use_context_gate and not self._forgetting.is_forget_candidate(
+                record, require_safety_period=False
+            ):
+                continue
+
+            action, layer, nbytes = self._forget_one_row(record, force=force)
             if action is None:
                 continue
-            details.append({"memory_id": row["id"], "action": action})
+            details.append({"memory_id": record["id"], "action": action})
             affected_layers.add(layer)
             freed_bytes += nbytes
             if action == "archived":
@@ -988,10 +1044,15 @@ class HMArch:
                    mi.metadata,
                    mi.created_at,
                    mi.updated_at,
-                   e.content AS episode_content
+                   e.content AS episode_content,
+                   s.entity,
+                   s.relation,
+                   s.value,
+                   s.entity || ' ' || s.relation || ' ' || s.value AS semantic_content
             FROM   memory_index mi
             LEFT JOIN episodes e ON e.memory_id = mi.id
-            WHERE  mi.status = 'deletable'
+            LEFT JOIN semantics s ON s.memory_id = mi.id
+            WHERE  mi.status IN ('deletable', 'superseded')
             """
         )
 
@@ -1005,7 +1066,7 @@ class HMArch:
             return False
         if force:
             return status in ("active", "deletable", "archived")
-        if status == "deletable" or status == "archived":
+        if status == "deletable" or status == "archived" or status == "superseded":
             return True
         if status != "active":
             return False

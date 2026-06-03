@@ -12,7 +12,7 @@ All tests run fully offline — no external API keys required.
 from __future__ import annotations
 
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -549,4 +549,379 @@ class TestForgettingImports:
             schedule_review,
             should_review,
             update_ef,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Context-aware forgetting score (HM-28)
+# ---------------------------------------------------------------------------
+
+
+class TestContextAwareForgettingScore:
+    """Context-aware scores account for PRD forgetting factors."""
+
+    def _memory(self, **overrides):
+        from hm_arch.forgetting.context_aware import MemoryForgettingInput
+
+        defaults = dict(
+            memory_id="m1",
+            content="User prefers Python",
+            retention=0.2,
+            layer=2,
+            status="active",
+            metadata={},
+            neighbor_similarity=0.0,
+            has_active_conflict=False,
+        )
+        defaults.update(overrides)
+        return MemoryForgettingInput(**defaults)
+
+    def test_low_retention_scores_higher_than_high_retention(self):
+        from hm_arch.forgetting.context_aware import compute_context_aware_score
+
+        low = compute_context_aware_score(self._memory(retention=0.1))
+        high = compute_context_aware_score(self._memory(retention=0.9))
+        assert low.composite > high.composite
+        assert low.retention < high.retention
+
+    def test_prd_formula_exact_numeric_regression(self):
+        from hm_arch.forgetting.context_aware import compute_context_aware_score
+
+        score = compute_context_aware_score(
+            self._memory(
+                retention=0.2,
+                content="alpha beta gamma",
+                neighbor_similarity=0.90,
+                has_active_conflict=True,
+                metadata={"private": True},
+            ),
+            context_query="alpha beta gamma",
+        )
+        assert score.retention == pytest.approx(0.2)
+        assert score.relevance == pytest.approx(1.0)
+        assert score.redundancy == pytest.approx(
+            (0.90 - 0.85) / 0.15, rel=1e-9
+        )
+        assert score.contradiction == pytest.approx(1.0)
+        assert score.privacy == pytest.approx(1.0)
+        expected = (
+            0.35 * (1.0 - 0.2)
+            + 0.25 * (1.0 - 1.0)
+            + 0.15 * score.redundancy
+            + 0.15 * 1.0
+            + 0.10 * 1.0
+        )
+        assert score.composite == pytest.approx(expected, rel=1e-9)
+
+    def test_privacy_pressure_increases_prd_score(self):
+        from hm_arch.forgetting.context_aware import (
+            compute_context_aware_score,
+            privacy_forgetting_pressure,
+        )
+
+        assert privacy_forgetting_pressure({"private": True}) == pytest.approx(1.0)
+        plain = compute_context_aware_score(self._memory(metadata={}))
+        sensitive = compute_context_aware_score(
+            self._memory(metadata={"privacy_forget_pressure": 1.0})
+        )
+        assert sensitive.privacy == pytest.approx(1.0)
+        assert sensitive.composite > plain.composite
+
+    def test_irrelevant_content_scores_higher(self):
+        from hm_arch.forgetting.context_aware import compute_context_aware_score
+
+        irrelevant = compute_context_aware_score(
+            self._memory(content="unrelated database tuning notes"),
+            context_query="Python language preference",
+        )
+        relevant = compute_context_aware_score(
+            self._memory(content="User prefers Python"),
+            context_query="Python language preference",
+        )
+        assert irrelevant.relevance < relevant.relevance
+        assert irrelevant.composite > relevant.composite
+
+    def test_redundant_neighbor_increases_score(self):
+        from hm_arch.forgetting.context_aware import compute_context_aware_score
+
+        unique = compute_context_aware_score(self._memory(neighbor_similarity=0.2))
+        redundant = compute_context_aware_score(
+            self._memory(neighbor_similarity=0.95)
+        )
+        assert redundant.redundancy > unique.redundancy
+        assert redundant.composite > unique.composite
+
+    def test_contradiction_increases_score(self):
+        from hm_arch.forgetting.context_aware import compute_context_aware_score
+
+        plain = compute_context_aware_score(self._memory())
+        conflict = compute_context_aware_score(
+            self._memory(status="superseded", has_active_conflict=True)
+        )
+        assert conflict.contradiction == pytest.approx(1.0)
+        assert conflict.composite > plain.composite
+
+
+class TestOperationalContextAwareForgetting:
+    """Context-aware score changes which memories are actually forgotten."""
+
+    def test_global_forget_skips_relevant_deletable_memory(self):
+        from hm_arch import HMArch, MemoryConfig
+
+        config = MemoryConfig(
+            db_path=":memory:",
+            forgetting_score_threshold=0.50,
+        )
+        mem = HMArch(config=config)
+        try:
+            relevant_id = mem.add("User prefers Python tutorials").memory_id
+            irrelevant_id = mem.add("Database vacuum maintenance schedule").memory_id
+            for mid in (relevant_id, irrelevant_id):
+                mem._db.execute(
+                    """
+                    UPDATE memory_index
+                       SET current_retention = 0.01, status = 'deletable'
+                     WHERE id = ?
+                    """,
+                    (mid,),
+                )
+
+            mem._forgetting.set_context_query("Python tutorials preference")
+            result = mem.forget()
+            forgotten_ids = {d["memory_id"] for d in result.details}
+            assert irrelevant_id in forgotten_ids
+            assert relevant_id not in forgotten_ids
+        finally:
+            mem.close()
+
+    def test_global_forget_prefers_redundant_duplicate(self):
+        from hm_arch import HMArch, MemoryConfig
+
+        config = MemoryConfig(
+            db_path=":memory:",
+            forgetting_score_threshold=0.41,
+            redundancy_threshold=0.85,
+        )
+        mem = HMArch(config=config)
+        try:
+            canonical = mem.add("unique sentinel omega protocol detail").memory_id
+            duplicate = mem.add(
+                "alpha beta gamma delta epsilon zeta eta theta iota"
+            ).memory_id
+            mem.add(
+                "alpha beta gamma delta epsilon zeta eta theta iota kappa"
+            )
+            for mid in (canonical, duplicate):
+                mem._db.execute(
+                    """
+                    UPDATE memory_index
+                       SET current_retention = 0.20, status = 'deletable'
+                     WHERE id = ?
+                    """,
+                    (mid,),
+                )
+
+            scored = mem._forgetting.iter_scored_candidates()
+            scores = {row["id"]: score.composite for row, score in scored}
+            assert scores[duplicate] > scores[canonical]
+
+            result = mem.forget()
+            forgotten_ids = {d["memory_id"] for d in result.details}
+            assert duplicate in forgotten_ids
+            assert canonical not in forgotten_ids
+        finally:
+            mem.close()
+
+    def test_global_forget_removes_superseded_semantic_first(self):
+        from hm_arch import HMArch, MemoryConfig
+
+        config = MemoryConfig(db_path=":memory:", forgetting_score_threshold=0.41)
+        mem = HMArch(config=config)
+        try:
+            active_id = mem._l3.upsert("user", "prefers", "Python")
+            superseded_id = mem._l3.upsert("user", "prefers", "Java")
+            mem._db.execute(
+                """
+                UPDATE memory_index
+                   SET status = 'superseded', current_retention = 0.20
+                 WHERE id = ?
+                """,
+                (superseded_id,),
+            )
+            mem._db.execute(
+                """
+                UPDATE memory_index
+                   SET status = 'deletable', current_retention = 0.20
+                 WHERE id = ?
+                """,
+                (active_id,),
+            )
+
+            scored = {
+                row["id"]: score.composite
+                for row, score in mem._forgetting.iter_scored_candidates()
+            }
+            assert scored[superseded_id] > scored[active_id]
+
+            result = mem.forget()
+            forgotten_ids = {d["memory_id"] for d in result.details}
+            assert superseded_id in forgotten_ids
+            assert active_id not in forgotten_ids
+        finally:
+            mem.close()
+
+
+# ---------------------------------------------------------------------------
+# Forgetting controller lifecycle (HM-28)
+# ---------------------------------------------------------------------------
+
+
+class TestForgettingControllerLifecycle:
+    """Automatic consolidation and conservative physical cleanup."""
+
+    @pytest.fixture()
+    def clock(self):
+        from hm_arch.forgetting.time import ManualTimeProvider
+
+        return ManualTimeProvider(datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc))
+
+    def test_auto_consolidate_disabled_is_deterministic(self, clock):
+        from hm_arch import HMArch, MemoryConfig
+
+        config = MemoryConfig(
+            db_path=":memory:",
+            auto_consolidate=False,
+            consolidate_interval_hours=1,
+            replay_sample_ratio=1.0,
+        )
+        mem = HMArch(config=config, time_provider=clock)
+        try:
+            mem.add("User prefers Python", importance=0.8)
+            clock.advance(hours=48)
+            mem.run_lifecycle()
+            assert mem.get_stats().last_consolidation_at is None
+        finally:
+            mem.close()
+
+    def test_auto_consolidate_runs_after_interval_without_timestamp_mutation(
+        self, clock
+    ):
+        from hm_arch import EventType, HMArch, MemoryConfig
+
+        config = MemoryConfig(
+            db_path=":memory:",
+            auto_consolidate=True,
+            consolidate_interval_hours=24,
+            replay_sample_ratio=1.0,
+        )
+        mem = HMArch(config=config, time_provider=clock)
+        try:
+            receipt = mem.add(
+                "User prefers Python",
+                event_type=EventType.CONVERSATION,
+                importance=0.8,
+            )
+            clock.advance(hours=25)
+            mem.run_lifecycle()
+            assert mem.get_stats().last_consolidation_at is not None
+            fact = mem._l3.get_by_entity_relation("user", "prefers")
+            assert fact is not None
+            rows = mem._db.query(
+                "SELECT created_at FROM memory_index WHERE id = ?",
+                (receipt.memory_id,),
+            )
+            assert rows[0]["created_at"].startswith("2024-01-01")
+        finally:
+            mem.close()
+
+    def test_retention_decays_with_time_provider_not_timestamp_mutation(
+        self, clock
+    ):
+        from hm_arch import HMArch, MemoryConfig
+        from hm_arch.consolidation import ConsolidationEngine
+
+        store = mem = None
+        try:
+            config = MemoryConfig(db_path=":memory:", replay_sample_ratio=1.0)
+            mem = HMArch(config=config, time_provider=clock)
+            receipt = mem.add("Some episodic event", importance=0.5)
+            clock.advance(days=30)
+            engine = ConsolidationEngine(
+                mem._db,
+                mem._l2,
+                mem._l3,
+                config=config,
+                time_provider=clock,
+            )
+            engine.run_consolidation_cycle()
+            rows = mem._db.query(
+                "SELECT current_retention, created_at FROM memory_index WHERE id = ?",
+                (receipt.memory_id,),
+            )
+            assert rows[0]["created_at"].startswith("2024-01-01")
+            assert float(rows[0]["current_retention"]) < 0.5
+        finally:
+            if mem is not None:
+                mem.close()
+
+    def test_physical_cleanup_never_deletes_before_safety_period(self, clock):
+        from hm_arch import HMArch, MemoryConfig
+        from hm_arch.consolidation import ConsolidationEngine
+
+        mem = None
+        try:
+            config = MemoryConfig(
+                db_path=":memory:",
+                auto_consolidate=False,
+                deletion_safety_period_hours=168,
+                replay_sample_ratio=1.0,
+            )
+            mem = HMArch(config=config, time_provider=clock)
+            receipt = mem.add("Ancient episodic detail", importance=0.5)
+            clock.advance(days=100)
+            engine = ConsolidationEngine(
+                mem._db,
+                mem._l2,
+                mem._l3,
+                config=config,
+                time_provider=clock,
+            )
+            report = engine.run_consolidation_cycle()
+            assert report.marked_deletable >= 1
+
+            rows = mem._db.query(
+                "SELECT status FROM memory_index WHERE id = ?",
+                (receipt.memory_id,),
+            )
+            assert rows[0]["status"] == "deletable"
+
+            clock.advance(hours=24)
+            cleanup = mem._forgetting.run_physical_cleanup()
+            assert cleanup.forgotten_count == 0
+            rows = mem._db.query(
+                "SELECT status FROM memory_index WHERE id = ?",
+                (receipt.memory_id,),
+            )
+            assert rows[0]["status"] == "deletable"
+
+            clock.advance(hours=200)
+            cleanup = mem._forgetting.run_physical_cleanup()
+            assert cleanup.forgotten_count >= 1
+            rows = mem._db.query(
+                "SELECT status FROM memory_index WHERE id = ?",
+                (receipt.memory_id,),
+            )
+            assert rows[0]["status"] == "deleted"
+        finally:
+            if mem is not None:
+                mem.close()
+
+    def test_forgetting_module_exports_lifecycle_types(self):
+        from hm_arch.forgetting import (  # noqa: F401
+            ContextAwareScore,
+            ForgettingController,
+            ManualTimeProvider,
+            SystemTimeProvider,
+            TimeProvider,
+            compute_context_aware_score,
         )
