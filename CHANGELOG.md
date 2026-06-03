@@ -12,7 +12,9 @@ published through GitHub Releases only; HM-Arch is not published to PyPI.
 
 ### Added
 
-- (none)
+- Optional LLM provider protocol with DeepSeek and OpenAI implementations (stdlib HTTP; mocked in tests)
+- Optional embedding providers and `ChromaVectorStore` behind `VectorStoreProtocol`
+- `MemoryConfig.enable_llm_providers`, `vector_backend`, and Chroma persistence settings with local fallback defaults
 
 ## [0.1.0] - 2026-06-02
 

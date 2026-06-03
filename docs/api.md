@@ -409,13 +409,18 @@ Time constants are expressed in hours, matching the PRD formulas.
 | `max_memories_l2` | `'int'` | (default: `100000`)|
 | `max_memories_l3` | `'int'` | (default: `50000`)|
 | `max_skills_l5` | `'int'` | (default: `10000`)|
-| `llm_provider` | `'str'` | (default: `'deepseek'`)|
-| `llm_model` | `'str'` | (default: `'deepseek-v4-flash'`)|
+| `enable_llm_providers` | `'bool'` | (default: `False`)|
+| `provider_fallback_to_local` | `'bool'` | (default: `True`)|
+| `llm_provider` | `'str'` | (default: `'local'`)|
+| `llm_model` | `'Optional[str]'` ||
 | `llm_api_key` | `'Optional[str]'` ||
 | `llm_base_url` | `'Optional[str]'` ||
-| `embedding_provider` | `'str'` | (default: `'deepseek'`)|
-| `embedding_model` | `'str'` | (default: `'deepseek-v4-flash'`)|
-| `embedding_dim` | `'int'` | (default: `1536`)|
+| `embedding_provider` | `'str'` | (default: `'local'`)|
+| `embedding_model` | `'Optional[str]'` ||
+| `embedding_dim` | `'int'` | (default: `384`)|
+| `vector_backend` | `'str'` | (default: `'local'`)|
+| `chroma_persist_directory` | `'Optional[str]'` ||
+| `chroma_collection_prefix` | `'str'` | (default: `'hm_arch'`)|
 | `layer_priorities` | `'dict[str, float]'` | (factory)|
 
 ### Presets
@@ -425,6 +430,61 @@ Time constants are expressed in hours, matching the PRD formulas.
 - `code_agent`
 - `chat_agent`
 - `research_agent`
+
+---
+
+## Optional providers and vector backends (HM-30)
+
+HM-Arch is **offline-first**. Local token-overlap search and pattern-based
+semantic extraction are the defaults. Remote LLM, embedding, and ChromaDB
+backends are opt-in and never required for tests or demos.
+
+### Opt-in switch
+
+| Setting | Default | Effect |
+|---------|---------|--------|
+| `enable_llm_providers` | `False` | When `False`, all provider fields are ignored; local heuristics and `vector_backend='local'` are used. |
+| `provider_fallback_to_local` | `True` | When `True`, missing API keys, missing optional packages, and **runtime** provider HTTP/parsing failures fall back to local implementations. When `False`, those conditions raise actionable errors. |
+
+### LLM providers (`llm_provider`)
+
+| Value | Chat API | Default model when `llm_model` is unset |
+|-------|----------|----------------------------------------|
+| `local` | None (heuristic importance + pattern triples) | — |
+| `openai` | OpenAI-compatible `/chat/completions` | `gpt-4o-mini` |
+| `deepseek` | DeepSeek `/chat/completions` | `deepseek-chat` |
+
+Set `llm_api_key` or `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` (also `HM_ARCH_*` variants).
+Optional `llm_base_url` overrides the provider host.
+
+Provider-backed importance scoring runs in `HMArch.add()` when `enable_llm_providers=True`. Provider-backed semantic extraction runs in `HMArch.consolidate()` via `ProviderSemanticExtractor`.
+
+### Embedding providers (`embedding_provider`)
+
+| Value | Supported | Notes |
+|-------|-----------|-------|
+| `local` | Yes | Deterministic hash embeddings (default). |
+| `openai` | Yes | `/embeddings`; default model `text-embedding-3-small` when unset. |
+| `deepseek` | **No** | DeepSeek's public API does not document embeddings. With fallback enabled, local embeddings are used; otherwise configuration raises. |
+
+`embedding_dim` is enforced for OpenAI embeddings: v3 models send a `dimensions` request field; every returned vector must match `embedding_dim` or the provider falls back locally / raises `ProviderRuntimeError` per `provider_fallback_to_local`.
+
+### Vector backends (`vector_backend`)
+
+| Value | Dependency | Persistence |
+|-------|------------|---------------|
+| `local` | stdlib only | In-process token overlap (default). |
+| `chroma` | `pip install 'hm-arch[chroma]'` | `chroma_persist_directory` or `{db_parent}/chroma`; collections `{chroma_collection_prefix}_l2_episodic` and `{prefix}_l3_semantic`. SQLite remains the source of truth; L2/L3 rebuild vector indexes from SQLite on startup. |
+
+### Protocols (`hm_arch.providers`)
+
+Advanced integrations may use:
+
+- `LLMProviderProtocol` — `score_importance`, `extract_semantic_triples`
+- `EmbeddingProviderProtocol` — `embed`
+- `resolve_llm_provider`, `resolve_embedding_provider`, `create_vector_store`
+
+Failures with fallback disabled raise `ProviderRuntimeError` or `ProviderConfigurationError`.
 
 ---
 
