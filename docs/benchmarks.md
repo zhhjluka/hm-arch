@@ -9,66 +9,83 @@ Source contract: original HM-Arch developer PRD (referenced in `docs/spec.md`) a
 
 ## Two PRD performance tables
 
-The developer PRD defines **two** tables. Benchmarks report both; primary
-**assertions** use the test-benchmark table.
+The developer PRD defines **two** tables. Benchmarks report both in
+`contract_compliance`; **only the test-benchmark table gates acceptance**
+(`report.assertions` and `scripts/run_prd_benchmarks.py` exit code).
 
 ### Test benchmark (acceptance)
 
-| Metric | PRD limit | Conditions |
+| Metric | PRD limit | Comparison |
 |--------|-----------|------------|
-| `add()` p95 | ≤ **50 ms** | Steady state after warmup |
-| `search(top_k=10)` p95 | ≤ **100 ms** | 10,000 active L2 rows |
-| `consolidate()` | ≤ **60 s** | 10,000 L2 rows; default `replay_sample_ratio=0.20` |
-| SQLite storage | **< 500 MB** | 10,000 L2 + 5,000 L3 active triples |
+| `add()` p95 | **50 ms** | observed **<** limit |
+| `search(top_k=10)` p95 @ 10k L2 | **100 ms** | observed **<** limit |
+| `consolidate()` @ 10k L2 | **60 s** | observed **<** limit |
+| SQLite storage (10k L2 + 5k L3) | **500 MB** | observed **<** limit |
+| 7-day L3 semantic accuracy | **80%** | observed **>** limit |
 
-### Week 9 optimization (stretch)
+Boundary values (e.g. exactly 100 ms search p95) **fail** acceptance.
+
+### Week 9 optimization (stretch, report-only)
 
 | Metric | PRD limit | Notes |
 |--------|-----------|--------|
-| `add()` | < **30 ms** | Aspirational post-optimization |
-| `search()` | < **50 ms** | Same 10k L2 scale |
-| `consolidate()` | < **5 s** | Same 10k L2 scale |
+| `add()` p95 | **30 ms** | In `contract_compliance` only |
+| `search()` p95 | **50 ms** | Does not fail the benchmark runner |
+| `consolidate()` | **5 s** | Informational on slower hosts |
 
-Each run records `contract_compliance` in the JSON report with `observed`, `limit`,
-and `pass` for **both** tables. Week 9 rows are stretch goals only — the JSON report
-records pass/fail per metric without substituting limits. MEM-31 acceptance uses the
-test-benchmark table only.
+Each run records `contract_compliance` with `observed`, `limit`, `comparison`, and
+`pass` for both tables. Week 9 misses are printed to stderr but do not affect exit code.
 
-Constants: `benchmarks/prd_targets.py` (`PrdTestBenchmarkTargets`, `PrdWeek9OptimizationTargets`).
+Constants: `benchmarks/prd_targets.py`.
 
 ## Scenario contracts
 
-| Scenario | PRD expectation | Benchmark |
-|----------|-----------------|-----------|
-| 7-day semantic extraction | 50 **conversation** events/day, 1 `consolidate()`/day, day-7 L3 accuracy **> 80%** | `seven_day_semantic` in harness |
-| L4 long-run archive (10k inject) | 10,000 L2 injected; archived ≈ `L2 × (1 − 0.26)` ±5% | `l4_archive_10k_prd` in benchmark suite |
-| L4 long-run archive (30-day sim) | After 30 nightly consolidations; archived ≈ `episodes × 0.74` ±20% | `tests/prd_benchmarks/test_prd_thirty_day_archive.py` (slow, `benchmark` marker) |
-| 30-day retention | L2 ≈ 0.26, L3 ≈ 0.63 at 30 days | `tests/test_simulation_30_day.py` (fast CI) |
+| Scenario | What it validates |
+|----------|-------------------|
+| 7-day semantic | 50 `CONVERSATION` events/day × 7, nightly `consolidate()`, accuracy **> 80%** |
+| L4 uniform 30d @ 10k | Real outcome when all L2 rows are uniformly 30 days old |
+| L4 mixed-age @ 10k | Archive-threshold **capacity** (74% @ 90d / 26% @ 30d by construction) |
+| 30-day agent L4 ratio | Empirical archive fraction after simulated agent loop (±20% vs formula) |
+| 30-day retention curves | L2 ≈ 0.26, L3 ≈ 0.63 | `tests/test_simulation_30_day.py` (fast CI) |
 
-7-day accuracy: expected triples are derived from episode text (unique `agent{day}_{i}`
-subjects so facts do not supersede). Accuracy = matched / expected active L3 triples.
+### PRD L4 archive formula deviation (documented)
 
-L4 archive: 74% of episodes back-dated 90 days (below `l2_archive_threshold`), 26% at
-30 days (~0.26 retention, stay in L2). After one `consolidate()`, archived L4 count must
-fall within ±5% of `10_000 × (1 − 0.26)`.
+The PRD sometimes states archived L4 ≈ `L2 × (1 − 0.26)` after long-run decay.
+That is **internally inconsistent** with uniform 30-day aging:
+
+- Modeled **30-day** L2 retention ≈ **0.26**
+- `l2_archive_threshold` = **0.15**
+- Uniform 30-day-old rows therefore **do not archive** (retention > threshold)
+
+Reported in `l4_prd_retention_archive_deviation` and `l4_archive_10k_uniform_30d`
+(typically **0** archives; formula predicts ~7400).
+
+The **mixed-age** inject preselects 74% at 90 days — a threshold/capacity test, not
+uniform 30-day validation.
+
+The **30-day agent simulation** (`test_prd_thirty_day_archive.py`) archives stale
+code episodes (45+ day back-dates) over nightly consolidation; it measures an
+empirical ratio with ±20% tolerance — not a proof that uniform 30-day rows satisfy
+the formula.
 
 ## Commands
 
-### Default CI / daily development (fast)
+### Default CI (fast)
 
 ```bash
 uv run pytest
 ```
 
-Benchmarks are excluded via `addopts = -m "not benchmark"`.
+Benchmarks excluded via `addopts = -m "not benchmark"`.
 
-### PRD benchmark suite (slow, ~2–3 minutes)
+### PRD benchmark suite (~2–3 minutes)
 
 ```bash
 uv run pytest tests/prd_benchmarks -m benchmark -v
 uv run python scripts/run_prd_benchmarks.py
-uv run python scripts/run_prd_benchmarks.py --output /tmp/prd_benchmark.json
 ```
+
+Week 9 misses print as **informational** stderr; exit code 1 only on acceptance failures.
 
 ### 30-day L4 archive ratio only (slow)
 
@@ -84,31 +101,18 @@ uv run pytest tests/prd_benchmarks -m benchmark -v
 uv run pytest
 ```
 
-## Methodology
-
-1. **Environment** — Python version, `platform.platform()`, processor, UTC timestamp.
-2. **Isolation** — Fresh temp DB + L4 root per scenario; `auto_consolidate=False`.
-3. **Latency** — `time.perf_counter()`; p95 via nearest-rank on sorted samples.
-4. **Add** — 50 warmup + 200 measured adds.
-5. **Search @ 10k** — Seed 10,000 L2, then 100× `search(..., top_k=10)`.
-6. **Consolidate @ 10k** — One cycle, default replay ratio.
-7. **Storage** — `get_stats().storage_size_mb` after 10k L2 + 5k L3 upserts.
-8. **7-day** — 50× `EventType.CONVERSATION` per day × 7, nightly `consolidate()`.
-9. **L4 @ 10k** — Separate DB; mixed-age back-dates; assert archive count band.
-
 ## Example observed results
 
-Cloud Agent VM (2026-06-03, Linux, Python 3.12, local fallback):
+Linux VM (2026-06-03, Python 3.12, local fallback):
 
-| Metric | Observed | Test benchmark | Week 9 | Test pass | Week 9 pass |
-|--------|----------|----------------|--------|-----------|-------------|
-| `add()` p95 | ~3.8 ms | ≤ 50 ms | < 30 ms | yes | yes |
-| `search()` p95 @ 10k | ~73 ms | ≤ 100 ms | < 50 ms | yes | varies* |
-| `consolidate()` @ 10k | ~0.9 s | ≤ 60 s | < 5 s | yes | yes |
-| Storage 10k L2 + 5k L3 | ~8.5 MB | < 500 MB | — | yes | — |
-| 7-day semantic accuracy | 100% | > 80% | — | yes | — |
-| L4 archived @ 10k mix | ~7400 | ≈ 7425 ±5% | — | yes | — |
+| Metric | Observed | Test benchmark | Week 9 (report) |
+|--------|----------|----------------|-----------------|
+| add p95 | ~3.8 ms | < 50 ms ✓ | < 30 ms ✓ |
+| search p95 @ 10k | ~73 ms | < 100 ms ✓ | < 50 ms (varies) |
+| consolidate @ 10k | ~0.9 s | < 60 s ✓ | < 5 s ✓ |
+| storage 10k+5k | ~8.5 MB | < 500 MB ✓ | — |
+| 7-day accuracy | 100% | > 80% ✓ | — |
+| L4 uniform 30d | 0 archived | formula predicts ~7400 (not met) | — |
+| L4 mixed-age | 7400 archived | threshold capacity test | — |
 
-\*Week 9 search passes on some hosts (e.g. macOS arm64 ~59 ms) and may not on others (~73 ms). Re-run locally; stretch goals are reported, not acceptance gates.
-
-Re-run `scripts/run_prd_benchmarks.py` for authoritative numbers on your hardware.
+Re-run `scripts/run_prd_benchmarks.py` on your hardware for authoritative numbers.

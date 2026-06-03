@@ -59,6 +59,10 @@ class BenchmarkReport:
     results: dict[str, Any] = field(default_factory=dict)
     assertions: dict[str, bool] = field(default_factory=dict)
 
+    def acceptance_failures(self) -> list[str]:
+        """Names of acceptance assertions that failed (excludes Week 9 stretch)."""
+        return sorted(name for name, ok in self.assertions.items() if not ok)
+
     def to_json(self) -> str:
         return json.dumps(
             {
@@ -66,6 +70,7 @@ class BenchmarkReport:
                 "targets": self.targets,
                 "results": self.results,
                 "assertions": self.assertions,
+                "acceptance_failures": self.acceptance_failures(),
             },
             indent=2,
             default=str,
@@ -129,8 +134,23 @@ def measure_search_latency_ms(
     }
 
 
-def _contract_row(observed: float, limit: float) -> dict[str, Any]:
-    return {"observed": observed, "limit": limit, "pass": observed <= limit}
+def passes_strict_less(observed: float, limit: float) -> bool:
+    """PRD latency/storage limits use strict ``<`` (boundary fails)."""
+    return observed < limit
+
+
+def passes_strict_greater(observed: float, limit: float) -> bool:
+    """PRD semantic accuracy uses strict ``>`` (boundary fails)."""
+    return observed > limit
+
+
+def _contract_row_strict_less(observed: float, limit: float) -> dict[str, Any]:
+    return {
+        "observed": observed,
+        "limit": limit,
+        "comparison": "observed < limit",
+        "pass": passes_strict_less(observed, limit),
+    }
 
 
 def build_contract_compliance(
@@ -145,17 +165,21 @@ def build_contract_compliance(
     """Report pass/fail against both PRD performance tables."""
     return {
         "test_benchmark": {
-            "add_p95_ms": _contract_row(add_p95_ms, test.add_p95_ms),
-            "search_p95_ms": _contract_row(search_p95_ms, test.search_p95_ms),
-            "consolidate_seconds": _contract_row(
+            "add_p95_ms": _contract_row_strict_less(add_p95_ms, test.add_p95_ms),
+            "search_p95_ms": _contract_row_strict_less(
+                search_p95_ms, test.search_p95_ms
+            ),
+            "consolidate_seconds": _contract_row_strict_less(
                 consolidate_seconds, test.consolidate_max_seconds
             ),
-            "storage_mb": _contract_row(storage_mb, test.storage_max_mb),
+            "storage_mb": _contract_row_strict_less(storage_mb, test.storage_max_mb),
         },
         "week9_optimization": {
-            "add_p95_ms": _contract_row(add_p95_ms, week9.add_p95_ms),
-            "search_p95_ms": _contract_row(search_p95_ms, week9.search_p95_ms),
-            "consolidate_seconds": _contract_row(
+            "add_p95_ms": _contract_row_strict_less(add_p95_ms, week9.add_p95_ms),
+            "search_p95_ms": _contract_row_strict_less(
+                search_p95_ms, week9.search_p95_ms
+            ),
+            "consolidate_seconds": _contract_row_strict_less(
                 consolidate_seconds, week9.consolidate_max_seconds
             ),
         },
@@ -220,13 +244,60 @@ def run_seven_day_semantic_scenario(
     }
 
 
-def run_l4_archive_10k_prd_scenario(
+def run_l4_archive_10k_uniform_30d_scenario(
     memory: HMArch, targets: PrdPerformanceTargets
 ) -> dict[str, Any]:
-    """Inject 10k L2 rows with mixed ages; expect L4 ≈ L2 × (1 − retention₃₀d).
+    """All 10k L2 episodes uniformly back-dated 30 days — reports real archive outcome.
 
-    ~74% of episodes are back-dated beyond archive eligibility; ~26% remain near
-    the 30-day PRD retention reference (~0.26) and stay active in L2.
+    PRD text sometimes claims archived L4 ≈ ``L2 × (1 − 0.26)``, but at 30 days
+    modeled L2 retention (~0.26) remains above ``l2_archive_threshold`` (0.15), so
+    rows should **not** archive yet. This scenario documents that deviation.
+    """
+    l2_total = targets.l2_episode_count
+    cfg = memory._config
+    retention_30d = _l2_retention(30 * 24, cfg)
+    for i in range(l2_total):
+        memory_id = memory.add(
+            f"Uniform 30-day episodic memory {i}",
+            event_type=EventType.CODE,
+            importance=0.5,
+        ).memory_id
+        _set_old_created_at(memory._db, memory_id, days_ago=targets.l4_archive_young_days)
+
+    report = memory.consolidate()
+    archived_rows = int(
+        memory._db.query(
+            "SELECT COUNT(*) AS n FROM memory_index WHERE layer = 4 AND status = 'archived'"
+        )[0]["n"]
+    )
+    active_l2 = int(
+        memory._db.query(
+            "SELECT COUNT(*) AS n FROM memory_index WHERE layer = 2 AND status = 'active'"
+        )[0]["n"]
+    )
+    prd_formula_predicted = l2_total * (1.0 - targets.l2_retention_30d_reference)
+
+    return {
+        "l2_total": l2_total,
+        "days_ago_uniform": targets.l4_archive_young_days,
+        "modeled_l2_retention_at_30d": retention_30d,
+        "l2_archive_threshold": cfg.l2_archive_threshold,
+        "archived_l4_rows": archived_rows,
+        "active_l2_rows": active_l2,
+        "prd_formula_predicted_archived": prd_formula_predicted,
+        "prd_formula_matches_observed": archived_rows == prd_formula_predicted,
+        "retention_above_archive_threshold": retention_30d >= cfg.l2_archive_threshold,
+        "archived_to_l4_report": report.archived_to_l4,
+    }
+
+
+def run_l4_archive_10k_mixed_age_scenario(
+    memory: HMArch, targets: PrdPerformanceTargets
+) -> dict[str, Any]:
+    """Archive-threshold capacity test with a constructed 74%/26% age mix.
+
+    This does **not** validate the PRD ``L2 × (1 − 0.26)`` formula; it preselects
+    ~74% of rows at 90 days (below threshold) and ~26% at 30 days (above threshold).
     """
     l2_total = targets.l2_episode_count
     old_count = int(round(l2_total * targets.l4_archive_old_fraction))
@@ -258,34 +329,50 @@ def run_l4_archive_10k_prd_scenario(
             "SELECT COUNT(*) AS n FROM memory_index WHERE layer = 2 AND status = 'active'"
         )[0]["n"]
     )
-    expected_archived = l2_total * (1.0 - targets.l2_retention_30d_reference)
-    tolerance = max(1.0, expected_archived * targets.l4_archive_fraction_tolerance)
-    low = expected_archived - tolerance
-    high = expected_archived + tolerance
+    young_count = l2_total - old_count
 
     return {
         "l2_total": l2_total,
         "old_episode_count": old_count,
-        "young_episode_count": l2_total - old_count,
+        "young_episode_count": young_count,
         "archived_l4_rows": archived_rows,
         "active_l2_rows": active_l2,
-        "expected_archived_approx": expected_archived,
-        "tolerance": tolerance,
-        "expected_range": [low, high],
         "archived_to_l4_report": report.archived_to_l4,
         "archive_storage_mb": memory.get_stats().archive_storage_mb,
-        "within_expected_range": low <= archived_rows <= high,
+        "old_cohort_fully_archived": archived_rows == old_count,
+        "young_cohort_remains_active": active_l2 == young_count,
+    }
+
+
+def l4_prd_retention_archive_deviation_note(
+    targets: PrdPerformanceTargets, cfg: MemoryConfig | None = None
+) -> dict[str, Any]:
+    """Document PRD inconsistency between 30-day retention and archive-count formula."""
+    cfg = cfg or MemoryConfig()
+    retention_30d = _l2_retention(30 * 24, cfg)
+    return {
+        "summary": (
+            "Uniform 30-day L2 retention (~0.26) stays above l2_archive_threshold "
+            "(0.15), so episodes should not archive yet; the PRD formula "
+            "L2×(1−0.26) is not satisfied without an artificial age mix."
+        ),
+        "l2_retention_30d_reference": targets.l2_retention_30d_reference,
+        "modeled_l2_retention_at_30d": retention_30d,
+        "l2_archive_threshold": cfg.l2_archive_threshold,
+        "prd_formula_predicted_at_10k": targets.l2_episode_count
+        * (1.0 - targets.l2_retention_30d_reference),
     }
 
 
 def run_thirty_day_l4_archive_ratio_scenario(
     memory: HMArch, targets: PrdPerformanceTargets
 ) -> dict[str, Any]:
-    """30-day coding-agent loop; archived L4 ≈ L2_episode_total × (1 − 0.26).
+    """30-day agent loop; report archived L4 vs PRD reference fraction (1 − 0.26).
 
-    Mirrors ``tests/test_simulation_30_day.py`` episode mix and nightly
-    ``consolidate()`` cadence. Uses a wider relative tolerance than the
-    deterministic 10k mixed-age inject (see ``thirty_day_l4_archive_tolerance_relative``).
+    Mirrors ``tests/test_simulation_30_day.py`` (mixed back-dates, nightly
+    ``consolidate()``). Compares observed archives to ``L2_total × (1 − 0.26)`` with
+    ``thirty_day_l4_archive_tolerance_relative`` — empirical only; see
+    ``l4_prd_retention_archive_deviation`` for uniform 30-day inconsistency.
     """
     preference_switch_day = 15
     for day in range(30):
@@ -397,10 +484,9 @@ def run_prd_benchmark_suite(
         add_stats = measure_add_latency_ms(add_memory, targets)
         report.results["add_latency"] = add_stats
         add_p95_ms = add_stats["p95_ms"]
-        report.assertions["test_benchmark_add_p95"] = (
-            add_p95_ms <= test_contract.add_p95_ms
+        report.assertions["test_benchmark_add_p95"] = passes_strict_less(
+            add_p95_ms, test_contract.add_p95_ms
         )
-        report.assertions["week9_add_p95"] = add_p95_ms <= week9_contract.add_p95_ms
     finally:
         add_memory.close()
 
@@ -438,17 +524,11 @@ def run_prd_benchmark_suite(
         }
         search_p95_ms = search_stats["p95_ms"]
         consolidate_seconds = consolidate_wall
-        report.assertions["test_benchmark_search_p95"] = (
-            search_p95_ms <= test_contract.search_p95_ms
+        report.assertions["test_benchmark_search_p95"] = passes_strict_less(
+            search_p95_ms, test_contract.search_p95_ms
         )
-        report.assertions["test_benchmark_consolidate_seconds"] = (
-            consolidate_seconds <= test_contract.consolidate_max_seconds
-        )
-        report.assertions["week9_search_p95"] = (
-            search_p95_ms <= week9_contract.search_p95_ms
-        )
-        report.assertions["week9_consolidate_seconds"] = (
-            consolidate_seconds <= week9_contract.consolidate_max_seconds
+        report.assertions["test_benchmark_consolidate_seconds"] = passes_strict_less(
+            consolidate_seconds, test_contract.consolidate_max_seconds
         )
         report.assertions["consolidate_extracted_semantics"] = (
             consolidate_report.extracted_semantics >= 1
@@ -504,9 +584,9 @@ def run_prd_benchmark_suite(
     try:
         seven_stats = run_seven_day_semantic_scenario(seven_memory, targets)
         report.results["seven_day_semantic"] = seven_stats
-        report.assertions["seven_day_semantic_accuracy"] = (
-            seven_stats["semantic_accuracy"]
-            >= targets.seven_day_min_semantic_accuracy
+        report.assertions["seven_day_semantic_accuracy"] = passes_strict_greater(
+            seven_stats["semantic_accuracy"],
+            targets.seven_day_min_semantic_accuracy,
         )
         report.assertions["seven_day_consolidation_count"] = (
             seven_stats["consolidation_cycles"] == targets.seven_day_consolidations
@@ -518,20 +598,48 @@ def run_prd_benchmark_suite(
     finally:
         seven_memory.close()
 
-    # --- L4 long-run archive @ 10k (isolated DB, PRD retention mix) ---------
-    l4_root = tmp_root / "l4_archive_10k"
-    l4_root.mkdir(parents=True, exist_ok=True)
-    l4_memory = HMArch(
-        config=_benchmark_config(l4_root, replay_sample_ratio=0.2)
+    report.results["l4_prd_retention_archive_deviation"] = (
+        l4_prd_retention_archive_deviation_note(targets)
+    )
+
+    # --- L4 uniform 30d @ 10k (real PRD retention vs archive threshold) ------
+    l4_uniform_root = tmp_root / "l4_archive_10k_uniform_30d"
+    l4_uniform_root.mkdir(parents=True, exist_ok=True)
+    l4_uniform_memory = HMArch(
+        config=_benchmark_config(l4_uniform_root, replay_sample_ratio=0.2)
     )
     try:
-        l4_10k_stats = run_l4_archive_10k_prd_scenario(l4_memory, targets)
-        report.results["l4_archive_10k_prd"] = l4_10k_stats
-        report.assertions["l4_archive_10k_within_prd_range"] = l4_10k_stats[
-            "within_expected_range"
+        uniform_stats = run_l4_archive_10k_uniform_30d_scenario(
+            l4_uniform_memory, targets
+        )
+        report.results["l4_archive_10k_uniform_30d"] = uniform_stats
+        report.assertions["l4_uniform_30d_no_archive_while_above_threshold"] = (
+            uniform_stats["archived_l4_rows"] == 0
+            and uniform_stats["retention_above_archive_threshold"]
+        )
+        report.assertions["l4_uniform_30d_prd_formula_not_satisfied"] = not (
+            uniform_stats["prd_formula_matches_observed"]
+        )
+    finally:
+        l4_uniform_memory.close()
+
+    # --- L4 mixed-age @ 10k (archive-threshold / capacity behavior only) -----
+    l4_mixed_root = tmp_root / "l4_archive_10k_mixed_age"
+    l4_mixed_root.mkdir(parents=True, exist_ok=True)
+    l4_mixed_memory = HMArch(
+        config=_benchmark_config(l4_mixed_root, replay_sample_ratio=0.2)
+    )
+    try:
+        mixed_stats = run_l4_archive_10k_mixed_age_scenario(l4_mixed_memory, targets)
+        report.results["l4_archive_10k_mixed_age"] = mixed_stats
+        report.assertions["l4_mixed_age_old_cohort_archived"] = mixed_stats[
+            "old_cohort_fully_archived"
+        ]
+        report.assertions["l4_mixed_age_young_cohort_active"] = mixed_stats[
+            "young_cohort_remains_active"
         ]
     finally:
-        l4_memory.close()
+        l4_mixed_memory.close()
 
     # --- Retention reference (theoretical PRD, no simulation wall clock) ----
     cfg = MemoryConfig()

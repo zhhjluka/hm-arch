@@ -2,12 +2,12 @@
 
 The original HM-Arch developer PRD defines **two** performance tables:
 
-1. **Test benchmark** (acceptance): add p95 ≤50ms, search p95 ≤100ms @10k L2,
-   consolidate ≤60s @10k L2, storage <500MB for 10k L2 + 5k L3.
-2. **Week 9 optimization** (stretch): add <30ms, search <50ms, consolidate <5s.
+1. **Test benchmark** (acceptance): add/search p95 and consolidate use strict
+   ``<`` limits; storage ``< 500`` MB; 7-day semantic accuracy ``> 80%``.
+2. **Week 9 optimization** (stretch): add/search/consolidate ``<`` limits —
+   reported in ``contract_compliance`` only, not runner acceptance gates.
 
-Both are reported in benchmark output; assertions use the test-benchmark table
-unless noted otherwise. See ``docs/benchmarks.md``.
+See ``docs/benchmarks.md``.
 """
 
 from __future__ import annotations

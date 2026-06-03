@@ -60,11 +60,23 @@ def main() -> int:
     else:
         print(payload)
 
-    failed = [name for name, ok in report.assertions.items() if not ok]
+    failed = report.acceptance_failures()
+    week9 = report.results.get("contract_compliance", {}).get(
+        "week9_optimization", {}
+    )
+    week9_misses = [
+        name for name, row in week9.items() if not row.get("pass", True)
+    ]
+    if week9_misses:
+        print(
+            "\nWeek 9 stretch goals not met (informational only):",
+            ", ".join(week9_misses),
+            file=sys.stderr,
+        )
     if failed:
-        print("\nFAILED assertions:", ", ".join(failed), file=sys.stderr)
+        print("\nFAILED acceptance assertions:", ", ".join(failed), file=sys.stderr)
         return 1
-    print("\nAll PRD benchmark assertions passed.", file=sys.stderr)
+    print("\nAll PRD acceptance assertions passed.", file=sys.stderr)
     if tmp_ctx is not None:
         tmp_ctx.cleanup()
     return 0
