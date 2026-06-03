@@ -5,11 +5,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from hm_arch.providers.deepseek import (
-    DeepSeekEmbeddingProvider,
-    DeepSeekLLMProvider,
-    deepseek_api_key_from_env,
-)
+from hm_arch.providers.deepseek import DeepSeekLLMProvider, deepseek_api_key_from_env
 from hm_arch.providers.local import LocalEmbeddingProvider, LocalLLMProvider
 from hm_arch.providers.openai import (
     OpenAIEmbeddingProvider,
@@ -28,6 +24,11 @@ _VALID_LLM = frozenset({"local", "deepseek", "openai"})
 _VALID_EMBEDDING = frozenset({"local", "deepseek", "openai"})
 _VALID_VECTOR = frozenset({"local", "chroma"})
 
+# Provider-specific defaults (used when config model fields are unset).
+_OPENAI_DEFAULT_LLM = "gpt-4o-mini"
+_DEEPSEEK_DEFAULT_LLM = "deepseek-chat"
+_OPENAI_DEFAULT_EMBEDDING = "text-embedding-3-small"
+
 
 class ProviderConfigurationError(ValueError):
     """Raised when provider settings are inconsistent and fallback is disabled."""
@@ -43,6 +44,32 @@ def resolve_api_key(config: MemoryConfig, provider: str) -> str | None:
         return deepseek_api_key_from_env()
     env_key = os.environ.get("HM_ARCH_API_KEY")
     return env_key
+
+
+def resolve_llm_model(config: MemoryConfig, provider: str) -> str:
+    """Return the chat model name for *provider*, using provider-specific defaults."""
+    explicit = (config.llm_model or "").strip()
+    if explicit:
+        return explicit
+    if provider == "openai":
+        return _OPENAI_DEFAULT_LLM
+    if provider == "deepseek":
+        return _DEEPSEEK_DEFAULT_LLM
+    raise ProviderConfigurationError(
+        f"Cannot resolve llm_model for provider {provider!r}"
+    )
+
+
+def resolve_embedding_model(config: MemoryConfig, provider: str) -> str:
+    """Return the embedding model name for *provider*."""
+    explicit = (config.embedding_model or "").strip()
+    if explicit:
+        return explicit
+    if provider == "openai":
+        return _OPENAI_DEFAULT_EMBEDDING
+    raise ProviderConfigurationError(
+        f"Cannot resolve embedding_model for provider {provider!r}"
+    )
 
 
 def resolve_llm_provider(config: MemoryConfig) -> LLMProviderProtocol:
@@ -71,17 +98,21 @@ def resolve_llm_provider(config: MemoryConfig) -> LLMProviderProtocol:
             "or set provider_fallback_to_local=True to use local heuristics."
         )
 
+    model = resolve_llm_model(config, provider)
     base_url = config.llm_base_url
+    fallback = config.provider_fallback_to_local
     if provider == "openai":
         return OpenAILLMProvider(
             api_key=api_key,
-            model=config.llm_model,
+            model=model,
             base_url=base_url,
+            fallback_to_local=fallback,
         )
     return DeepSeekLLMProvider(
         api_key=api_key,
-        model=config.llm_model,
+        model=model,
         base_url=base_url,
+        fallback_to_local=fallback,
     )
 
 
@@ -97,6 +128,16 @@ def resolve_embedding_provider(config: MemoryConfig) -> EmbeddingProviderProtoco
     if provider == "local" or not config.enable_llm_providers:
         return LocalEmbeddingProvider(dimension=config.embedding_dim)
 
+    if provider == "deepseek":
+        if config.provider_fallback_to_local:
+            return LocalEmbeddingProvider(dimension=config.embedding_dim)
+        raise ProviderConfigurationError(
+            "embedding_provider='deepseek' is not supported: DeepSeek's public API "
+            "documents chat completions only (no embeddings endpoint). Use "
+            "embedding_provider='openai' or 'local', or set "
+            "provider_fallback_to_local=True for local hash embeddings."
+        )
+
     api_key = resolve_api_key(config, provider)
     if not api_key:
         if config.provider_fallback_to_local:
@@ -107,19 +148,13 @@ def resolve_embedding_provider(config: MemoryConfig) -> EmbeddingProviderProtoco
             "provider_fallback_to_local=True."
         )
 
-    base_url = config.llm_base_url
-    if provider == "openai":
-        return OpenAIEmbeddingProvider(
-            api_key=api_key,
-            model=config.embedding_model,
-            dimension=config.embedding_dim,
-            base_url=base_url,
-        )
-    return DeepSeekEmbeddingProvider(
+    model = resolve_embedding_model(config, provider)
+    return OpenAIEmbeddingProvider(
         api_key=api_key,
-        model=config.embedding_model,
+        model=model,
         dimension=config.embedding_dim,
-        base_url=base_url,
+        base_url=config.llm_base_url,
+        fallback_to_local=config.provider_fallback_to_local,
     )
 
 

@@ -253,5 +253,10 @@ def test_generate_api_docs_includes_lifecycle_contract(tmp_path: Path) -> None:
         "forgetting_score_threshold",
         "ManualTimeProvider",
         "ForgettingController",
+        "enable_llm_providers",
+        "provider_fallback_to_local",
+        "LLMProviderProtocol",
+        "ChromaDB",
+        "does not document embeddings",
     ):
         assert needle in api_md, f"missing {needle!r} in docs/api.md"

@@ -7,6 +7,7 @@ import os
 import re
 from typing import Any
 
+from hm_arch.providers.errors import ProviderRuntimeError
 from hm_arch.providers.http_common import (
     ProviderHTTPError,
     chat_completion_text,
@@ -32,6 +33,7 @@ class OpenAILLMProvider:
         model: str,
         base_url: str | None = None,
         timeout: float = 30.0,
+        fallback_to_local: bool = True,
     ) -> None:
         if not api_key:
             raise ValueError("OpenAI provider requires an API key")
@@ -39,6 +41,7 @@ class OpenAILLMProvider:
         self._model = model
         self._base_url = (base_url or _DEFAULT_BASE).rstrip("/")
         self._timeout = timeout
+        self._fallback_to_local = fallback_to_local
         self._fallback = LocalLLMProvider()
 
     def score_importance(
@@ -60,10 +63,16 @@ class OpenAILLMProvider:
             text = self._chat(prompt, system="You output only a number between 0 and 1.")
             value = float(text.split()[0])
             return max(0.0, min(1.0, value))
-        except (ProviderHTTPError, ValueError):
-            return self._fallback.score_importance(
-                content, event_type=event_type, metadata=metadata
-            )
+        except (ProviderHTTPError, ValueError) as exc:
+            if self._fallback_to_local:
+                return self._fallback.score_importance(
+                    content, event_type=event_type, metadata=metadata
+                )
+            raise ProviderRuntimeError(
+                "OpenAI LLM provider failed during importance scoring. "
+                "Set provider_fallback_to_local=True to use local heuristics, "
+                f"or fix the API error: {exc}"
+            ) from exc
 
     def extract_semantic_triples(self, content: str) -> list[tuple[str, str, str]]:
         prompt = (
@@ -80,9 +89,20 @@ class OpenAILLMProvider:
             triples = _parse_triple_lines(text)
             if triples:
                 return triples
-        except ProviderHTTPError:
-            pass
-        return self._fallback.extract_semantic_triples(content)
+            if self._fallback_to_local:
+                return self._fallback.extract_semantic_triples(content)
+            raise ProviderRuntimeError(
+                "OpenAI LLM provider returned no parseable semantic triples. "
+                "Set provider_fallback_to_local=True to use the pattern extractor."
+            )
+        except ProviderHTTPError as exc:
+            if self._fallback_to_local:
+                return self._fallback.extract_semantic_triples(content)
+            raise ProviderRuntimeError(
+                "OpenAI LLM provider failed during semantic extraction. "
+                "Set provider_fallback_to_local=True to use the pattern extractor, "
+                f"or fix the API error: {exc}"
+            ) from exc
 
     def _chat(self, user_prompt: str, *, system: str) -> str:
         url = f"{self._base_url}/chat/completions"
@@ -113,6 +133,7 @@ class OpenAIEmbeddingProvider:
         dimension: int,
         base_url: str | None = None,
         timeout: float = 30.0,
+        fallback_to_local: bool = True,
     ) -> None:
         if not api_key:
             raise ValueError("OpenAI embedding provider requires an API key")
@@ -121,6 +142,10 @@ class OpenAIEmbeddingProvider:
         self._dimension = dimension
         self._base_url = (base_url or _DEFAULT_BASE).rstrip("/")
         self._timeout = timeout
+        self._fallback_to_local = fallback_to_local
+        from hm_arch.providers.local import LocalEmbeddingProvider
+
+        self._local_fallback = LocalEmbeddingProvider(dimension=dimension)
 
     @property
     def dimension(self) -> int:
@@ -131,12 +156,23 @@ class OpenAIEmbeddingProvider:
             return []
         url = f"{self._base_url}/embeddings"
         payload = {"model": self._model, "input": texts}
-        response = post_json(
-            url, payload, api_key=self._api_key, timeout=self._timeout
-        )
+        try:
+            response = post_json(
+                url, payload, api_key=self._api_key, timeout=self._timeout
+            )
+        except ProviderHTTPError as exc:
+            if self._fallback_to_local:
+                return self._local_fallback.embed(texts)
+            raise ProviderRuntimeError(
+                "OpenAI embedding provider failed. "
+                "Set provider_fallback_to_local=True to use local hash embeddings, "
+                f"or fix the API error: {exc}"
+            ) from exc
         data = response.get("data")
         if not isinstance(data, list):
-            raise ProviderHTTPError("Unexpected embeddings response shape")
+            if self._fallback_to_local:
+                return self._local_fallback.embed(texts)
+            raise ProviderRuntimeError("Unexpected OpenAI embeddings response shape.")
         vectors = [item["embedding"] for item in sorted(data, key=lambda x: x["index"])]
         return vectors
 

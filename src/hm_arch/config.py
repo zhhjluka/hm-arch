@@ -121,16 +121,16 @@ class MemoryConfig:
     """Fall back to local heuristics when API keys or optional deps are missing."""
     llm_provider: str = "local"
     """LLM provider identifier: ``"local"``, ``"deepseek"``, or ``"openai"``."""
-    llm_model: str = "deepseek-chat"
-    """Model name used for importance scoring and semantic extraction."""
+    llm_model: Optional[str] = None
+    """Chat model name. ``None`` selects a provider-specific default when opted in."""
     llm_api_key: Optional[str] = None
     """Optional API key. ``None`` means provider code should read environment variables."""
     llm_base_url: Optional[str] = None
     """Optional provider base URL override."""
     embedding_provider: str = "local"
-    """Embedding provider identifier: ``"local"``, ``"deepseek"``, or ``"openai"``."""
-    embedding_model: str = "text-embedding-3-small"
-    """Model name for embedding generation."""
+    """Embedding provider: ``"local"`` or ``"openai"``. ``"deepseek"`` is unsupported."""
+    embedding_model: Optional[str] = None
+    """Embedding model name. ``None`` uses an OpenAI default when opted in."""
     embedding_dim: int = 384
     """Embedding dimensionality expected by the configured provider."""
     vector_backend: str = "local"

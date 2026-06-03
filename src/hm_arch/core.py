@@ -686,7 +686,10 @@ class HMArch:
         consolidation_config = self._consolidation_config()
         if self._config.enable_llm_providers:
             extractor: SemanticExtractor | ProviderSemanticExtractor = (
-                ProviderSemanticExtractor(self._llm)
+                ProviderSemanticExtractor(
+                    self._llm,
+                    fallback_to_local=self._config.provider_fallback_to_local,
+                )
             )
         else:
             extractor = SemanticExtractor()
