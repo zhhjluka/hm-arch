@@ -271,7 +271,9 @@ def build_markdown() -> str:
         "control bounds and retrieval reinforcement.",
         "",
         "Retention scales as ``R(t) = min(1.0, R_layer(t) * S)``. "
-        "Each successful retrieval increments ``successful_retrievals`` and recomputes ``S``.",
+        "At encode, ``current_retention = min(1.0, S)`` while ``initial_strength`` keeps the full PRD "
+        "multiplier. Each successful retrieval increments ``successful_retrievals`` and recomputes ``S`` "
+        "(at most once per underlying memory per search).",
         "",
         "Exported helpers include ``compute_initial_strength``, "
         "``apply_retrieval_reinforcement``, ``StrengthFactors``, and modifier factor functions.",

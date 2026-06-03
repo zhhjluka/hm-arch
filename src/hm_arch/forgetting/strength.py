@@ -255,6 +255,15 @@ def compute_strength_from_factors(
     )
 
 
+def encode_current_retention(initial_strength: float) -> float:
+    """Retention probability stored at encode time.
+
+    PRD ``initial_strength`` may exceed ``1.0`` as a decay multiplier; stored
+    ``current_retention`` stays in ``[0, 1]`` for search and forgetting math.
+    """
+    return min(1.0, max(0.0, initial_strength))
+
+
 def apply_strength_to_retention(
     layer_retention: float,
     initial_strength: float,

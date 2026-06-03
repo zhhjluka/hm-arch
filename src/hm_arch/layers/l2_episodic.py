@@ -19,8 +19,8 @@ Design notes
   it is not a purely in-memory layer and has a different construction contract
   (requires a live :class:`~hm_arch.storage.sqlite.SQLiteStore`).
 * The ``encode`` / ``retrieve`` naming follows the PRD vocabulary for L2.
-* Retention math is deliberately kept trivial (initial strength = 1.0, no
-  decay applied here) — forgetting will be wired in by a later milestone.
+* Encode stores PRD ``initial_strength`` (may exceed ``1.0``) and caps
+  ``current_retention`` at ``1.0``; layer decay runs during consolidation.
 * ``EpisodicItem`` carries the retention metadata needed by the HMArch facade
   search orchestrator in later issues.
 """
@@ -33,6 +33,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from ..forgetting.strength import encode_current_retention
 from ..forgetting.time import SystemTimeProvider, TimeProvider
 from ..storage.sqlite import SQLiteStore
 from ..storage.vector import LocalVectorStore, VectorStoreProtocol
@@ -118,8 +119,9 @@ class L2EpisodicBuffer:
         Importance score applied when the caller does not supply one.
         Must be in ``[0, 1]``.  Defaults to ``0.5``.
     default_initial_strength:
-        Initial retention/strength written to ``memory_index`` for new
-        episodes.  Must be in ``[0, 1]``.  Defaults to ``1.0``.
+        PRD strength multiplier written to ``memory_index.initial_strength``
+        for new episodes when the caller does not override it.  Defaults to
+        ``1.0``.  ``current_retention`` is always ``min(1.0, initial_strength)``.
 
     Examples
     --------
@@ -195,8 +197,9 @@ class L2EpisodicBuffer:
         emotion_score:
             Optional emotional valence stored in the ``episodes`` row.
         initial_strength:
-            Override for encoded strength/retention. Must be in ``[0, 1]``.
-            When omitted, ``default_initial_strength`` is used.
+            PRD strength multiplier for decay (may exceed ``1.0`` when supplied
+            by the facade).  When omitted, ``default_initial_strength`` is used.
+            ``current_retention`` is stored as ``min(1.0, initial_strength)``.
         context_window:
             Optional free-text snapshot of the surrounding context.
 
@@ -224,6 +227,7 @@ class L2EpisodicBuffer:
         )
         meta_str = json.dumps(dict(metadata) if metadata is not None else {})
         content_hash = hashlib.sha256(content.encode()).hexdigest()
+        retention = encode_current_retention(strength)
 
         # 1. Persist to memory_index
         self._db.execute(
@@ -241,7 +245,7 @@ class L2EpisodicBuffer:
                 now_str,
                 imp,
                 strength,
-                strength,
+                retention,
                 "active",
                 "[]",
                 meta_str,

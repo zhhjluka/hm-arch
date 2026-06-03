@@ -633,6 +633,7 @@ class HMArch:
         ]
 
         final_results = filtered[:effective_top_k]
+        reinforce_targets: dict[str, float] = {}
         for item in final_results:
             self._l6.track_access(item.memory_id, item.layer)
             reinforce_id = item.memory_id
@@ -641,7 +642,10 @@ class HMArch:
                 if isinstance(linked, str) and linked:
                     reinforce_id = linked
             if item.layer in (2, 3) or reinforce_id != item.memory_id:
-                self._reinforce_after_retrieval(reinforce_id, item.relevance)
+                prev = reinforce_targets.get(reinforce_id, 0.0)
+                reinforce_targets[reinforce_id] = max(prev, item.relevance)
+        for memory_id, relevance in reinforce_targets.items():
+            self._reinforce_after_retrieval(memory_id, relevance)
 
         elapsed_ms = (time.monotonic() - t0) * 1000
         total_scanned = sum(source_breakdown.values())

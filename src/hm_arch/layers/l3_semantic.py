@@ -57,6 +57,7 @@ from ..forgetting.strength import (
     apply_conflict_superseded_penalty,
     apply_consistent_strength_boost,
     compute_initial_strength,
+    encode_current_retention,
     merge_metadata_with_strength,
     score_local_importance,
     strength_bounds,
@@ -356,6 +357,7 @@ class L3SemanticMemory:
                 factors,
             )
         )
+        current_retention = encode_current_retention(initial_strength)
 
         self._db.execute(
             """
@@ -372,7 +374,7 @@ class L3SemanticMemory:
                 now_str,
                 effective_importance,
                 initial_strength,
-                initial_strength,
+                current_retention,
                 "active",
                 "[]",
                 meta_str,

@@ -148,6 +148,55 @@ class TestFacadeStrength:
         finally:
             mem.close()
 
+    def test_search_reinforces_linked_l2_at_most_once(self, clock):
+        mem = HMArch(
+            config=MemoryConfig(
+                db_path=":memory:",
+                auto_consolidate=False,
+                retrieval_relevance_threshold=0.1,
+            ),
+            time_provider=clock,
+        )
+        try:
+            receipt = mem.add("User prefers Python")
+            mem.search("User prefers Python", top_k=10)
+            meta = json.loads(
+                mem._db.query(
+                    "SELECT metadata FROM memory_index WHERE id = ?",
+                    (receipt.memory_id,),
+                )[0]["metadata"]
+            )
+            block = meta["hm_arch_strength"]
+            assert block["successful_retrievals"] == 1
+        finally:
+            mem.close()
+
+    def test_high_strength_caps_current_retention_at_encode(self, clock):
+        mem = HMArch(
+            config=MemoryConfig(db_path=":memory:"),
+            time_provider=clock,
+        )
+        try:
+            receipt = mem.add(
+                "CRITICAL production outage",
+                event_type=EventType.ERROR,
+                importance=1.0,
+            )
+            row = mem._db.query(
+                """
+                SELECT initial_strength, current_retention
+                FROM memory_index WHERE id = ?
+                """,
+                (receipt.memory_id,),
+            )[0]
+            strength = float(row["initial_strength"])
+            retention = float(row["current_retention"])
+            assert strength > 1.0
+            assert retention <= 1.0
+            assert retention == pytest.approx(min(1.0, strength))
+        finally:
+            mem.close()
+
     def test_repeated_search_strengthens_default_memory(self, clock):
         mem = HMArch(
             config=MemoryConfig(
@@ -206,6 +255,26 @@ class TestFacadeStrength:
 
 
 class TestSemanticConsistencyStrength:
+    def test_l3_encode_caps_current_retention(self):
+        db = SQLiteStore(":memory:").connect()
+        db.initialize_schema()
+        cfg = MemoryConfig(db_path=":memory:", strength_max=10.0)
+        l3 = L3SemanticMemory(db, config=cfg)
+        mid = l3.upsert("user", "prefers", "Python", importance=1.0)
+        row = db.query(
+            """
+            SELECT initial_strength, current_retention
+            FROM memory_index WHERE id = ?
+            """,
+            (mid,),
+        )[0]
+        strength = float(row["initial_strength"])
+        retention = float(row["current_retention"])
+        assert strength > 1.0
+        assert retention <= 1.0
+        assert retention == pytest.approx(min(1.0, strength))
+        db.close()
+
     def test_consistent_reupsert_boosts_strength(self):
         config = MemoryConfig(strength_max=10.0)
         db = SQLiteStore(":memory:").connect()
