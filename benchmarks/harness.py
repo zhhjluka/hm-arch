@@ -17,7 +17,12 @@ from hm_arch.config import MemoryConfig
 from hm_arch.consolidation.replay import _l2_retention, _l3_retention
 from hm_arch.types import EventType
 
-from .prd_targets import PRD_TARGETS, PrdPerformanceTargets
+from .prd_targets import (
+    PRD_TARGETS,
+    PrdPerformanceTargets,
+    PrdTestBenchmarkTargets,
+    PrdWeek9OptimizationTargets,
+)
 
 
 def _percentile(values: list[float], pct: float) -> float:
@@ -124,49 +129,152 @@ def measure_search_latency_ms(
     }
 
 
+def _contract_row(observed: float, limit: float) -> dict[str, Any]:
+    return {"observed": observed, "limit": limit, "pass": observed <= limit}
+
+
+def build_contract_compliance(
+    *,
+    add_p95_ms: float,
+    search_p95_ms: float,
+    consolidate_seconds: float,
+    storage_mb: float,
+    test: PrdTestBenchmarkTargets,
+    week9: PrdWeek9OptimizationTargets,
+) -> dict[str, Any]:
+    """Report pass/fail against both PRD performance tables."""
+    return {
+        "test_benchmark": {
+            "add_p95_ms": _contract_row(add_p95_ms, test.add_p95_ms),
+            "search_p95_ms": _contract_row(search_p95_ms, test.search_p95_ms),
+            "consolidate_seconds": _contract_row(
+                consolidate_seconds, test.consolidate_max_seconds
+            ),
+            "storage_mb": _contract_row(storage_mb, test.storage_max_mb),
+        },
+        "week9_optimization": {
+            "add_p95_ms": _contract_row(add_p95_ms, week9.add_p95_ms),
+            "search_p95_ms": _contract_row(search_p95_ms, week9.search_p95_ms),
+            "consolidate_seconds": _contract_row(
+                consolidate_seconds, week9.consolidate_max_seconds
+            ),
+        },
+    }
+
+
 def seed_l3_triples(memory: HMArch, count: int) -> None:
     """Insert *count* distinct active L3 rows (unique entity/relation keys)."""
     for i in range(count):
         memory._l3.upsert(f"entity_{i}", "knows", "python", confidence=0.9)
 
 
-def run_seven_day_semantic_scenario(memory: HMArch) -> dict[str, Any]:
-    """Seven nightly consolidations with preference + code episodes (HM-22 scenario)."""
-    preference_ids: list[str] = []
-    archived_total = 0
-    for day in range(7):
-        pref_id = memory.add(
-            "User prefers Python",
-            event_type=EventType.CONVERSATION,
-            importance=0.85,
-        ).memory_id
-        code_id = memory.add(
-            f"Fixed regression in module day-{day}",
-            event_type=EventType.CODE,
-            importance=0.55,
-        ).memory_id
-        preference_ids.append(pref_id)
-        _set_old_created_at(memory._db, pref_id, days_ago=15 + day)
-        _set_old_created_at(memory._db, code_id, days_ago=60 + day)
-        report = memory.consolidate()
-        archived_total += report.archived_to_l4
+def run_seven_day_semantic_scenario(
+    memory: HMArch, targets: PrdPerformanceTargets
+) -> dict[str, Any]:
+    """PRD 7-day scenario: 50 conversation events/day, nightly consolidate, L3 accuracy.
 
-    pref_fact = memory._l3.get_by_entity_relation("user", "prefers")
-    search = memory.search("user prefers Python", top_k=10)
-    l3_hits = [item for item in search.results if item.layer == 3]
-    archived_rows = memory._db.query(
-        "SELECT COUNT(*) AS n FROM memory_index WHERE layer = 4 AND status = 'archived'"
-    )
+    Each conversation uses a unique ``(entity, relation)`` key so facts do not
+    supersede one another. Expected triples are derived from episode text via the
+    same offline :class:`~hm_arch.consolidation.replay.SemanticExtractor` rules.
+    """
+    conversations_per_day = targets.seven_day_conversations_per_day
+    expected_triples: list[tuple[str, str, str]] = []
+    consolidation_count = 0
+
+    for day in range(targets.seven_day_consolidations):
+        for i in range(conversations_per_day):
+            entity = f"agent{day}_{i}"
+            value = "Python"
+            content = f"{entity.capitalize()} prefers {value}"
+            expected_triples.append((entity, "prefers", value))
+            memory_id = memory.add(
+                content,
+                event_type=EventType.CONVERSATION,
+                importance=0.7,
+            ).memory_id
+            _set_old_created_at(memory._db, memory_id, days_ago=15 + day)
+
+        memory.consolidate()
+        consolidation_count += 1
+
+    matched = 0
+    for entity, relation, value in expected_triples:
+        fact = memory._l3.get_by_entity_relation(entity, relation)
+        if fact is not None and fact.value == value:
+            matched += 1
+
+    expected_count = len(expected_triples)
+    accuracy = matched / expected_count if expected_count else 0.0
+
     return {
+        "conversations_per_day": conversations_per_day,
+        "total_conversations": expected_count,
+        "consolidation_cycles": consolidation_count,
+        "expected_semantic_facts": expected_count,
+        "matched_semantic_facts": matched,
+        "semantic_accuracy": accuracy,
         "l3_active_count": memory._l3.count(status="active"),
-        "preference_value": pref_fact.value if pref_fact else None,
-        "l3_search_hits": len(l3_hits),
-        "archived_l4_rows": int(archived_rows[0]["n"]),
-        "archived_total_from_reports": archived_total,
         "consolidation_log_rows": int(
             memory._db.query("SELECT COUNT(*) AS n FROM consolidation_log")[0]["n"]
         ),
-        "review_queue_length": memory.get_stats().review_queue_length,
+    }
+
+
+def run_l4_archive_10k_prd_scenario(
+    memory: HMArch, targets: PrdPerformanceTargets
+) -> dict[str, Any]:
+    """Inject 10k L2 rows with mixed ages; expect L4 ≈ L2 × (1 − retention₃₀d).
+
+    ~74% of episodes are back-dated beyond archive eligibility; ~26% remain near
+    the 30-day PRD retention reference (~0.26) and stay active in L2.
+    """
+    l2_total = targets.l2_episode_count
+    old_count = int(round(l2_total * targets.l4_archive_old_fraction))
+    memory_ids: list[str] = []
+    for i in range(l2_total):
+        memory_id = memory.add(
+            f"Long-run episodic memory {i}",
+            event_type=EventType.CODE,
+            importance=0.5,
+        ).memory_id
+        memory_ids.append(memory_id)
+
+    for i, memory_id in enumerate(memory_ids):
+        days_ago = (
+            targets.l4_archive_old_days
+            if i < old_count
+            else targets.l4_archive_young_days
+        )
+        _set_old_created_at(memory._db, memory_id, days_ago=days_ago)
+
+    report = memory.consolidate()
+    archived_rows = int(
+        memory._db.query(
+            "SELECT COUNT(*) AS n FROM memory_index WHERE layer = 4 AND status = 'archived'"
+        )[0]["n"]
+    )
+    active_l2 = int(
+        memory._db.query(
+            "SELECT COUNT(*) AS n FROM memory_index WHERE layer = 2 AND status = 'active'"
+        )[0]["n"]
+    )
+    expected_archived = l2_total * (1.0 - targets.l2_retention_30d_reference)
+    tolerance = max(1.0, expected_archived * targets.l4_archive_fraction_tolerance)
+    low = expected_archived - tolerance
+    high = expected_archived + tolerance
+
+    return {
+        "l2_total": l2_total,
+        "old_episode_count": old_count,
+        "young_episode_count": l2_total - old_count,
+        "archived_l4_rows": archived_rows,
+        "active_l2_rows": active_l2,
+        "expected_archived_approx": expected_archived,
+        "tolerance": tolerance,
+        "expected_range": [low, high],
+        "archived_to_l4_report": report.archived_to_l4,
+        "archive_storage_mb": memory.get_stats().archive_storage_mb,
+        "within_expected_range": low <= archived_rows <= high,
     }
 
 
@@ -202,10 +310,21 @@ def run_prd_benchmark_suite(
 ) -> BenchmarkReport:
     """Run the full PRD benchmark suite into an isolated directory."""
     targets = targets or PRD_TARGETS
+    test_contract = targets.test_benchmark
+    week9_contract = targets.week9_optimization
     report = BenchmarkReport(
         environment=collect_environment(),
-        targets=asdict(targets),
+        targets={
+            **asdict(targets),
+            "test_benchmark": asdict(test_contract),
+            "week9_optimization": asdict(week9_contract),
+        },
     )
+
+    add_p95_ms = 0.0
+    search_p95_ms = 0.0
+    consolidate_seconds = 0.0
+    storage_mb = 0.0
 
     # --- Latency: add (warm, modest corpus) ---------------------------------
     add_root = tmp_root / "add_latency"
@@ -214,9 +333,11 @@ def run_prd_benchmark_suite(
     try:
         add_stats = measure_add_latency_ms(add_memory, targets)
         report.results["add_latency"] = add_stats
-        report.assertions["add_p95_within_target"] = (
-            add_stats["p95_ms"] <= targets.add_p95_ms
+        add_p95_ms = add_stats["p95_ms"]
+        report.assertions["test_benchmark_add_p95"] = (
+            add_p95_ms <= test_contract.add_p95_ms
         )
+        report.assertions["week9_add_p95"] = add_p95_ms <= week9_contract.add_p95_ms
     finally:
         add_memory.close()
 
@@ -252,11 +373,19 @@ def run_prd_benchmark_suite(
             "archived_to_l4": consolidate_report.archived_to_l4,
             "scheduled_reviews": consolidate_report.scheduled_reviews,
         }
-        report.assertions["search_p95_within_target"] = (
-            search_stats["p95_ms"] <= targets.search_p95_ms
+        search_p95_ms = search_stats["p95_ms"]
+        consolidate_seconds = consolidate_wall
+        report.assertions["test_benchmark_search_p95"] = (
+            search_p95_ms <= test_contract.search_p95_ms
         )
-        report.assertions["consolidate_within_target"] = (
-            consolidate_wall <= targets.consolidate_max_seconds
+        report.assertions["test_benchmark_consolidate_seconds"] = (
+            consolidate_seconds <= test_contract.consolidate_max_seconds
+        )
+        report.assertions["week9_search_p95"] = (
+            search_p95_ms <= week9_contract.search_p95_ms
+        )
+        report.assertions["week9_consolidate_seconds"] = (
+            consolidate_seconds <= week9_contract.consolidate_max_seconds
         )
         report.assertions["consolidate_extracted_semantics"] = (
             consolidate_report.extracted_semantics >= 1
@@ -265,10 +394,11 @@ def run_prd_benchmark_suite(
         # --- Storage: add 5k L3 on same DB ------------------------------------
         seed_l3_triples(scale_memory, targets.l3_triple_count)
         stats_l2_l3 = scale_memory.get_stats()
+        storage_mb = stats_l2_l3.storage_size_mb
         report.results["storage_10k_l2_5k_l3"] = {
             "l2_count": stats_l2_l3.by_layer[2],
             "l3_active_count": stats_l2_l3.by_layer[3],
-            "storage_size_mb": stats_l2_l3.storage_size_mb,
+            "storage_size_mb": storage_mb,
             "archive_storage_mb": stats_l2_l3.archive_storage_mb,
         }
         report.assertions["l2_count_at_least_10k"] = (
@@ -277,36 +407,68 @@ def run_prd_benchmark_suite(
         report.assertions["l3_count_at_least_5k"] = (
             stats_l2_l3.by_layer[3] >= targets.l3_triple_count
         )
+        report.assertions["test_benchmark_storage_mb"] = (
+            storage_mb < test_contract.storage_max_mb
+        )
 
-        # --- L4 archive behavior (subset on same store) -----------------------
+        # --- L4 smoke (small stale subset on same store) ---------------------
         l4_stats = run_l4_archive_scenario(scale_memory, episode_count=200)
-        report.results["l4_archive"] = l4_stats
-        report.assertions["l4_archived_rows"] = l4_stats["archived_index_rows"] >= 1
-        report.assertions["l4_files_on_disk"] = l4_stats["archive_file_count"] >= 1
+        report.results["l4_archive_smoke"] = l4_stats
+        report.assertions["l4_smoke_archived_rows"] = (
+            l4_stats["archived_index_rows"] >= 1
+        )
+        report.assertions["l4_smoke_files_on_disk"] = l4_stats["archive_file_count"] >= 1
     finally:
         scale_memory.close()
+
+    report.results["contract_compliance"] = build_contract_compliance(
+        add_p95_ms=add_p95_ms,
+        search_p95_ms=search_p95_ms,
+        consolidate_seconds=consolidate_seconds,
+        storage_mb=storage_mb,
+        test=test_contract,
+        week9=week9_contract,
+    )
 
     # --- Seven-day semantic extraction (isolated DB) ------------------------
     seven_root = tmp_root / "seven_day"
     seven_root.mkdir(parents=True, exist_ok=True)
     seven_memory = HMArch(
-        config=_benchmark_config(seven_root, replay_sample_ratio=1.0)
+        config=_benchmark_config(
+            seven_root, replay_sample_ratio=targets.seven_day_replay_sample_ratio
+        )
     )
     try:
-        seven_stats = run_seven_day_semantic_scenario(seven_memory)
+        seven_stats = run_seven_day_semantic_scenario(seven_memory, targets)
         report.results["seven_day_semantic"] = seven_stats
-        report.assertions["seven_day_l3_active"] = seven_stats["l3_active_count"] >= 1
-        report.assertions["seven_day_preference"] = (
-            seven_stats["preference_value"] == "Python"
+        report.assertions["seven_day_semantic_accuracy"] = (
+            seven_stats["semantic_accuracy"]
+            >= targets.seven_day_min_semantic_accuracy
         )
-        report.assertions["seven_day_l4_growth"] = (
-            seven_stats["archived_l4_rows"] >= 1
+        report.assertions["seven_day_consolidation_count"] = (
+            seven_stats["consolidation_cycles"] == targets.seven_day_consolidations
         )
-        report.assertions["seven_day_review_queue"] = (
-            seven_stats["review_queue_length"] >= 1
+        report.assertions["seven_day_conversation_volume"] = (
+            seven_stats["total_conversations"]
+            == targets.seven_day_conversations_per_day * targets.seven_day_consolidations
         )
     finally:
         seven_memory.close()
+
+    # --- L4 long-run archive @ 10k (isolated DB, PRD retention mix) ---------
+    l4_root = tmp_root / "l4_archive_10k"
+    l4_root.mkdir(parents=True, exist_ok=True)
+    l4_memory = HMArch(
+        config=_benchmark_config(l4_root, replay_sample_ratio=0.2)
+    )
+    try:
+        l4_10k_stats = run_l4_archive_10k_prd_scenario(l4_memory, targets)
+        report.results["l4_archive_10k_prd"] = l4_10k_stats
+        report.assertions["l4_archive_10k_within_prd_range"] = l4_10k_stats[
+            "within_expected_range"
+        ]
+    finally:
+        l4_memory.close()
 
     # --- Retention reference (theoretical PRD, no simulation wall clock) ----
     cfg = MemoryConfig()

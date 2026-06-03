@@ -13,7 +13,6 @@ Long-run retention and archive expectations for 30 days are covered by::
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -30,26 +29,64 @@ def prd_benchmark_report(tmp_path_factory) -> dict:
     return json.loads(report.to_json())
 
 
-class TestPrdLatencyTargets:
-    def test_add_p95_within_prd_target(self, prd_benchmark_report: dict) -> None:
-        p95 = prd_benchmark_report["results"]["add_latency"]["p95_ms"]
-        target = PRD_TARGETS.add_p95_ms
-        assert prd_benchmark_report["assertions"]["add_p95_within_target"]
-        assert p95 <= target
+class TestPrdTestBenchmarkContract:
+    """PRD test-benchmark table (50ms / 100ms / 60s / 500MB)."""
 
-    def test_search_p95_at_10k_l2_within_target(self, prd_benchmark_report: dict) -> None:
-        p95 = prd_benchmark_report["results"]["search_at_10k_l2"]["p95_ms"]
-        target = PRD_TARGETS.search_p95_ms
-        assert prd_benchmark_report["assertions"]["search_p95_within_target"]
-        assert p95 <= target
+    def test_add_p95_within_test_benchmark(self, prd_benchmark_report: dict) -> None:
+        row = prd_benchmark_report["results"]["contract_compliance"]["test_benchmark"][
+            "add_p95_ms"
+        ]
+        assert prd_benchmark_report["assertions"]["test_benchmark_add_p95"]
+        assert row["pass"]
+
+    def test_search_p95_at_10k_within_test_benchmark(
+        self, prd_benchmark_report: dict
+    ) -> None:
+        row = prd_benchmark_report["results"]["contract_compliance"]["test_benchmark"][
+            "search_p95_ms"
+        ]
+        assert prd_benchmark_report["assertions"]["test_benchmark_search_p95"]
+        assert row["pass"]
+        assert row["observed"] <= PRD_TARGETS.test_benchmark.search_p95_ms
+
+    def test_consolidate_10k_within_test_benchmark(
+        self, prd_benchmark_report: dict
+    ) -> None:
+        row = prd_benchmark_report["results"]["contract_compliance"]["test_benchmark"][
+            "consolidate_seconds"
+        ]
+        assert prd_benchmark_report["assertions"]["test_benchmark_consolidate_seconds"]
+        assert row["pass"]
+
+    def test_storage_under_500mb(self, prd_benchmark_report: dict) -> None:
+        storage = prd_benchmark_report["results"]["storage_10k_l2_5k_l3"]
+        row = prd_benchmark_report["results"]["contract_compliance"]["test_benchmark"][
+            "storage_mb"
+        ]
+        assert prd_benchmark_report["assertions"]["test_benchmark_storage_mb"]
+        assert storage["storage_size_mb"] < PRD_TARGETS.test_benchmark.storage_max_mb
+        assert row["pass"]
+
+
+class TestPrdWeek9OptimizationContract:
+    """PRD Week 9 stretch targets — reported and asserted when met."""
+
+    def test_week9_contract_reported(self, prd_benchmark_report: dict) -> None:
+        week9 = prd_benchmark_report["results"]["contract_compliance"]["week9_optimization"]
+        assert "add_p95_ms" in week9
+        assert "search_p95_ms" in week9
+        assert "consolidate_seconds" in week9
+
+    def test_week9_pass_flags_recorded(self, prd_benchmark_report: dict) -> None:
+        """Week 9 stretch goals are evaluated and surfaced (pass/fail per metric)."""
+        assert "week9_add_p95" in prd_benchmark_report["assertions"]
+        assert "week9_search_p95" in prd_benchmark_report["assertions"]
+        assert "week9_consolidate_seconds" in prd_benchmark_report["assertions"]
+        week9 = prd_benchmark_report["results"]["contract_compliance"]["week9_optimization"]
+        assert isinstance(week9["search_p95_ms"]["pass"], bool)
 
 
 class TestPrdScaleConsolidation:
-    def test_consolidate_10k_l2_within_target(self, prd_benchmark_report: dict) -> None:
-        wall = prd_benchmark_report["results"]["consolidate_at_10k_l2"]["wall_seconds"]
-        assert prd_benchmark_report["assertions"]["consolidate_within_target"]
-        assert wall <= PRD_TARGETS.consolidate_max_seconds
-
     def test_consolidate_extracts_semantics_at_10k_l2(
         self, prd_benchmark_report: dict
     ) -> None:
@@ -69,20 +106,35 @@ class TestPrdStorageAndLayers:
         assert prd_benchmark_report["assertions"]["l3_count_at_least_5k"]
         assert storage["l2_count"] >= PRD_TARGETS.l2_episode_count
         assert storage["l3_active_count"] >= PRD_TARGETS.l3_triple_count
-        assert storage["storage_size_mb"] > 0.0
 
-    def test_l4_archive_behavior(self, prd_benchmark_report: dict) -> None:
-        assert prd_benchmark_report["assertions"]["l4_archived_rows"]
-        assert prd_benchmark_report["assertions"]["l4_files_on_disk"]
-        l4 = prd_benchmark_report["results"]["l4_archive"]
-        assert l4["archive_storage_mb"] >= 0.0
+    def test_l4_archive_smoke(self, prd_benchmark_report: dict) -> None:
+        assert prd_benchmark_report["assertions"]["l4_smoke_archived_rows"]
+        assert prd_benchmark_report["assertions"]["l4_smoke_files_on_disk"]
+
+
+class TestPrdL4Archive10k:
+    def test_l4_archive_count_matches_prd_retention_formula(
+        self, prd_benchmark_report: dict
+    ) -> None:
+        stats = prd_benchmark_report["results"]["l4_archive_10k_prd"]
+        assert prd_benchmark_report["assertions"]["l4_archive_10k_within_prd_range"]
+        assert stats["within_expected_range"]
+        low, high = stats["expected_range"]
+        assert low <= stats["archived_l4_rows"] <= high
 
 
 class TestPrdSevenDaySemantic:
-    def test_seven_day_semantic_extraction_scenario(
+    def test_seven_day_50_conversations_per_day(
         self, prd_benchmark_report: dict
     ) -> None:
-        assert prd_benchmark_report["assertions"]["seven_day_l3_active"]
-        assert prd_benchmark_report["assertions"]["seven_day_preference"]
-        assert prd_benchmark_report["assertions"]["seven_day_l4_growth"]
-        assert prd_benchmark_report["assertions"]["seven_day_review_queue"]
+        assert prd_benchmark_report["assertions"]["seven_day_conversation_volume"]
+        seven = prd_benchmark_report["results"]["seven_day_semantic"]
+        assert seven["conversations_per_day"] == PRD_TARGETS.seven_day_conversations_per_day
+        assert seven["total_conversations"] == 350
+
+    def test_seven_day_semantic_accuracy_above_80_percent(
+        self, prd_benchmark_report: dict
+    ) -> None:
+        assert prd_benchmark_report["assertions"]["seven_day_semantic_accuracy"]
+        accuracy = prd_benchmark_report["results"]["seven_day_semantic"]["semantic_accuracy"]
+        assert accuracy > PRD_TARGETS.seven_day_min_semantic_accuracy

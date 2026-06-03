@@ -12,7 +12,7 @@ published through GitHub Releases only; HM-Arch is not published to PyPI.
 
 ### Added
 
-- PRD scale and performance benchmarks (`benchmarks/`, `tests/prd_benchmarks/`, `scripts/run_prd_benchmarks.py`, `docs/benchmarks.md`); excluded from default `pytest` via the `benchmark` marker
+- PRD scale and performance benchmarks (`benchmarks/`, `tests/prd_benchmarks/`, `scripts/run_prd_benchmarks.py`, `docs/benchmarks.md`); test-benchmark (50/100/60s/500MB) and Week 9 tables, 7-day 50×/day semantic accuracy, 10k L4 archive formula; excluded from default `pytest` via the `benchmark` marker
 - Optional LLM provider protocol with DeepSeek and OpenAI implementations (stdlib HTTP; mocked in tests)
 - Optional embedding providers and `ChromaVectorStore` behind `VectorStoreProtocol`
 - `MemoryConfig.enable_llm_providers`, `vector_backend`, and Chroma persistence settings with local fallback defaults
