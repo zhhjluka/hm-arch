@@ -1,185 +1,184 @@
-# HM-Arch
+<p align="center">
+  <img src="docs/assets/hm-arch-logo.png" alt="HM-Arch - Human-like Memory for AI Agents" width="760">
+</p>
 
-Python SDK for human-like agent memory: add, search, decay, consolidate, and inspect stats. Designed for coding agents with offline-first defaults (SQLite + deterministic local vector search; no API keys required for tests or demos).
+<p align="center">
+  <strong>Human-like memory architecture for AI agents.</strong><br>
+  Store experiences, retrieve useful context, forget safely, and consolidate knowledge over time.
+</p>
 
-**Current release:** `1.0.0` (distributed through GitHub Releases — not published to PyPI).
+<p align="center">
+  <a href="https://github.com/ZhangHangjianMA/memashuman/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/release-v1.0.0-111111" alt="GitHub Release v1.0.0"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB" alt="Python 3.10+"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-4C9A7D" alt="Apache-2.0 License"></a>
+  <a href="https://github.com/ZhangHangjianMA/memashuman/actions"><img src="https://img.shields.io/badge/tests-778%20passing-4C9A7D" alt="778 tests passing"></a>
+</p>
 
-## Requirements
+---
 
-- Python 3.10+
+HM-Arch is an offline-first Python SDK that gives agents a layered memory system inspired by human memory. It combines short-lived working context, durable episodic and semantic memory, long-term archives, procedural skills, meta-memory, retention decay, and automatic consolidation behind one `HMArch` facade.
 
-## Quick start
+Core behavior runs locally with SQLite and deterministic retrieval. No API keys, network access, or external services are required for tests, demos, or the default runtime.
 
-### From a GitHub Release (wheel)
+## Why HM-Arch?
 
-Download `hm_arch-1.0.0-py3-none-any.whl` from the [v1.0.0 release page](https://github.com/ZhangHangjianMA/memashuman/releases/tag/v1.0.0) (or the project [Releases](https://github.com/ZhangHangjianMA/memashuman/releases) index), then:
+Most agent memory systems focus on storing and retrieving text. HM-Arch also models what happens after storage:
+
+- **Layered memory, L0-L6**: sensory, working, episodic, semantic, archive, procedural, and meta-memory.
+- **Retention-aware retrieval**: rank results using relevance, retention, and layer priority.
+- **Human-like forgetting**: decay, review scheduling, safe deletion windows, and explicit `forget()`.
+- **Automatic consolidation**: extract semantics, merge duplicates, resolve conflicts, archive old memories, and schedule reviews.
+- **Agent-ready integration**: context APIs plus portable Codex and Claude Code hook examples.
+- **Offline-first by default**: SQLite and local deterministic behavior, with optional OpenAI, DeepSeek, and ChromaDB backends.
+
+## Quick Start
+
+### Install from the GitHub Release
+
+HM-Arch is distributed through GitHub Releases only and is not published to PyPI.
+
+Download `hm_arch-1.0.0-py3-none-any.whl` from the [v1.0.0 release page](https://github.com/ZhangHangjianMA/memashuman/releases/tag/v1.0.0), then install it in a Python 3.10+ environment:
 
 ```bash
-python3 --version   # requires Python >= 3.10
-python3 -m venv .venv && source .venv/bin/activate
-python -m pip install --upgrade pip
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install /path/to/hm_arch-1.0.0-py3-none-any.whl
 ```
 
-### From source (development)
+For development from source:
 
 ```bash
 git clone https://github.com/ZhangHangjianMA/memashuman.git
 cd memashuman
-python -m pip install -e .
-```
-
-```python
-from hm_arch import HMArch, EventType
-
-memory = HMArch(db_path="./.agent_memory.db")
-memory.add("用户偏好 Python", event_type=EventType.CONVERSATION)
-results = memory.search("用户喜欢什么语言")
-report = memory.consolidate()
-memory.close()
-```
-
-Use a context manager to close the database automatically:
-
-```python
-with HMArch(db_path=":memory:") as memory:
-    memory.add("Python is great")
-    print(memory.search("Python", top_k=3).results)
-```
-
-## Setup and testing
-
-Install the package in editable mode with dev dependencies, then run the full verification suite (matches the HM-12 / release acceptance command):
-
-```bash
 python -m pip install -e ".[dev]"
-pytest
-python examples/basic_usage.py
-python examples/release_smoke.py
-python examples/agent_integration.py
 ```
 
-Runtime-only install (no pytest):
+### Add and Search Memories
+
+```python
+from hm_arch import EventType, HMArch
+
+with HMArch(db_path="./.agent_memory.db") as memory:
+    memory.add(
+        "The user prefers concise Python code reviews",
+        event_type=EventType.CONVERSATION,
+        importance=0.9,
+    )
+
+    results = memory.search("How should I review this pull request?", top_k=3)
+
+    for item in results.results:
+        print(f"[L{item.layer}] {item.content} (score={item.score:.3f})")
+```
+
+### Consolidate Knowledge
+
+```python
+with HMArch(db_path="./.agent_memory.db") as memory:
+    memory.add("The project uses Python 3.12 and pytest")
+    report = memory.consolidate()
+
+    print(report.extracted_semantics)
+    print(memory.get_stats().by_layer)
+```
+
+## Memory Architecture
+
+| Layer | Name | Role |
+|------:|------|------|
+| L0 | Sensory register | Captures the most recent signals in memory |
+| L1 | Working memory | Holds session-scoped context |
+| L2 | Episodic memory | Stores durable events and conversations |
+| L3 | Semantic memory | Stores extracted facts and relationships |
+| L4 | Long-term archive | Compresses low-retention memories |
+| L5 | Procedural memory | Stores reusable skills and procedures |
+| L6 | Meta-memory | Tracks strategies and memory-system knowledge |
+
+The facade exposes the complete lifecycle:
+
+```python
+memory.add(...)
+memory.search(...)
+memory.forget(...)
+memory.consolidate()
+memory.get_retention_curve(...)
+memory.get_stats()
+```
+
+See [docs/api.md](docs/api.md) for the full public API and [docs/spec.md](docs/spec.md) for the product contract.
+
+## Agent Integration
+
+HM-Arch includes portable hook examples for coding agents. They run fully offline and can be adapted to your own agent configuration.
+
+| Workflow | Codex | Claude Code |
+|----------|-------|-------------|
+| Load relevant context before a turn | `examples/codex_hooks/turn_start.py` | `examples/claude_code_hooks/turn_start.py` |
+| Record conversations after a turn | `examples/codex_hooks/turn_end.py` | `examples/claude_code_hooks/turn_end.py` |
+| Consolidate during idle time | `examples/codex_hooks/idle_consolidate.py` | `examples/claude_code_hooks/idle_consolidate.py` |
 
 ```bash
-python -m pip install -e .
+uv run python examples/codex_hooks/demo.py
+uv run python examples/claude_code_hooks/demo.py
 ```
 
-### Development with uv
+Set `HM_ARCH_DB_PATH` to choose the agent memory database. See the hook-specific READMEs under `examples/` for configuration fragments.
 
-This repo also supports [uv](https://docs.astral.sh/uv/) for a locked dev environment:
+## Optional Backends
+
+The local path remains the default even when optional integrations are available.
+
+| Backend | Purpose | Setup |
+|---------|---------|-------|
+| Local | Offline retrieval and semantic extraction | No dependencies or credentials |
+| OpenAI / DeepSeek | LLM scoring and semantic extraction | `MemoryConfig(enable_llm_providers=True)` plus API key |
+| ChromaDB | Persistent vector index | Install the release wheel with `[chroma]` or source with `.[chroma]` |
+
+When `provider_fallback_to_local=True` (the default), missing credentials, dependencies, or provider failures fall back to deterministic local behavior.
+
+## Benchmarks
+
+HM-Arch includes reproducible PRD-scale benchmarks for latency, storage, consolidation, and long-running memory behavior.
+
+```bash
+uv run pytest tests/prd_benchmarks -m benchmark -v
+uv run python scripts/run_prd_benchmarks.py
+```
+
+The benchmark suite covers 10k L2 memories, search and add latency p95, consolidation runtime, storage size, semantic accuracy, and 30-day archive scenarios. Results and known limitations are documented in [docs/benchmarks.md](docs/benchmarks.md).
+
+## Development
 
 ```bash
 uv sync
 uv run pytest
-uv run pytest tests/prd_benchmarks -m benchmark -v   # optional PRD scale benchmarks
 uv run python examples/basic_usage.py
-uv run python examples/codex_hooks/demo.py
-uv run python examples/claude_code_hooks/demo.py
+uv run python examples/agent_integration.py
+uv run python examples/release_smoke.py
 ```
 
-## Examples
+The default test suite runs fully offline. Benchmark tests are marked separately and excluded from normal `pytest` runs.
 
-| Script | Purpose |
-|--------|---------|
-| `examples/basic_usage.py` | Add/search workflow (offline, in-memory DB) |
-| `examples/agent_integration.py` | Context manager, stats, consolidation |
-| `examples/import_package.py` | Minimal import smoke check |
-| `examples/release_smoke.py` | Public API smoke test (pre-release checklist) |
-| `examples/codex_hooks/` | Codex CLI turn-start, turn-end, idle consolidation hooks |
-| `examples/claude_code_hooks/` | Claude Code hook equivalents (offline demos) |
-
-## Agent hook integration
-
-HM-Arch ships **portable hook examples** for coding agents. They run fully offline and do not install themselves into Codex or Claude Code — copy the patterns into your own `.codex/hooks.json` or `.claude/settings.json` when ready.
-
-| Concern | Codex | Claude Code |
-|---------|-------|-------------|
-| Turn-start context injection | `examples/codex_hooks/turn_start.py` → `UserPromptSubmit` | `examples/claude_code_hooks/turn_start.py` → `UserPromptSubmit` |
-| Turn-end conversation recording | `examples/codex_hooks/turn_end.py` → `Stop` | `examples/claude_code_hooks/turn_end.py` → `Stop` |
-| Idle consolidation | `examples/codex_hooks/idle_consolidate.py` | `examples/claude_code_hooks/idle_consolidate.py` → `TeammateIdle` |
-
-Set `HM_ARCH_DB_PATH` to choose the SQLite file (defaults to `./.hm_arch_agent_memory.db` under the process working directory — no home-directory paths).
-
-```bash
-uv run pytest tests/test_agent_hooks.py
-uv run python examples/codex_hooks/demo.py
-uv run python examples/claude_code_hooks/demo.py
-```
-
-See `examples/codex_hooks/README.md` and `examples/claude_code_hooks/README.md` for sample hook JSON fragments.
-
-## Public API
-
-The facade is `HMArch` with methods: `add()`, `search()`, `forget()`, `consolidate()`, `get_retention_curve()`, `get_stats()`, `context()`, and `agent_context()`. Types and config presets are exported from the top-level package:
-
-```python
-from hm_arch import (
-    HMArch,
-    AgentContext,
-    MemoryConfig,
-    EventType,
-    MemoryReceipt,
-    SearchResult,
-    MemoryItem,
-    ConsolidationReport,
-    RetentionCurve,
-    MemoryStats,
-    ForgetResult,
-)
-```
-
-Phase 3 public contract (see `docs/spec.md`):
-
-- `add()` defaults to `EventType.CONVERSATION`; L1 and L2 share the same `memory_id`.
-- `search()` defaults to `top_k=10` and `min_retention=0.1`; supports `layer_filter`.
-- `forget(memory_id=None, force=False)` returns `ForgetResult` and clears searchable layers.
-- `get_retention_curve(memory_id, days_ahead=90)` or `get_retention_curve(layer=2)`.
-- `with memory.context() as ctx:` yields `AgentContext` with `load_session()` / `save_session()`.
-
-See [docs/api.md](docs/api.md) for the full public API reference (methods, dataclasses, config, and layers).
-Regenerate after API changes: `python scripts/generate_api_docs.py`.
-
-See `docs/spec.md` for the product specification.
-
-PRD scale and performance benchmarks (10k L2, latency p95, storage, 7-day scenario) are
-documented in [docs/benchmarks.md](docs/benchmarks.md). They are excluded from default
-`pytest` via the `benchmark` marker.
-
-## Optional backends
-
-| Backend | When to use | Setup |
-|---------|-------------|-------|
-| Local (default) | Offline tests, demos, CI | None |
-| OpenAI / DeepSeek | LLM scoring and semantic extraction | `MemoryConfig(enable_llm_providers=True)` + API key |
-| ChromaDB | Persistent vector index | From source: `pip install -e '.[chroma]'`. From a published release wheel: `pip install '/path/to/hm_arch-1.0.0-py3-none-any.whl[chroma]'`. Then `vector_backend="chroma"`. |
-
-When `provider_fallback_to_local=True` (the default), missing optional dependencies,
-credentials, or runtime provider failures use local deterministic behavior. With
-`provider_fallback_to_local=False`, those conditions raise actionable errors instead.
-
-## Release documentation
+## Documentation
 
 | Document | Purpose |
 |----------|---------|
+| [docs/api.md](docs/api.md) | Public API reference |
+| [docs/spec.md](docs/spec.md) | Product and API contract |
+| [docs/benchmarks.md](docs/benchmarks.md) | PRD benchmark results and limitations |
+| [docs/RELEASE_NOTES_v1.0.0.md](docs/RELEASE_NOTES_v1.0.0.md) | v1.0.0 release notes |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
-| [docs/RELEASE_NOTES_v1.0.0.md](docs/RELEASE_NOTES_v1.0.0.md) | Draft GitHub Release notes for v1.0.0 |
-| [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Test, build, tag, and GitHub Release steps |
-| [docs/VERSIONING.md](docs/VERSIONING.md) | How to bump `src/hm_arch/_version.py` |
 
-HM-Arch is distributed via **GitHub Releases** (wheel/sdist artifacts). There is no `pip install hm-arch` from PyPI.
-
-## Project layout
+## Project Layout
 
 ```text
 src/hm_arch/          SDK source
-tests/                Pytest suite (offline)
-examples/             Runnable demos
-docs/api.md           Public API reference
-docs/spec.md          Product and API spec
-docs/tasks.md         Milestone breakdown
+tests/                Offline test suite
+tests/prd_benchmarks/ Scale and performance benchmarks
+examples/             Runnable examples and agent hooks
+docs/                 Specifications, API docs, and release notes
 ```
 
 ## License
 
-See [LICENSE](LICENSE).
+HM-Arch is licensed under the [Apache License 2.0](LICENSE).
