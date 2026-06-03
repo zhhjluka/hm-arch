@@ -81,6 +81,13 @@ def build_markdown() -> str:
         SearchResult,
     )
     from hm_arch import layers as layers_pkg
+    from hm_arch.forgetting import (
+        ContextAwareScore,
+        ForgettingController,
+        ManualTimeProvider,
+        SystemTimeProvider,
+        TimeProvider,
+    )
 
     version = hm_arch.__version__
     lines: list[str] = [
@@ -93,6 +100,12 @@ def build_markdown() -> str:
         "",
         "```python",
         "from hm_arch import HMArch, MemoryConfig, EventType",
+        "```",
+        "",
+        "Advanced lifecycle helpers live in ``hm_arch.forgetting``:",
+        "",
+        "```python",
+        "from hm_arch.forgetting import ManualTimeProvider, ForgettingController",
         "```",
         "",
         "Layer implementations (`hm_arch.layers`) are available for advanced",
@@ -128,6 +141,7 @@ def build_markdown() -> str:
         "search",
         "forget",
         "consolidate",
+        "run_lifecycle",
         "get_retention_curve",
         "get_stats",
         "store_skill",
@@ -182,6 +196,7 @@ def build_markdown() -> str:
         ("RetentionCurve", RetentionCurve, "Returned by `HMArch.get_retention_curve()`."),
         ("MemoryStats", MemoryStats, "Returned by `HMArch.get_stats()`."),
         ("ForgetResult", ForgetResult, "Returned by `HMArch.forget()`."),
+        ("ContextAwareScore", ContextAwareScore, "PRD forgetting score decomposition."),
     ]
     for title, cls, note in dataclasses_doc:
         lines += ["---", "", f"## `{title}`", "", note, ""]
@@ -189,6 +204,49 @@ def build_markdown() -> str:
         lines.append("")
         lines += _field_table(cls)
         lines.append("")
+
+    lines += [
+        "---",
+        "",
+        "## Forgetting lifecycle (`hm_arch.forgetting`)",
+        "",
+        "| Name | Kind |",
+        "|------|------|",
+        f"| `TimeProvider` | protocol |",
+        f"| `SystemTimeProvider` | class |",
+        f"| `ManualTimeProvider` | class |",
+        f"| `ForgettingController` | class |",
+        f"| `ContextAwareScore` | dataclass |",
+        "",
+        inspect.getdoc(ForgettingController) or "",
+        "",
+        "### `TimeProvider`",
+        "",
+        inspect.getdoc(TimeProvider) or "",
+        "",
+        f"```python\nclass TimeProvider:\n    def now(self) -> datetime: ...\n```",
+        "",
+        "### `ManualTimeProvider`",
+        "",
+        inspect.getdoc(ManualTimeProvider) or "",
+        "",
+        "### PRD forgetting score",
+        "",
+        "The context-aware forgetting score is:",
+        "",
+        "```",
+        "Forgetting_Score =",
+        "    0.35 * (1 - R)",
+        "  + 0.25 * (1 - Relevance)",
+        "  + 0.15 * Redundancy",
+        "  + 0.15 * Contradiction",
+        "  + 0.10 * Privacy",
+        "```",
+        "",
+        "`HMArch.forget(memory_id=None)` applies this score during the global scan.",
+        "Automated physical cleanup waits for `deletion_safety_period_hours`.",
+        "",
+    ]
 
     lines += [
         "---",

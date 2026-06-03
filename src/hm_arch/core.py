@@ -252,8 +252,20 @@ class HMArch:
         db_path: str = "./.agent_memory.db",
         config: Optional[MemoryConfig] = None,
         *,
-        time_provider: TimeProvider | None = None,
+        time_provider: Optional[TimeProvider] = None,
     ) -> None:
+        """Create an :class:`HMArch` memory store.
+
+        Parameters
+        ----------
+        db_path:
+            SQLite database path.  Ignored when *config* is supplied.
+        config:
+            Optional runtime configuration.
+        time_provider:
+            Injectable clock for deterministic lifecycle tests.  Defaults to
+            :class:`~hm_arch.forgetting.time.SystemTimeProvider`.
+        """
         if config is None:
             config = MemoryConfig(db_path=db_path)
         self._config = config
@@ -604,7 +616,12 @@ class HMArch:
         return engine.run_consolidation_cycle()
 
     def run_lifecycle(self) -> None:
-        """Run auto-consolidation and conservative physical cleanup once."""
+        """Run one automatic lifecycle tick.
+
+        Applies due auto-consolidation (when enabled) and conservative
+        physical cleanup for score-qualified ``deletable`` rows past
+        ``deletion_safety_period_hours``.
+        """
         self._run_lifecycle_tick()
 
     def _run_lifecycle_tick(self) -> None:
@@ -616,12 +633,19 @@ class HMArch:
         *,
         force: bool = False,
     ) -> ForgetResult:
-        """Forget one memory or run a global deletable-memory scan.
+        """Forget one memory or run a context-aware global forgetting scan.
 
         When *memory_id* is provided, only that memory is considered.  When
-        ``memory_id`` is ``None``, every row with ``status='deletable'`` is
-        processed (and, when *force* is ``True``, active rows below the layer
-        delete threshold are included as well).
+        ``memory_id`` is ``None``, eligible rows are evaluated with the PRD
+        context-aware forgetting score (retention, relevance, redundancy,
+        contradiction, privacy).  Only candidates whose composite score meets
+        ``config.forgetting_score_threshold`` are removed.
+
+        With ``memory_id is None`` and ``force=False``, only ``deletable`` rows
+        are scanned.  With ``force=True``, active rows below the layer delete
+        threshold are included as well.  Automated lifecycle physical cleanup
+        still waits for ``deletion_safety_period_hours``; this method performs
+        immediate removal for score-qualified candidates.
 
         L2 memories below the archive threshold are moved to L4 when possible;
         otherwise they are marked ``deleted``.  Archived L4 rows purge the gzip
@@ -633,10 +657,7 @@ class HMArch:
         memory_id:
             Target memory identifier, or ``None`` for a global scan.
         force:
-            When ``True``, forget eligible memories even if they are still
-            ``active`` (below the layer delete threshold).  When ``False``,
-            only ``deletable`` rows (or a single memory below threshold) are
-            affected.
+            When ``True``, include active low-retention rows in the global scan.
 
         Returns
         -------
@@ -645,10 +666,13 @@ class HMArch:
         """
         if memory_id is not None:
             rows = self._fetch_memory_rows(memory_id=memory_id)
+            use_context_gate = False
         elif force:
             rows = self._fetch_memory_rows(global_forget=True, include_active=True)
+            use_context_gate = True
         else:
             rows = self._fetch_memory_rows(global_forget=True, include_active=False)
+            use_context_gate = True
 
         details: list[dict] = []
         forgotten = 0
@@ -657,10 +681,16 @@ class HMArch:
         freed_bytes = 0
 
         for row in rows:
-            action, layer, nbytes = self._forget_one_row(row, force=force)
+            record = dict(row)
+            if use_context_gate and not self._forgetting.is_forget_candidate(
+                record, require_safety_period=False
+            ):
+                continue
+
+            action, layer, nbytes = self._forget_one_row(record, force=force)
             if action is None:
                 continue
-            details.append({"memory_id": row["id"], "action": action})
+            details.append({"memory_id": record["id"], "action": action})
             affected_layers.add(layer)
             freed_bytes += nbytes
             if action == "archived":
@@ -1014,10 +1044,15 @@ class HMArch:
                    mi.metadata,
                    mi.created_at,
                    mi.updated_at,
-                   e.content AS episode_content
+                   e.content AS episode_content,
+                   s.entity,
+                   s.relation,
+                   s.value,
+                   s.entity || ' ' || s.relation || ' ' || s.value AS semantic_content
             FROM   memory_index mi
             LEFT JOIN episodes e ON e.memory_id = mi.id
-            WHERE  mi.status = 'deletable'
+            LEFT JOIN semantics s ON s.memory_id = mi.id
+            WHERE  mi.status IN ('deletable', 'superseded')
             """
         )
 
@@ -1031,7 +1066,7 @@ class HMArch:
             return False
         if force:
             return status in ("active", "deletable", "archived")
-        if status == "deletable" or status == "archived":
+        if status == "deletable" or status == "archived" or status == "superseded":
             return True
         if status != "active":
             return False

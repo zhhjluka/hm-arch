@@ -8,6 +8,12 @@ Stable integrations should import from the top-level package:
 from hm_arch import HMArch, MemoryConfig, EventType
 ```
 
+Advanced lifecycle helpers live in ``hm_arch.forgetting``:
+
+```python
+from hm_arch.forgetting import ManualTimeProvider, ForgettingController
+```
+
 Layer implementations (`hm_arch.layers`) are available for advanced
 use but are not required for the primary agent workflow.
 
@@ -36,10 +42,20 @@ use but are not required for the primary agent workflow.
 
 ### `HMArch.__init__`
 
-Initialize self.  See help(type(self)) for accurate signature.
+Create an :class:`HMArch` memory store.
+
+Parameters
+----------
+db_path:
+    SQLite database path.  Ignored when *config* is supplied.
+config:
+    Optional runtime configuration.
+time_provider:
+    Injectable clock for deterministic lifecycle tests.  Defaults to
+    :class:`~hm_arch.forgetting.time.SystemTimeProvider`.
 
 ```python
-HMArch.__init__(self, db_path: 'str' = './.agent_memory.db', config: 'Optional[MemoryConfig]' = None) -> 'None'
+HMArch.__init__(self, db_path: 'str' = './.agent_memory.db', config: 'Optional[MemoryConfig]' = None, *, time_provider: 'Optional[TimeProvider]' = None) -> 'None'
 ```
 
 ### `HMArch.add`
@@ -120,12 +136,19 @@ HMArch.search(self, query: 'str', top_k: 'int' = 10, *, min_retention: 'float' =
 
 ### `HMArch.forget`
 
-Forget one memory or run a global deletable-memory scan.
+Forget one memory or run a context-aware global forgetting scan.
 
 When *memory_id* is provided, only that memory is considered.  When
-``memory_id`` is ``None``, every row with ``status='deletable'`` is
-processed (and, when *force* is ``True``, active rows below the layer
-delete threshold are included as well).
+``memory_id`` is ``None``, eligible rows are evaluated with the PRD
+context-aware forgetting score (retention, relevance, redundancy,
+contradiction, privacy).  Only candidates whose composite score meets
+``config.forgetting_score_threshold`` are removed.
+
+With ``memory_id is None`` and ``force=False``, only ``deletable`` rows
+are scanned.  With ``force=True``, active rows below the layer delete
+threshold are included as well.  Automated lifecycle physical cleanup
+still waits for ``deletion_safety_period_hours``; this method performs
+immediate removal for score-qualified candidates.
 
 L2 memories below the archive threshold are moved to L4 when possible;
 otherwise they are marked ``deleted``.  Archived L4 rows purge the gzip
@@ -137,10 +160,7 @@ Parameters
 memory_id:
     Target memory identifier, or ``None`` for a global scan.
 force:
-    When ``True``, forget eligible memories even if they are still
-    ``active`` (below the layer delete threshold).  When ``False``,
-    only ``deletable`` rows (or a single memory below threshold) are
-    affected.
+    When ``True``, include active low-retention rows in the global scan.
 
 Returns
 -------
@@ -162,6 +182,18 @@ LLM key is required.
 
 ```python
 HMArch.consolidate(self) -> 'ConsolidationReport'
+```
+
+### `HMArch.run_lifecycle`
+
+Run one automatic lifecycle tick.
+
+Applies due auto-consolidation (when enabled) and conservative
+physical cleanup for score-qualified ``deletable`` rows past
+``deletion_safety_period_hours``.
+
+```python
+HMArch.run_lifecycle(self) -> 'None'
 ```
 
 ### `HMArch.get_retention_curve`
@@ -365,6 +397,8 @@ Time constants are expressed in hours, matching the PRD formulas.
 | `redundancy_threshold` | `'float'` | (default: `0.85`)|
 | `auto_consolidate` | `'bool'` | (default: `True`)|
 | `consolidate_interval_hours` | `'int'` | (default: `24`)|
+| `deletion_safety_period_hours` | `'int'` | (default: `168`)|
+| `forgetting_score_threshold` | `'float'` | (default: `0.35`)|
 | `replay_sample_ratio` | `'float'` | (default: `0.2`)|
 | `l0_capacity` | `'int'` | (default: `7`)|
 | `max_memories_l2` | `'int'` | (default: `100000`)|
@@ -629,6 +663,90 @@ details:
 | `freed_memory_mb` | `'float'` ||
 | `affected_layers` | `'list[int]'` ||
 | `details` | `'list[dict]'` ||
+
+---
+
+## `ContextAwareScore`
+
+PRD forgetting score decomposition.
+
+Decomposed PRD forgetting score.
+
+Raw factors are in ``[0, 1]``.  :attr:`composite` is the weighted PRD sum::
+
+    Forgetting_Score =
+        0.35 * (1 - R)
+      + 0.25 * (1 - Relevance)
+      + 0.15 * Redundancy
+      + 0.15 * Contradiction
+      + 0.10 * Privacy
+
+Higher :attr:`composite` means the memory is more eligible for forgetting.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `retention` | `'float'` ||
+| `relevance` | `'float'` ||
+| `redundancy` | `'float'` ||
+| `contradiction` | `'float'` ||
+| `privacy` | `'float'` ||
+| `composite` | `'float'` ||
+
+---
+
+## Forgetting lifecycle (`hm_arch.forgetting`)
+
+| Name | Kind |
+|------|------|
+| `TimeProvider` | protocol |
+| `SystemTimeProvider` | class |
+| `ManualTimeProvider` | class |
+| `ForgettingController` | class |
+| `ContextAwareScore` | dataclass |
+
+Operational automatic lifecycle for consolidation and cleanup.
+
+* When ``config.auto_consolidate`` is enabled, runs consolidation once
+  every ``config.consolidate_interval_hours`` (measured by
+  :class:`TimeProvider`, not wall-clock sleeps).
+* Performs conservative physical cleanup only for ``deletable`` rows whose
+  ``deletable_at`` timestamp is older than
+  ``config.deletion_safety_period_hours`` **and** whose PRD forgetting
+  score meets ``config.forgetting_score_threshold``.
+* Populates retention, relevance, redundancy, contradiction, and privacy
+  from stored data when evaluating lifecycle candidates.
+
+### `TimeProvider`
+
+Return the current UTC time for retention and lifecycle scheduling.
+
+```python
+class TimeProvider:
+    def now(self) -> datetime: ...
+```
+
+### `ManualTimeProvider`
+
+Controllable clock for offline lifecycle tests.
+
+Tests advance time with :meth:`advance` instead of sleeping or mutating
+stored timestamps.
+
+### PRD forgetting score
+
+The context-aware forgetting score is:
+
+```
+Forgetting_Score =
+    0.35 * (1 - R)
+  + 0.25 * (1 - Relevance)
+  + 0.15 * Redundancy
+  + 0.15 * Contradiction
+  + 0.10 * Privacy
+```
+
+`HMArch.forget(memory_id=None)` applies this score during the global scan.
+Automated physical cleanup waits for `deletion_safety_period_hours`.
 
 ---
 

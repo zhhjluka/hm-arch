@@ -79,6 +79,8 @@ class MemoryConfig:
     """Hours between automatic consolidation cycles."""
     deletion_safety_period_hours: int = 168
     """Hours a memory must remain ``deletable`` before physical cleanup."""
+    forgetting_score_threshold: float = 0.35
+    """Minimum PRD context-aware forgetting score required for automated removal."""
     replay_sample_ratio: float = 0.20
     """Fraction of eligible L2 episodes replayed per consolidation cycle."""
 

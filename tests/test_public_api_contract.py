@@ -194,3 +194,64 @@ def test_forget_archives_low_retention_l2(tmp_path: Path) -> None:
         assert result.archived_count >= 1 or result.forgotten_count >= 1
     finally:
         mem.close()
+
+
+def test_hmarch_accepts_time_provider() -> None:
+    import inspect
+
+    from hm_arch.forgetting.time import ManualTimeProvider
+
+    sig = inspect.signature(HMArch.__init__)
+    assert "time_provider" in sig.parameters
+    clock = ManualTimeProvider()
+    mem = HMArch(db_path=":memory:", time_provider=clock)
+    mem.close()
+
+
+def test_hmarch_run_lifecycle_is_public() -> None:
+    mem = HMArch(db_path=":memory:")
+    try:
+        assert callable(getattr(mem, "run_lifecycle"))
+        mem.run_lifecycle()
+    finally:
+        mem.close()
+
+
+def test_forgetting_subpackage_exports_documented_types() -> None:
+    from hm_arch.forgetting import (
+        ContextAwareScore,
+        ForgettingController,
+        ManualTimeProvider,
+        SystemTimeProvider,
+        TimeProvider,
+    )
+
+    assert ContextAwareScore is not None
+    assert ForgettingController is not None
+    assert issubclass(ManualTimeProvider, TimeProvider)
+    assert issubclass(SystemTimeProvider, TimeProvider)
+
+
+def test_generate_api_docs_includes_lifecycle_contract(tmp_path: Path) -> None:
+    import subprocess
+    import sys
+
+    repo_root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [sys.executable, str(repo_root / "scripts" / "generate_api_docs.py")],
+        capture_output=True,
+        text=True,
+        cwd=str(repo_root),
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    api_md = (repo_root / "docs" / "api.md").read_text(encoding="utf-8")
+    for needle in (
+        "time_provider",
+        "run_lifecycle",
+        "deletion_safety_period_hours",
+        "forgetting_score_threshold",
+        "ManualTimeProvider",
+        "ForgettingController",
+    ):
+        assert needle in api_md, f"missing {needle!r} in docs/api.md"

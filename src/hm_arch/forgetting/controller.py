@@ -13,7 +13,9 @@ from ..types import ConsolidationReport, ForgetResult
 from .context_aware import (
     ContextAwareScore,
     MemoryForgettingInput,
+    build_forgetting_input_from_row,
     compute_context_aware_score,
+    passes_forgetting_threshold,
 )
 from .time import SystemTimeProvider, TimeProvider
 
@@ -34,9 +36,27 @@ class ForgettingController:
       :class:`TimeProvider`, not wall-clock sleeps).
     * Performs conservative physical cleanup only for ``deletable`` rows whose
       ``deletable_at`` timestamp is older than
-      ``config.deletion_safety_period_hours``.
-    * Uses context-aware forgetting scores to skip protected memories during
-      automated cleanup.
+      ``config.deletion_safety_period_hours`` **and** whose PRD forgetting
+      score meets ``config.forgetting_score_threshold``.
+    * Populates retention, relevance, redundancy, contradiction, and privacy
+      from stored data when evaluating lifecycle candidates.
+    """
+
+    _CANDIDATE_ROW_SQL = """
+        SELECT mi.id,
+               mi.layer,
+               mi.status,
+               mi.current_retention,
+               mi.metadata,
+               mi.updated_at,
+               e.content AS episode_content,
+               s.entity,
+               s.relation,
+               s.value,
+               s.entity || ' ' || s.relation || ' ' || s.value AS semantic_content
+        FROM   memory_index mi
+        LEFT JOIN episodes e ON e.memory_id = mi.id
+        LEFT JOIN semantics s ON s.memory_id = mi.id
     """
 
     def __init__(
@@ -88,30 +108,67 @@ class ForgettingController:
 
         return self._consolidate_fn()
 
+    def score_row(self, row: dict, *, context_query: str | None = None) -> ContextAwareScore:
+        """Compute the PRD forgetting score for a SQLite candidate row."""
+        forgetting_input = build_forgetting_input_from_row(
+            self._db,
+            row,
+            context_query=context_query or self._context_query,
+            config=self._config,
+        )
+        return compute_context_aware_score(
+            forgetting_input,
+            context_query=context_query or self._context_query,
+            config=self._config,
+        )
+
+    def is_forget_candidate(
+        self,
+        row: dict,
+        *,
+        context_query: str | None = None,
+        require_safety_period: bool = False,
+    ) -> bool:
+        """Return whether *row* passes the PRD score gate (and optional safety wait)."""
+        score = self.score_row(row, context_query=context_query)
+        if not passes_forgetting_threshold(score, config=self._config):
+            return False
+        if not require_safety_period:
+            return True
+        if row.get("status") != "deletable":
+            return True
+
+        deletable_at = self._deletable_timestamp(dict(row))
+        if deletable_at is None:
+            return False
+        elapsed_h = (self._time.now() - deletable_at).total_seconds() / 3600.0
+        return elapsed_h >= float(self._config.deletion_safety_period_hours)
+
+    def iter_scored_candidates(
+        self,
+        *,
+        include_active: bool = False,
+        context_query: str | None = None,
+    ) -> list[tuple[dict, ContextAwareScore]]:
+        """Return candidate rows with populated PRD forgetting scores."""
+        rows = self._fetch_candidate_rows(include_active=include_active)
+        query = context_query if context_query is not None else self._context_query
+        scored: list[tuple[dict, ContextAwareScore]] = []
+        for row in rows:
+            record = dict(row)
+            score = self.score_row(record, context_query=query)
+            scored.append((record, score))
+        return scored
+
     def run_physical_cleanup(self) -> ForgetResult:
-        """Physically delete deletable memories past the safety period.
+        """Physically delete eligible deletable memories past the safety period.
 
         Memories are never removed before ``deletion_safety_period_hours`` have
-        elapsed since they were marked ``deletable``.  Private rows and rows
-        with a context-aware composite score of ``0`` are skipped.
+        elapsed since ``deletable_at``.  Each candidate must also meet the PRD
+        forgetting score threshold with populated context factors.
         """
-        now = self._time.now()
-        safety_h = float(self._config.deletion_safety_period_hours)
         rows = self._db.query(
-            """
-            SELECT mi.id,
-                   mi.layer,
-                   mi.status,
-                   mi.current_retention,
-                   mi.metadata,
-                   mi.updated_at,
-                   e.content AS episode_content,
-                   s.entity || ' ' || s.relation || ' ' || s.value AS semantic_content
-            FROM   memory_index mi
-            LEFT JOIN episodes e ON e.memory_id = mi.id
-            LEFT JOIN semantics s ON s.memory_id = mi.id
-            WHERE  mi.status = 'deletable'
-            """
+            self._CANDIDATE_ROW_SQL + " WHERE mi.status = 'deletable'"
         )
 
         forgotten = 0
@@ -121,29 +178,9 @@ class ForgettingController:
 
         for row in rows:
             record = dict(row)
-            deletable_at = self._deletable_timestamp(record)
-            if deletable_at is None:
-                continue
-
-            elapsed_h = (now - deletable_at).total_seconds() / 3600.0
-            if elapsed_h < safety_h:
-                continue
-
-            content = record["episode_content"] or record["semantic_content"] or ""
-            metadata = json.loads(record["metadata"] or "{}")
-            score = compute_context_aware_score(
-                MemoryForgettingInput(
-                    memory_id=record["id"],
-                    content=content,
-                    retention=float(record["current_retention"]),
-                    layer=int(record["layer"]),
-                    status=record["status"],
-                    metadata=metadata,
-                ),
-                context_query=self._context_query,
-                config=self._config,
-            )
-            if score.composite <= 0.0:
+            if not self.is_forget_candidate(
+                record, require_safety_period=True
+            ):
                 continue
 
             result = self._forget_fn(record["id"])
@@ -173,6 +210,30 @@ class ForgettingController:
             context_query=context_query or self._context_query,
             config=self._config,
         )
+
+    def _fetch_candidate_rows(self, *, include_active: bool) -> list[dict]:
+        if include_active:
+            cfg = self._config
+            rows = self._db.query(
+                self._CANDIDATE_ROW_SQL
+                + """
+                WHERE  mi.status IN ('deletable', 'active', 'archived')
+                  AND  mi.layer IN (2, 3, 4)
+                  AND  (
+                        mi.status = 'deletable'
+                     OR mi.status = 'archived'
+                     OR (mi.layer = 2 AND mi.current_retention < ?)
+                     OR (mi.layer = 3 AND mi.current_retention < ?)
+                  )
+                """,
+                (cfg.l2_delete_threshold, cfg.l3_delete_threshold),
+            )
+        else:
+            rows = self._db.query(
+                self._CANDIDATE_ROW_SQL
+                + " WHERE mi.status IN ('deletable', 'superseded')"
+            )
+        return [dict(row) for row in rows]
 
     def _last_consolidation_at(self) -> datetime | None:
         rows = self._db.query(

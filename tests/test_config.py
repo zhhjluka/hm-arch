@@ -43,6 +43,8 @@ REQUIRED_FIELDS = {
     # Consolidation
     "auto_consolidate",
     "consolidate_interval_hours",
+    "deletion_safety_period_hours",
+    "forgetting_score_threshold",
     "replay_sample_ratio",
     # Storage caps
     "max_memories_l2",
@@ -113,6 +115,8 @@ def test_default_consolidation_settings() -> None:
     cfg = MemoryConfig()
     assert cfg.auto_consolidate is True
     assert cfg.consolidate_interval_hours == 24
+    assert cfg.deletion_safety_period_hours == 168
+    assert cfg.forgetting_score_threshold == pytest.approx(0.35)
     assert cfg.replay_sample_ratio == pytest.approx(0.20)
 
 

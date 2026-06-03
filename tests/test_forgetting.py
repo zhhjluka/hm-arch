@@ -582,7 +582,50 @@ class TestContextAwareForgettingScore:
         low = compute_context_aware_score(self._memory(retention=0.1))
         high = compute_context_aware_score(self._memory(retention=0.9))
         assert low.composite > high.composite
-        assert low.retention > high.retention
+        assert low.retention < high.retention
+
+    def test_prd_formula_exact_numeric_regression(self):
+        from hm_arch.forgetting.context_aware import compute_context_aware_score
+
+        score = compute_context_aware_score(
+            self._memory(
+                retention=0.2,
+                content="alpha beta gamma",
+                neighbor_similarity=0.90,
+                has_active_conflict=True,
+                metadata={"private": True},
+            ),
+            context_query="alpha beta gamma",
+        )
+        assert score.retention == pytest.approx(0.2)
+        assert score.relevance == pytest.approx(1.0)
+        assert score.redundancy == pytest.approx(
+            (0.90 - 0.85) / 0.15, rel=1e-9
+        )
+        assert score.contradiction == pytest.approx(1.0)
+        assert score.privacy == pytest.approx(1.0)
+        expected = (
+            0.35 * (1.0 - 0.2)
+            + 0.25 * (1.0 - 1.0)
+            + 0.15 * score.redundancy
+            + 0.15 * 1.0
+            + 0.10 * 1.0
+        )
+        assert score.composite == pytest.approx(expected, rel=1e-9)
+
+    def test_privacy_pressure_increases_prd_score(self):
+        from hm_arch.forgetting.context_aware import (
+            compute_context_aware_score,
+            privacy_forgetting_pressure,
+        )
+
+        assert privacy_forgetting_pressure({"private": True}) == pytest.approx(1.0)
+        plain = compute_context_aware_score(self._memory(metadata={}))
+        sensitive = compute_context_aware_score(
+            self._memory(metadata={"privacy_forget_pressure": 1.0})
+        )
+        assert sensitive.privacy == pytest.approx(1.0)
+        assert sensitive.composite > plain.composite
 
     def test_irrelevant_content_scores_higher(self):
         from hm_arch.forgetting.context_aware import compute_context_aware_score
@@ -595,7 +638,7 @@ class TestContextAwareForgettingScore:
             self._memory(content="User prefers Python"),
             context_query="Python language preference",
         )
-        assert irrelevant.relevance > relevant.relevance
+        assert irrelevant.relevance < relevant.relevance
         assert irrelevant.composite > relevant.composite
 
     def test_redundant_neighbor_increases_score(self):
@@ -618,14 +661,114 @@ class TestContextAwareForgettingScore:
         assert conflict.contradiction == pytest.approx(1.0)
         assert conflict.composite > plain.composite
 
-    def test_private_memory_is_protected(self):
-        from hm_arch.forgetting.context_aware import compute_context_aware_score
 
-        protected = compute_context_aware_score(
-            self._memory(metadata={"private": True})
+class TestOperationalContextAwareForgetting:
+    """Context-aware score changes which memories are actually forgotten."""
+
+    def test_global_forget_skips_relevant_deletable_memory(self):
+        from hm_arch import HMArch, MemoryConfig
+
+        config = MemoryConfig(
+            db_path=":memory:",
+            forgetting_score_threshold=0.50,
         )
-        assert protected.privacy == pytest.approx(0.0)
-        assert protected.composite == pytest.approx(0.0)
+        mem = HMArch(config=config)
+        try:
+            relevant_id = mem.add("User prefers Python tutorials").memory_id
+            irrelevant_id = mem.add("Database vacuum maintenance schedule").memory_id
+            for mid in (relevant_id, irrelevant_id):
+                mem._db.execute(
+                    """
+                    UPDATE memory_index
+                       SET current_retention = 0.01, status = 'deletable'
+                     WHERE id = ?
+                    """,
+                    (mid,),
+                )
+
+            mem._forgetting.set_context_query("Python tutorials preference")
+            result = mem.forget()
+            forgotten_ids = {d["memory_id"] for d in result.details}
+            assert irrelevant_id in forgotten_ids
+            assert relevant_id not in forgotten_ids
+        finally:
+            mem.close()
+
+    def test_global_forget_prefers_redundant_duplicate(self):
+        from hm_arch import HMArch, MemoryConfig
+
+        config = MemoryConfig(
+            db_path=":memory:",
+            forgetting_score_threshold=0.41,
+            redundancy_threshold=0.85,
+        )
+        mem = HMArch(config=config)
+        try:
+            canonical = mem.add("unique sentinel omega protocol detail").memory_id
+            duplicate = mem.add(
+                "alpha beta gamma delta epsilon zeta eta theta iota"
+            ).memory_id
+            mem.add(
+                "alpha beta gamma delta epsilon zeta eta theta iota kappa"
+            )
+            for mid in (canonical, duplicate):
+                mem._db.execute(
+                    """
+                    UPDATE memory_index
+                       SET current_retention = 0.20, status = 'deletable'
+                     WHERE id = ?
+                    """,
+                    (mid,),
+                )
+
+            scored = mem._forgetting.iter_scored_candidates()
+            scores = {row["id"]: score.composite for row, score in scored}
+            assert scores[duplicate] > scores[canonical]
+
+            result = mem.forget()
+            forgotten_ids = {d["memory_id"] for d in result.details}
+            assert duplicate in forgotten_ids
+            assert canonical not in forgotten_ids
+        finally:
+            mem.close()
+
+    def test_global_forget_removes_superseded_semantic_first(self):
+        from hm_arch import HMArch, MemoryConfig
+
+        config = MemoryConfig(db_path=":memory:", forgetting_score_threshold=0.41)
+        mem = HMArch(config=config)
+        try:
+            active_id = mem._l3.upsert("user", "prefers", "Python")
+            superseded_id = mem._l3.upsert("user", "prefers", "Java")
+            mem._db.execute(
+                """
+                UPDATE memory_index
+                   SET status = 'superseded', current_retention = 0.20
+                 WHERE id = ?
+                """,
+                (superseded_id,),
+            )
+            mem._db.execute(
+                """
+                UPDATE memory_index
+                   SET status = 'deletable', current_retention = 0.20
+                 WHERE id = ?
+                """,
+                (active_id,),
+            )
+
+            scored = {
+                row["id"]: score.composite
+                for row, score in mem._forgetting.iter_scored_candidates()
+            }
+            assert scored[superseded_id] > scored[active_id]
+
+            result = mem.forget()
+            forgotten_ids = {d["memory_id"] for d in result.details}
+            assert superseded_id in forgotten_ids
+            assert active_id not in forgotten_ids
+        finally:
+            mem.close()
 
 
 # ---------------------------------------------------------------------------

@@ -15,7 +15,11 @@ from .asm2 import (
 from .context_aware import (
     ContextAwareScore,
     MemoryForgettingInput,
+    build_forgetting_input_from_row,
     compute_context_aware_score,
+    passes_forgetting_threshold,
+    privacy_forgetting_pressure,
+    relevance_to_context,
 )
 from .controller import ForgettingController, LifecycleResult
 from .decay import (
@@ -45,7 +49,11 @@ __all__ = [
     # lifecycle
     "ContextAwareScore",
     "MemoryForgettingInput",
+    "build_forgetting_input_from_row",
     "compute_context_aware_score",
+    "passes_forgetting_threshold",
+    "privacy_forgetting_pressure",
+    "relevance_to_context",
     "ForgettingController",
     "LifecycleResult",
     "TimeProvider",
