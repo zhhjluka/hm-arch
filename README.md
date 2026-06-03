@@ -121,7 +121,7 @@ See `docs/spec.md` for the product specification.
 | Document | Purpose |
 |----------|---------|
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
-| [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Test, build, tag, and publish steps (PyPI requires explicit approval) |
+| [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Test, build, tag, and GitHub Release steps |
 | [docs/VERSIONING.md](docs/VERSIONING.md) | How to bump `src/hm_arch/_version.py` |
 
 ## Project layout

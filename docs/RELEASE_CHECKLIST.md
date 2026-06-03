@@ -1,6 +1,8 @@
 # Release checklist
 
-Use this checklist for each HM-Arch release. **PyPI publish and git tags require explicit human approval** — automated agents must stop after the **Test** and **Build** sections unless a maintainer requests otherwise.
+Use this checklist for each HM-Arch release. HM-Arch releases are distributed
+through GitHub Releases only. **Git tags and GitHub Releases require explicit
+human approval**; HM-Arch is not published to PyPI.
 
 ## 1. Test (required before any release artifact)
 
@@ -41,7 +43,7 @@ Inspect artifacts under `dist/`:
 - [ ] Wheel and sdist names include the intended version from `src/hm_arch/_version.py`.
 - [ ] `pip install dist/hm_arch-*.whl` works in a throwaway venv.
 
-Do **not** upload to PyPI in this step.
+Do not upload these artifacts to a package registry.
 
 ## 3. Version and changelog (maintainer)
 
@@ -65,24 +67,15 @@ git push origin vX.Y.Z
 
 Automated Cursor/Codex agents: **do not create tags** unless explicitly instructed.
 
-## 5. Publish to PyPI (explicit approval required)
+## 5. Publish GitHub Release (explicit approval required)
 
-Publishing is **manual**. A maintainer must explicitly approve upload.
+After the tag is pushed, create a GitHub Release for the same version:
 
-```bash
-# TestPyPI (optional dry run)
-python -m pip install twine
-twine upload --repository testpypi dist/*
-
-# Production (only after approval)
-twine upload dist/*
-```
-
-- [ ] Credentials configured via trusted publishing or API token (never commit secrets).
-- [ ] Version on PyPI matches git tag and `__version__`.
-- [ ] README and metadata on PyPI match `pyproject.toml`.
-
-Automated agents: **do not run `twine upload`** or mutate any package registry.
+- [ ] Release title and tag match `vX.Y.Z`.
+- [ ] Release notes are copied from the matching `CHANGELOG.md` section.
+- [ ] Verified wheel and sdist artifacts from `dist/` are attached.
+- [ ] Known limitations and optional backend requirements are documented.
+- [ ] No package registry upload is performed.
 
 ## Quick reference
 
@@ -92,4 +85,4 @@ Automated agents: **do not run `twine upload`** or mutate any package registry.
 | Build | `python -m build` | Yes (local only) |
 | Docs | `python scripts/generate_api_docs.py` | Yes |
 | Tag | `git tag`, `git push --tags` | No (unless asked) |
-| Publish | `twine upload` | No (unless asked) |
+| GitHub Release | Release notes plus `dist/` artifacts | No (unless asked) |

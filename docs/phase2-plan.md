@@ -19,7 +19,7 @@ Phase 2 adds:
 - Full sleep consolidation
 - Codex and Claude Code hook examples
 - 30-day simulation tests
-- Release readiness and PyPI preparation
+- Release readiness and local package build preparation
 
 ## Execution Order
 
@@ -30,7 +30,7 @@ Phase 2 adds:
 5. HM-22: Full sleep consolidation cycle
 6. HM-23: Codex and Claude Code hook examples
 7. HM-24: End-to-end 30-day simulation tests
-8. HM-25: Release readiness and PyPI prep
+8. HM-25: Release readiness and package build prep
 
 ## Cursor Delegation Rules
 
@@ -78,4 +78,4 @@ Phase 2 is complete when:
 - Agent hook examples run offline
 - 30-day simulation tests pass
 - Release checklist is ready
-- PyPI publishing is prepared but not executed without explicit approval
+- Local package build and release verification are prepared

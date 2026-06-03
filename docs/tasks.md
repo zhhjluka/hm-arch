@@ -372,7 +372,7 @@ Out of scope:
 - No large benchmark dataset
 - No real LLM calls
 
-### HM-25: Release readiness and PyPI prep
+### HM-25: Release readiness and package build prep
 
 Scope:
 - Finalize package metadata in `pyproject.toml`
@@ -390,4 +390,163 @@ Acceptance:
 - Release checklist clearly distinguishes test, build, tag, and publish steps
 
 Out of scope:
-- Do not publish to PyPI without explicit user approval
+- No package registry publication
+
+---
+
+# Phase 3 Task Breakdown
+
+Phase 3 completes the original PRD contract while preserving offline-first
+behavior. See `docs/phase3-plan.md`.
+
+## M11: Public Contract and Seven-Layer Integration
+
+### HM-26: Complete the public API contract
+
+Scope:
+- Implement `HMArch.forget(memory_id=None, force=False)`
+- Add `min_retention` and `layer_filter` to `HMArch.search()`
+- Align supported defaults with the PRD while preserving backward compatibility
+- Support retention curve prediction for a specific `memory_id`
+- Implement a stable `AgentContext` API with `load_session()` and `save_session()`
+- Update public exports, API docs, examples, and tests
+
+Acceptance:
+- Public API supports the PRD call patterns
+- Single-memory forget and global scan return `ForgetResult`
+- Search filters exclude disallowed layers and low-retention results
+- Per-memory retention curve uses the memory's layer and strength
+- Context state can be explicitly loaded and saved
+- Existing databases and offline tests continue to work
+
+Out of scope:
+- No provider integration
+- No background scheduler
+
+### HM-27: Complete the seven-layer facade integration
+
+Scope:
+- Integrate L0 into `HMArch.add()` and relevant retrieval behavior
+- Expose stable L5 procedural-memory operations through `HMArch`
+- Expose stable L6 meta-memory operations and apply supported policies
+- Extend `get_stats()` to report L0-L6 counts and L4 filesystem storage
+- Enforce configured L2, L3, and L5 capacity limits
+
+Acceptance:
+- `HMArch` initializes and can use all seven layers
+- L0 receives newly added events
+- L5 skills are usable without manually constructing a layer object
+- L6 policies affect documented retrieval or consolidation behavior
+- Stats and capacity limits are covered by public-behavior tests
+
+Out of scope:
+- No RL policy learning
+- No multi-agent shared memory
+
+## M12: Automatic Forgetting and Memory Strength
+
+### HM-28: Implement forgetting controller and automatic lifecycle
+
+Scope:
+- Add `forgetting/context_aware.py`
+- Add `forgetting/controller.py`
+- Implement the PRD context-aware forgetting score
+- Add an injectable `TimeProvider`
+- Make `auto_consolidate` and `consolidate_interval_hours` operational
+- Implement conservative physical cleanup after a configurable safety period
+
+Acceptance:
+- Context-aware scores account for retention, relevance, redundancy,
+  contradiction, and privacy
+- Automatic consolidation can be enabled and disabled deterministically
+- Tests control time without sleeping or mutating timestamps directly
+- Physical cleanup never deletes memories before the safety period
+- Lifecycle tests run offline
+
+Out of scope:
+- No distributed scheduler
+- No destructive cleanup without documented safeguards
+
+### HM-29: Implement memory strength modulation
+
+Scope:
+- Implement automatic local importance and emotion scoring
+- Implement importance, emotion, repetition, and consistency modifiers
+- Apply initial strength to retention calculations
+- Reinforce memory strength after successful retrieval
+- Keep scoring deterministic and offline by default
+
+Acceptance:
+- High-strength memories decay more slowly than default memories
+- Repeated successful retrieval changes future retention behavior
+- Conflicting and consistent memories receive documented strength adjustments
+- `MemoryReceipt` reports the effective importance and initial strength
+- Tests cover each modifier independently
+
+Out of scope:
+- No mandatory LLM scoring
+- No learned reinforcement policy
+
+## M13: Optional Backends and Validation
+
+### HM-30: Add optional provider and vector backends
+
+Scope:
+- Add an LLM provider protocol
+- Add optional DeepSeek and OpenAI provider implementations
+- Add optional embedding provider implementations
+- Add `ChromaVectorStore` behind `VectorStoreProtocol`
+- Add provider selection and graceful fallback behavior
+
+Acceptance:
+- Local fallback remains the default and requires no API key
+- Missing optional dependencies produce actionable errors or local fallback
+- Provider-backed importance scoring and semantic extraction are opt-in
+- ChromaDB can persist and query episodic and semantic vectors
+- Offline tests do not make network calls
+
+Out of scope:
+- No additional custom providers
+- No mandatory external service
+
+### HM-31: Validate PRD scale and performance
+
+Scope:
+- Add reproducible add/search/consolidate benchmarks
+- Add a 10,000-memory L2 simulation
+- Measure L2/L3 storage usage and L4 archive behavior
+- Validate the 7-day semantic extraction scenario
+- Document benchmark environment and results
+
+Acceptance:
+- Benchmark evidence covers PRD p95 latency targets
+- Consolidation behavior is measured with 10,000 L2 memories
+- Storage usage is measured for 10,000 L2 and 5,000 L3 memories
+- Long-run retention and archive assertions match documented expectations
+- Benchmarks can be run separately from the normal fast test suite
+
+Out of scope:
+- No distributed load testing
+- No provider cost benchmarking
+
+## M14: GitHub v1.0 Release
+
+### HM-32: Prepare and publish the GitHub v1.0.0 release
+
+Scope:
+- Align README, API docs, changelog, and release checklist with supported behavior
+- Verify a clean install from locally built wheel and sdist artifacts
+- Prepare `v1.0.0` release notes
+- Create the `v1.0.0` git tag after approval
+- Publish a GitHub Release with verified build artifacts
+
+Acceptance:
+- Full test suite and release smoke tests pass from a clean environment
+- Version, changelog, tag, and GitHub Release all agree on `v1.0.0`
+- GitHub Release notes describe supported backends and known limitations
+- Wheel and sdist artifacts install successfully
+- No PyPI publishing instructions or actions remain in the release workflow
+
+Out of scope:
+- No PyPI publication
+- No package registry upload

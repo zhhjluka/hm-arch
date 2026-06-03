@@ -29,8 +29,9 @@ Pre-1.0 releases may use `0.MINOR.PATCH`; treat MINOR bumps as the primary API e
 2. Edit `src/hm_arch/_version.py` (`__version__`).
 3. Add a dated section to `CHANGELOG.md` (move items out of `[Unreleased]`).
 4. Regenerate API docs: `python scripts/generate_api_docs.py`
-5. Run release verification (see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) — **Test** section only until publish is approved).
+5. Run release verification (see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)).
 6. Commit with message like `chore: release v0.1.1`.
-7. Tag and publish only after explicit approval (checklist **Tag** and **Publish** sections).
+7. Tag and publish a GitHub Release only after explicit approval.
 
-Do **not** tag or upload to PyPI from automated agents without explicit human approval.
+HM-Arch is not published to PyPI. Automated agents must not create tags or
+GitHub Releases without explicit human approval.

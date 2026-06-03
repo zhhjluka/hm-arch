@@ -86,6 +86,8 @@ Cursor notes:
 - M2: Add/Search MVP
 - M3: Forgetting and Consolidation
 - M4: Developer Experience
+- M5-M10: Phase 2 seven-layer completion and release readiness
+- M11-M14: Phase 3 PRD contract completion and GitHub v1.0 release
 
 ## First Delegation Recommendation
 

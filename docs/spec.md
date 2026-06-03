@@ -46,7 +46,7 @@ Implement the minimum useful memory loop:
 - Encryption and access control
 - Distributed storage
 - GUI dashboard
-- PyPI release automation
+- Package registry publishing
 
 The code should leave room for L4-L6, but the MVP must not block on them.
 
@@ -59,6 +59,27 @@ The code should leave room for L4-L6, but the MVP must not block on them.
 - Deletion should be conservative. MVP may mark memories as `deleted` or `deletable`; physical deletion can wait.
 - SQLite is the source of truth for memory metadata and content.
 - Vector search should be behind an interface so ChromaDB can be swapped or mocked.
+
+## Phase 3 Contract Completion
+
+Phase 3 closes the remaining differences between the offline-first implementation
+and the original PRD's externally visible contract.
+
+- Complete `HMArch.forget()`, search filters, per-memory retention prediction,
+  and the session context API.
+- Integrate L0, L5, and L6 into the public facade and report accurate L0-L6 stats.
+- Make automatic consolidation, capacity limits, context-aware forgetting, and
+  conservative cleanup operational.
+- Implement importance, emotion, repetition, and consistency strength modulation.
+- Add optional LLM, embedding, and ChromaDB backends while keeping local fallback
+  behavior as the default.
+- Validate the PRD's scale and performance targets with reproducible tests.
+
+Release policy:
+
+- HM-Arch is not published to PyPI.
+- Versioned releases are published as GitHub Releases.
+- Local wheel and sdist builds remain required release verification artifacts.
 
 ## Architecture
 
