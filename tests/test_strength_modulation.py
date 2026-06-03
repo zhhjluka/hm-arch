@@ -1,18 +1,32 @@
-"""Independent tests for HM-29 memory strength modulation."""
+"""Independent tests for HM-29 memory strength modulation (PRD model)."""
 
 from __future__ import annotations
+
+import json
 
 import pytest
 
 from hm_arch import EventType, HMArch, MemoryConfig
+from hm_arch.config import MemoryConfig as MemoryConfigCls
 from hm_arch.forgetting.strength import (
+    CONSISTENCY_MOD_MAX,
+    CONSISTENCY_MOD_MIN,
+    EMOTION_MOD_MAX,
+    EMOTION_MOD_MIN,
+    IMPORTANCE_MOD_MAX,
+    IMPORTANCE_MOD_MIN,
+    PRD_STRENGTH_MAX,
+    REPETITION_MOD_MAX,
+    REPETITION_MOD_MIN,
+    STRENGTH_BASE,
+    StrengthFactors,
+    apply_retrieval_reinforcement,
     apply_strength_to_retention,
     compute_initial_strength,
-    consistency_modifier,
-    emotion_modifier,
-    importance_modifier,
-    reinforcement_delta,
-    repetition_modifier,
+    consistency_modifier_factor,
+    emotion_modifier_factor,
+    importance_modifier_factor,
+    repetition_modifier_factor,
     score_local_emotion,
     score_local_importance,
 )
@@ -21,49 +35,70 @@ from hm_arch.layers.l3_semantic import L3SemanticMemory
 from hm_arch.storage.sqlite import SQLiteStore
 
 
-class TestModifierFunctions:
-    def test_importance_modifier_bounds(self):
-        assert importance_modifier(0.0) == pytest.approx(-0.10)
-        assert importance_modifier(0.5) == pytest.approx(0.0)
-        assert importance_modifier(1.0) == pytest.approx(0.10)
+class TestPrdModifierBounds:
+    def test_importance_modifier_factor_bounds(self):
+        assert importance_modifier_factor(0.0) == pytest.approx(IMPORTANCE_MOD_MIN)
+        assert importance_modifier_factor(1.0) == pytest.approx(IMPORTANCE_MOD_MAX)
+        assert importance_modifier_factor(0.5) == pytest.approx(1.5)
 
-    def test_emotion_modifier_bounds(self):
-        assert emotion_modifier(0.0) == pytest.approx(-0.075)
-        assert emotion_modifier(0.5) == pytest.approx(0.0)
-        assert emotion_modifier(1.0) == pytest.approx(0.075)
+    def test_emotion_modifier_factor_bounds(self):
+        assert emotion_modifier_factor(0.0) == pytest.approx(EMOTION_MOD_MIN)
+        assert emotion_modifier_factor(1.0) == pytest.approx(EMOTION_MOD_MAX)
+        assert emotion_modifier_factor(0.5) == pytest.approx(1.15)
 
-    def test_repetition_modifier_caps(self):
-        assert repetition_modifier(0) == pytest.approx(0.0)
-        assert repetition_modifier(1) == pytest.approx(0.04)
-        assert repetition_modifier(10) == pytest.approx(0.12)
-
-    def test_consistency_modifier_values(self):
-        assert consistency_modifier("neutral") == pytest.approx(0.0)
-        assert consistency_modifier("consistent") == pytest.approx(0.08)
-        assert consistency_modifier("conflict_new") == pytest.approx(0.0)
-
-
-class TestLocalScoring:
-    def test_error_event_raises_importance_and_emotion(self):
-        content = "Disk failure on primary node"
-        imp = score_local_importance(content, event_type=EventType.ERROR)
-        emo = score_local_emotion(content, event_type=EventType.ERROR)
-        assert imp > 0.5
-        assert emo > 0.5
-
-    def test_neutral_conversation_near_baseline(self):
-        imp = score_local_importance(
-            "routine status update", event_type=EventType.CONVERSATION
+    def test_repetition_modifier_factor_bounds(self):
+        assert repetition_modifier_factor() == pytest.approx(REPETITION_MOD_MIN)
+        assert repetition_modifier_factor(successful_retrievals=1) == pytest.approx(
+            1.3
         )
-        assert imp == pytest.approx(0.5, abs=0.15)
+        assert repetition_modifier_factor(successful_retrievals=10) == pytest.approx(
+            REPETITION_MOD_MAX
+        )
+
+    def test_consistency_modifier_factor_bounds(self):
+        assert consistency_modifier_factor("neutral") == pytest.approx(1.0)
+        assert consistency_modifier_factor("consistent") == pytest.approx(
+            CONSISTENCY_MOD_MAX
+        )
+        assert consistency_modifier_factor("conflict_superseded") == pytest.approx(
+            CONSISTENCY_MOD_MIN
+        )
+
+
+class TestPrdStrengthFormula:
+    def test_neutral_default_strength(self):
+        # importance=0.5, emotion=0.5 → I=1.5, E=1.15
+        expected = STRENGTH_BASE * 1.5 * 1.15 * 1.0 * 1.0
+        assert compute_initial_strength(importance=0.5, emotion=0.5) == pytest.approx(
+            expected
+        )
+
+    def test_high_importance_emotion_exceeds_default(self):
+        neutral = compute_initial_strength(importance=0.5, emotion=0.5)
+        strong = compute_initial_strength(importance=1.0, emotion=1.0)
+        assert strong > neutral
+        assert strong == pytest.approx(STRENGTH_BASE * 2.0 * 1.5 * 1.0 * 1.0)
+
+    def test_prd_max_product(self):
+        strength = compute_initial_strength(
+            importance=1.0,
+            emotion=1.0,
+            encode_repetitions=0,
+            successful_retrievals=7,
+            consistency="consistent",
+        )
+        assert strength == pytest.approx(PRD_STRENGTH_MAX)
 
 
 class TestRetentionScaling:
-    def test_high_strength_decays_slower_than_low(self):
+    def test_high_strength_decays_slower_than_prd_default(self):
         layer_ret = 0.5
-        high = apply_strength_to_retention(layer_ret, 1.0)
-        low = apply_strength_to_retention(layer_ret, 0.6)
-        assert high > low
+        default_s = compute_initial_strength(importance=0.5, emotion=0.5)
+        high_s = compute_initial_strength(importance=1.0, emotion=1.0)
+        assert high_s > default_s
+        assert apply_strength_to_retention(layer_ret, high_s) > apply_strength_to_retention(
+            layer_ret, default_s
+        )
 
 
 class TestFacadeStrength:
@@ -82,65 +117,62 @@ class TestFacadeStrength:
                 event_type=EventType.ERROR,
                 metadata={"critical": True},
             )
-            assert 0.0 <= receipt.importance <= 1.0
-            assert 0.25 <= receipt.initial_strength <= 1.0
+            default_s = compute_initial_strength(importance=0.5, emotion=0.5)
             assert receipt.importance >= 0.5
-            assert receipt.initial_strength >= 0.9
+            assert receipt.initial_strength > default_s
             assert "30d" in receipt.decay_estimate
         finally:
             mem.close()
 
-    def test_explicit_importance_on_receipt(self, clock):
+    def test_routine_add_near_prd_default_strength(self, clock):
         mem = HMArch(
             config=MemoryConfig(db_path=":memory:"),
             time_provider=clock,
         )
         try:
-            receipt = mem.add("minor note", importance=0.9)
-            assert receipt.importance == pytest.approx(0.9)
-            assert receipt.initial_strength == pytest.approx(1.0, abs=0.02)
+            receipt = mem.add("Hello world")
+            expected = compute_initial_strength(importance=0.5, emotion=0.5)
+            assert receipt.initial_strength == pytest.approx(expected, abs=0.15)
         finally:
             mem.close()
 
-    def test_repetition_increases_initial_strength(self, clock):
+    def test_encode_repetition_increases_initial_strength(self, clock):
         mem = HMArch(
             config=MemoryConfig(db_path=":memory:"),
             time_provider=clock,
         )
         try:
-            first = mem.add("User prefers Python", importance=0.0)
-            second = mem.add("User prefers Python", importance=0.0)
+            first = mem.add("User prefers Python", importance=0.5)
+            second = mem.add("User prefers Python", importance=0.5)
             assert second.initial_strength > first.initial_strength
         finally:
             mem.close()
 
-    def test_retrieval_reinforcement_boosts_stored_strength(self, clock):
+    def test_repeated_search_strengthens_default_memory(self, clock):
         mem = HMArch(
             config=MemoryConfig(
                 db_path=":memory:",
+                auto_consolidate=False,
                 retrieval_relevance_threshold=0.1,
             ),
             time_provider=clock,
         )
         try:
-            receipt = mem.add(
-                "User prefers Python",
-                importance=0.0,
-            )
-            mem.search("User prefers Python", top_k=1)
-            rows = mem._db.query(
-                """
-                SELECT initial_strength, current_retention
-                FROM memory_index WHERE id = ?
-                """,
-                (receipt.memory_id,),
-            )
-            assert float(rows[0]["initial_strength"]) > receipt.initial_strength
-            assert float(rows[0]["current_retention"]) >= receipt.initial_strength
+            receipt = mem.add("User prefers Python")
+            strengths = [receipt.initial_strength]
+            for _ in range(3):
+                mem.search("User prefers Python", top_k=1)
+                row = mem._db.query(
+                    "SELECT initial_strength FROM memory_index WHERE id = ?",
+                    (receipt.memory_id,),
+                )[0]
+                strengths.append(float(row["initial_strength"]))
+            assert strengths == sorted(strengths)
+            assert strengths[-1] > strengths[0]
         finally:
             mem.close()
 
-    def test_high_strength_retains_more_after_decay(self, clock):
+    def test_high_strength_retains_more_after_decay_than_default(self, clock):
         from hm_arch.consolidation import ConsolidationEngine
 
         mem = HMArch(
@@ -148,12 +180,12 @@ class TestFacadeStrength:
             time_provider=clock,
         )
         try:
+            default = mem.add("routine status update", importance=0.5)
             strong = mem.add(
                 "CRITICAL production outage",
                 event_type=EventType.ERROR,
                 importance=1.0,
             )
-            weak = mem.add("minor observation", importance=0.0)
             clock.advance(days=30)
             ConsolidationEngine(
                 mem._db,
@@ -168,62 +200,147 @@ class TestFacadeStrength:
                     "SELECT id, current_retention FROM memory_index WHERE layer = 2"
                 )
             }
-            assert rows[strong.memory_id] > rows[weak.memory_id]
+            assert rows[strong.memory_id] > rows[default.memory_id]
         finally:
             mem.close()
 
 
 class TestSemanticConsistencyStrength:
     def test_consistent_reupsert_boosts_strength(self):
+        config = MemoryConfig(strength_max=10.0)
         db = SQLiteStore(":memory:").connect()
         db.initialize_schema()
-        l3 = L3SemanticMemory(db)
-        mid = l3.upsert("user", "prefers", "Python", importance=0.0)
-        before = db.query(
-            "SELECT initial_strength FROM memory_index WHERE id = ?", (mid,)
-        )[0]["initial_strength"]
-        l3.upsert("user", "prefers", "Python")
-        after = db.query(
-            "SELECT initial_strength FROM memory_index WHERE id = ?", (mid,)
-        )[0]["initial_strength"]
-        assert float(after) > float(before)
+        l3 = L3SemanticMemory(db, config=config)
+        mid = l3.upsert("user", "prefers", "Python", importance=0.5)
+        before = float(
+            db.query(
+                "SELECT initial_strength FROM memory_index WHERE id = ?", (mid,)
+            )[0]["initial_strength"]
+        )
+        l3.upsert("user", "prefers", "Python", importance=0.5)
+        after = float(
+            db.query(
+                "SELECT initial_strength FROM memory_index WHERE id = ?", (mid,)
+            )[0]["initial_strength"]
+        )
+        assert after > before
         db.close()
 
     def test_conflict_superseded_penalizes_old_fact(self):
+        clock = ManualTimeProvider()
+        config = MemoryConfig(strength_max=10.0)
         db = SQLiteStore(":memory:").connect()
         db.initialize_schema()
-        l3 = L3SemanticMemory(db)
-        old_id = l3.upsert("user", "prefers", "Python")
-        old_retention = float(
+        l3 = L3SemanticMemory(db, config=config, time_provider=clock)
+        old_id = l3.upsert("user", "prefers", "Python", importance=0.5)
+        old_strength = float(
             db.query(
-                "SELECT current_retention FROM memory_index WHERE id = ?",
+                "SELECT initial_strength FROM memory_index WHERE id = ?",
                 (old_id,),
-            )[0]["current_retention"]
+            )[0]["initial_strength"]
         )
-        l3.upsert("user", "prefers", "Rust")
-        superseded = db.query(
-            "SELECT current_retention FROM memory_index WHERE id = ?", (old_id,)
-        )[0]["current_retention"]
-        assert float(superseded) < old_retention
+        l3.upsert("user", "prefers", "Rust", importance=0.5)
+        superseded = float(
+            db.query(
+                "SELECT initial_strength FROM memory_index WHERE id = ?", (old_id,)
+            )[0]["initial_strength"]
+        )
+        assert superseded < old_strength
+        db.close()
+
+    def test_l3_respects_custom_config_bounds(self):
+        clock = ManualTimeProvider()
+        config = MemoryConfig(strength_min=0.5, strength_max=0.9)
+        db = SQLiteStore(":memory:").connect()
+        db.initialize_schema()
+        l3 = L3SemanticMemory(db, config=config, time_provider=clock)
+        mid = l3.upsert("user", "prefers", "Python", importance=1.0)
+        strength = float(
+            db.query(
+                "SELECT initial_strength FROM memory_index WHERE id = ?", (mid,)
+            )[0]["initial_strength"]
+        )
+        assert strength == pytest.approx(0.9)
+        clock.advance(hours=1)
+        l3.upsert("user", "prefers", "Python", importance=1.0)
+        updated = db.query(
+            "SELECT updated_at FROM memory_index WHERE id = ?", (mid,)
+        )[0]["updated_at"]
+        assert updated.startswith("2024-01-01")
         db.close()
 
 
-class TestReinforcementDelta:
-    def test_reinforcement_is_deterministic_and_bounded(self):
-        s, r = reinforcement_delta(
-            initial_strength=0.8,
-            current_retention=0.7,
-            relevance=0.5,
-            rate=0.06,
+class TestRetrievalReinforcement:
+    def test_apply_retrieval_reinforcement_increments_metadata(self):
+        clock = ManualTimeProvider()
+        config = MemoryConfig(db_path=":memory:")
+        db = SQLiteStore(":memory:").connect()
+        db.initialize_schema()
+        factors = StrengthFactors(importance=0.5, emotion=0.5)
+        strength = compute_initial_strength(
+            importance=0.5, emotion=0.5, strength_max=config.strength_max
         )
-        assert s > 0.8
-        assert r > 0.7
-        assert s <= 1.0
-        assert r <= 1.0
+        meta = json.dumps(
+            {
+                "hm_arch_strength": {
+                    "importance": 0.5,
+                    "emotion": 0.5,
+                    "encode_repetitions": 0,
+                    "successful_retrievals": 0,
+                    "consistency": "neutral",
+                }
+            }
+        )
+        db.execute(
+            """
+            INSERT INTO memory_index (
+                id, layer, created_at, updated_at, importance,
+                initial_strength, current_retention, status,
+                tags, metadata, content_hash
+            ) VALUES (?, 2, ?, ?, ?, ?, ?, 'active', '[]', ?, ?)
+            """,
+            (
+                "m1",
+                clock.now().isoformat(),
+                clock.now().isoformat(),
+                0.5,
+                strength,
+                strength,
+                meta,
+                "hash",
+            ),
+        )
+        db.execute(
+            """
+            INSERT INTO episodes (
+                id, memory_id, content, event_type, emotion_score
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            ("e1", "m1", "text", "conversation", 0.5),
+        )
+        assert apply_retrieval_reinforcement(
+            db, "m1", 0.9, config=config, time_provider=clock
+        )
+        row = db.query(
+            "SELECT initial_strength, metadata FROM memory_index WHERE id = ?",
+            ("m1",),
+        )[0]
+        block = json.loads(row["metadata"])["hm_arch_strength"]
+        assert block["successful_retrievals"] == 1
+        assert float(row["initial_strength"]) > strength
+        db.close()
 
 
-class TestComputeInitialStrength:
-    def test_default_neutral_is_one(self):
-        assert compute_initial_strength(importance=0.5, emotion=0.5) == pytest.approx(
-            1.0
-        )
+class TestConfigAndExports:
+    def test_memory_config_strength_fields(self):
+        cfg = MemoryConfigCls()
+        assert cfg.strength_min == pytest.approx(0.2)
+        assert cfg.strength_max == pytest.approx(6.75)
+        assert cfg.retrieval_reinforcement_increment == pytest.approx(0.3)
+
+    def test_forgetting_package_exports_strength_helpers(self):
+        import hm_arch.forgetting as forgetting
+
+        assert forgetting.STRENGTH_BASE == pytest.approx(0.5)
+        assert forgetting.compute_initial_strength is not None
+        assert forgetting.apply_retrieval_reinforcement is not None

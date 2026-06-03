@@ -538,7 +538,7 @@ def test_invalid_default_importance_raises(
         l2.encode("invalid default importance")
 
 
-@pytest.mark.parametrize("initial_strength", [-0.1, 1.1])
+@pytest.mark.parametrize("initial_strength", [-0.1, 7.0])
 def test_invalid_default_initial_strength_raises(
     db: SQLiteStore, initial_strength: float
 ) -> None:

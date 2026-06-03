@@ -85,8 +85,12 @@ def build_markdown() -> str:
         ContextAwareScore,
         ForgettingController,
         ManualTimeProvider,
+        PRD_STRENGTH_MAX,
+        STRENGTH_BASE,
         SystemTimeProvider,
         TimeProvider,
+        compute_initial_strength,
+        importance_modifier_factor,
     )
 
     version = hm_arch.__version__
@@ -106,6 +110,7 @@ def build_markdown() -> str:
         "",
         "```python",
         "from hm_arch.forgetting import ManualTimeProvider, ForgettingController",
+        "from hm_arch.forgetting import compute_initial_strength, strength_bounds",
         "```",
         "",
         "Layer implementations (`hm_arch.layers`) are available for advanced",
@@ -245,6 +250,31 @@ def build_markdown() -> str:
         "",
         "`HMArch.forget(memory_id=None)` applies this score during the global scan.",
         "Automated physical cleanup waits for `deletion_safety_period_hours`.",
+        "",
+        "### Memory strength modulation (HM-29)",
+        "",
+        "PRD multiplicative initial strength (offline, deterministic):",
+        "",
+        "```",
+        "S = S_base * I_mod * E_mod * R_mod * C_mod",
+        "```",
+        "",
+        f"* ``S_base = {STRENGTH_BASE}``",
+        "* ``I_mod`` in ``[1.0, 2.0]`` from importance ``[0, 1]``",
+        "* ``E_mod`` in ``[0.8, 1.5]`` from emotion ``[0, 1]``",
+        "* ``R_mod`` in ``[1.0, 3.0]``: ``1.0 + 0.3 * (encode_repetitions + successful_retrievals)``",
+        "* ``C_mod`` in ``[0.5, 1.5]`` (neutral ``1.0``, consistent ``1.5``, superseded conflict ``0.5``)",
+        "",
+        f"Maximum product (before clamp): ``{PRD_STRENGTH_MAX}``. "
+        "``MemoryConfig.strength_min``, ``strength_max``, "
+        "``retrieval_reinforcement_increment``, and ``retrieval_relevance_threshold`` "
+        "control bounds and retrieval reinforcement.",
+        "",
+        "Retention scales as ``R(t) = min(1.0, R_layer(t) * S)``. "
+        "Each successful retrieval increments ``successful_retrievals`` and recomputes ``S``.",
+        "",
+        "Exported helpers include ``compute_initial_strength``, "
+        "``apply_retrieval_reinforcement``, ``StrengthFactors``, and modifier factor functions.",
         "",
     ]
 

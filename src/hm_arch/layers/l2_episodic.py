@@ -172,6 +172,7 @@ class L2EpisodicBuffer:
         importance: float | None = None,
         emotion_score: float | None = None,
         initial_strength: float | None = None,
+        strength_max: float | None = None,
         context_window: str | None = None,
     ) -> str:
         """Persist a raw event as an L2 episodic memory.
@@ -213,7 +214,11 @@ class L2EpisodicBuffer:
             else self._default_initial_strength
         )
         _validate_unit_interval("importance", imp)
-        _validate_unit_interval("initial_strength", strength)
+        max_strength = strength_max if strength_max is not None else 6.75
+        if not 0.0 <= strength <= max_strength:
+            raise ValueError(
+                f"initial_strength must be in [0, {max_strength}], got {strength!r}"
+            )
         event_type_str = (
             event_type.value if isinstance(event_type, EventType) else str(event_type)
         )

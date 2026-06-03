@@ -172,9 +172,9 @@ def predict_memory_retention_curve(
     (capped at 1.0), so memories encoded with lower strength follow a lower
     curve than the layer default.
     """
-    if not 0.0 <= initial_strength <= 1.0:
+    if initial_strength < 0.0:
         raise ValueError(
-            f"initial_strength must be in [0, 1], got {initial_strength!r}"
+            f"initial_strength must be non-negative, got {initial_strength!r}"
         )
     base = predict_retention_curve(layer=layer, config=config, days=days)
     scaled = [min(1.0, r * initial_strength) for r in base.retention]

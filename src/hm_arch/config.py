@@ -87,12 +87,12 @@ class MemoryConfig:
     # -------------------------------------------------------------------
     # Memory strength modulation (HM-29)
     # -------------------------------------------------------------------
-    strength_min: float = 0.25
-    """Lower bound for ``initial_strength`` after modulation."""
-    strength_max: float = 1.0
-    """Upper bound for ``initial_strength`` after modulation."""
-    retrieval_reinforcement_rate: float = 0.06
-    """Per-successful-retrieval boost applied to strength and retention."""
+    strength_min: float = 0.2
+    """Lower bound for ``initial_strength`` after PRD modulation."""
+    strength_max: float = 6.75
+    """Upper bound for ``initial_strength`` (``0.5×2×1.5×3×1.5`` PRD product)."""
+    retrieval_reinforcement_increment: float = 0.3
+    """``R_mod`` increment per successful retrieval (PRD: ``+0.3``)."""
     retrieval_relevance_threshold: float = 0.25
     """Minimum query relevance required to count as a successful retrieval."""
 

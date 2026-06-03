@@ -44,9 +44,11 @@ from .forgetting.decay import (
     predict_retention_curve,
 )
 from .forgetting.strength import (
+    StrengthFactors,
+    apply_retrieval_reinforcement,
     compute_initial_strength,
     count_l2_repetitions,
-    reinforcement_delta,
+    merge_metadata_with_strength,
     score_local_emotion,
     score_local_importance,
     strength_bounds,
@@ -287,7 +289,10 @@ class HMArch:
         self._l1 = L1WorkingMemory()
         self._l2 = L2EpisodicBuffer(self._db, time_provider=self._time)
         self._l3 = L3SemanticMemory(
-            self._db, max_memories=self._config.max_memories_l3
+            self._db,
+            max_memories=self._config.max_memories_l3,
+            config=self._config,
+            time_provider=self._time,
         )
         self._l4 = L4EpisodicLTM(_resolve_archive_root(self._config))
         self._l5 = L5ProceduralMemory(
@@ -344,7 +349,7 @@ class HMArch:
                 f"max_memories_l2 limit ({self._config.max_memories_l2}) reached"
             )
 
-        strength_min, strength_max, _, _ = strength_bounds(self._config)
+        strength_min, strength_max, retrieval_inc, _ = strength_bounds(self._config)
         imp = (
             importance
             if importance is not None
@@ -354,23 +359,32 @@ class HMArch:
         )
         emotion = score_local_emotion(content, event_type=event_type)
         repetition = count_l2_repetitions(self._db, content)
-        strength = compute_initial_strength(
+        factors = StrengthFactors(
             importance=imp,
             emotion=emotion,
-            repetition_count=repetition,
-            consistency="neutral",
+            encode_repetitions=repetition,
+        )
+        strength = compute_initial_strength(
+            importance=factors.importance,
+            emotion=factors.emotion,
+            encode_repetitions=factors.encode_repetitions,
+            successful_retrievals=factors.successful_retrievals,
+            consistency=factors.consistency,
             strength_min=strength_min,
             strength_max=strength_max,
+            retrieval_increment=retrieval_inc,
         )
+        merged_meta = merge_metadata_with_strength(metadata, factors)
 
         # L2 episodic buffer — persisted to SQLite, survives restarts
         l2_mid = self._l2.encode(
             content,
             event_type=event_type,
-            metadata=metadata,
+            metadata=merged_meta,
             importance=imp,
             emotion_score=emotion,
             initial_strength=strength,
+            strength_max=strength_max,
         )
 
         l0_meta = dict(metadata) if metadata is not None else {}
@@ -673,38 +687,13 @@ class HMArch:
         self._forgetting.run_lifecycle_tick()
 
     def _reinforce_after_retrieval(self, memory_id: str, relevance: float) -> None:
-        """Boost strength/retention after a successful search hit (L2/L3)."""
-        strength_min, strength_max, rate, threshold = strength_bounds(self._config)
-        if relevance < threshold:
-            return
-        rows = self._db.query(
-            """
-            SELECT initial_strength, current_retention
-            FROM   memory_index
-            WHERE  id = ? AND status = 'active'
-            """,
-            (memory_id,),
-        )
-        if not rows:
-            return
-        new_strength, new_retention = reinforcement_delta(
-            initial_strength=float(rows[0]["initial_strength"]),
-            current_retention=float(rows[0]["current_retention"]),
-            relevance=relevance,
-            rate=rate,
-            strength_max=strength_max,
-        )
-        new_strength = max(strength_min, new_strength)
-        now = self._time.now().isoformat()
-        self._db.execute(
-            """
-            UPDATE memory_index
-               SET initial_strength = ?,
-                   current_retention = ?,
-                   updated_at = ?
-             WHERE id = ?
-            """,
-            (new_strength, new_retention, now, memory_id),
+        """Boost PRD ``R_mod`` after a successful search hit (L2/L3)."""
+        apply_retrieval_reinforcement(
+            self._db,
+            memory_id,
+            relevance,
+            config=self._config,
+            time_provider=self._time,
         )
 
     def forget(

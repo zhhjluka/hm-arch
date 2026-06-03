@@ -12,6 +12,7 @@ Advanced lifecycle helpers live in ``hm_arch.forgetting``:
 
 ```python
 from hm_arch.forgetting import ManualTimeProvider, ForgettingController
+from hm_arch.forgetting import compute_initial_strength, strength_bounds
 ```
 
 Layer implementations (`hm_arch.layers`) are available for advanced
@@ -400,9 +401,9 @@ Time constants are expressed in hours, matching the PRD formulas.
 | `deletion_safety_period_hours` | `'int'` | (default: `168`)|
 | `forgetting_score_threshold` | `'float'` | (default: `0.35`)|
 | `replay_sample_ratio` | `'float'` | (default: `0.2`)|
-| `strength_min` | `'float'` | (default: `0.25`)|
-| `strength_max` | `'float'` | (default: `1.0`)|
-| `retrieval_reinforcement_rate` | `'float'` | (default: `0.06`)|
+| `strength_min` | `'float'` | (default: `0.2`)|
+| `strength_max` | `'float'` | (default: `6.75`)|
+| `retrieval_reinforcement_increment` | `'float'` | (default: `0.3`)|
 | `retrieval_relevance_threshold` | `'float'` | (default: `0.25`)|
 | `l0_capacity` | `'int'` | (default: `7`)|
 | `max_memories_l2` | `'int'` | (default: `100000`)|
@@ -754,35 +755,23 @@ Automated physical cleanup waits for `deletion_safety_period_hours`.
 
 ### Memory strength modulation (HM-29)
 
-Deterministic local scoring adjusts ``initial_strength`` at encode time; retention
-decay multiplies the layer curve by that strength; successful search hits
-reinforce the linked L2/L3 row.
+PRD multiplicative initial strength (offline, deterministic):
 
-**Initial strength** (clamped to ``[strength_min, strength_max]`` on
-``MemoryConfig``, defaults ``0.25`` / ``1.0``)::
+```
+S = S_base * I_mod * E_mod * R_mod * C_mod
+```
 
-    S = clamp(1.0 + M_imp + M_emo + M_rep + M_con, strength_min, strength_max)
+* ``S_base = 0.5``
+* ``I_mod`` in ``[1.0, 2.0]`` from importance ``[0, 1]``
+* ``E_mod`` in ``[0.8, 1.5]`` from emotion ``[0, 1]``
+* ``R_mod`` in ``[1.0, 3.0]``: ``1.0 + 0.3 * (encode_repetitions + successful_retrievals)``
+* ``C_mod`` in ``[0.5, 1.5]`` (neutral ``1.0``, consistent ``1.5``, superseded conflict ``0.5``)
 
-| Modifier | Formula | Bounds |
-|----------|---------|--------|
-| Importance | ``0.20 * (importance - 0.5)`` | ``[-0.10, +0.10]`` |
-| Emotion | ``0.15 * (emotion - 0.5)`` | ``[-0.075, +0.075]`` |
-| Repetition | ``min(0.12, 0.04 * repetition_count)`` | ``[0, +0.12]`` |
-| Consistency | ``+0.08`` on consistent L3 reinforcement; ``0`` at L2 encode | |
+Maximum product (before clamp): ``6.75``. ``MemoryConfig.strength_min``, ``strength_max``, ``retrieval_reinforcement_increment``, and ``retrieval_relevance_threshold`` control bounds and retrieval reinforcement.
 
-**Retention** at elapsed hours *t*::
+Retention scales as ``R(t) = min(1.0, R_layer(t) * S)``. Each successful retrieval increments ``successful_retrievals`` and recomputes ``S``.
 
-    R(t) = min(1.0, R_layer(t) * initial_strength)
-
-**Retrieval reinforcement** (relevance ≥ ``retrieval_relevance_threshold``,
-default ``0.25``)::
-
-    ΔS = retrieval_reinforcement_rate * relevance * (1 - S)
-
-Superseded conflicting L3 facts receive ``-0.12`` on ``current_retention`` only.
-
-Public helpers live in ``hm_arch.forgetting.strength`` (also re-exported from
-``hm_arch.forgetting``).
+Exported helpers include ``compute_initial_strength``, ``apply_retrieval_reinforcement``, ``StrengthFactors``, and modifier factor functions.
 
 ---
 

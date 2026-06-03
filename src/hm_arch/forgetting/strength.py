@@ -1,47 +1,19 @@
 """Deterministic memory strength modulation (HM-29).
 
-All scoring is local, bounded, and offline by default.  Modifiers adjust
-*initial_strength* at encode time; retention decay multiplies the layer curve
-by that strength; successful retrieval reinforces strength for later decay.
+PRD multiplicative model (offline by default)::
 
-Formulas
---------
+    S = S_base * I_mod * E_mod * R_mod * C_mod
 
-**Initial strength** (clamped to ``[strength_min, strength_max]``)::
+* ``S_base = 0.5``
+* ``I_mod`` in ``[1.0, 2.0]`` from importance ``[0, 1]``
+* ``E_mod`` in ``[0.8, 1.5]`` from emotion ``[0, 1]``
+* ``R_mod`` in ``[1.0, 3.0]`` from encode repetitions and successful retrievals
+  (``+0.3`` per counted event, capped at ``3.0``)
+* ``C_mod`` in ``[0.5, 1.5]`` (neutral ``1.0``, consistent ``1.5``,
+  superseded conflict ``0.5``)
 
-    S = clamp(
-        1.0 + M_imp + M_emo + M_rep + M_con,
-        strength_min,
-        strength_max,
-    )
-
-Modifiers (each documented and bounded):
-
-* ``M_imp = 0.20 * (importance - 0.5)``  → ``[-0.10, +0.10]``
-* ``M_emo = 0.15 * (emotion - 0.5)``     → ``[-0.075, +0.075]``
-* ``M_rep = min(0.12, 0.04 * repetition_count)``  → ``[0, +0.12]``
-* ``M_con``: ``+0.08`` consistent reinforcement, ``0`` otherwise at encode
-  (conflicting *superseded* rows receive a separate ``-0.12`` penalty)
-
-**Retention** at elapsed hours *t*::
-
-    R(t) = min(1.0, R_layer(t) * initial_strength)
-
-where ``R_layer`` is the L2 bi-exponential or L3 power-law decay.
-
-**Retrieval reinforcement** after a successful hit (relevance ≥ threshold)::
-
-    ΔS = rate * relevance * (1 - initial_strength)
-    S' = min(strength_max, initial_strength + ΔS)
-
-    R' = min(1.0, R + rate * relevance * (1 - R))
-
-**Semantic consistency adjustments** (applied directly to stored strength):
-
-* Idempotent / merged consistent fact: ``+0.08`` to ``initial_strength`` and
-  ``current_retention`` (capped at 1).
-* Superseded conflicting fact: ``-0.12`` from both fields (floored at
-  ``strength_min``).
+Retention scales as ``R(t) = min(1.0, R_layer(t) * S)`` so higher ``S`` decays
+more slowly than the PRD default neutral memory.
 """
 
 from __future__ import annotations
@@ -49,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 from ..types import EventType
@@ -56,21 +29,33 @@ from ..types import EventType
 if TYPE_CHECKING:
     from ..config import MemoryConfig
     from ..storage.sqlite import SQLiteStore
+    from .time import TimeProvider
 
-ConsistencyKind = Literal["neutral", "consistent", "conflict_new", "conflict_superseded"]
+ConsistencyKind = Literal["neutral", "consistent", "conflict_superseded"]
 
-# Modifier coefficients (documented bounds in module docstring).
-_IMPORTANCE_SCALE = 0.20
-_EMOTION_SCALE = 0.15
-_REPETITION_STEP = 0.04
-_REPETITION_CAP = 0.12
-_CONSISTENT_BOOST = 0.08
-_CONFLICT_SUPERSEDED_PENALTY = -0.12
+STRENGTH_BASE = 0.5
+IMPORTANCE_MOD_MIN = 1.0
+IMPORTANCE_MOD_MAX = 2.0
+EMOTION_MOD_MIN = 0.8
+EMOTION_MOD_MAX = 1.5
+REPETITION_MOD_MIN = 1.0
+REPETITION_MOD_MAX = 3.0
+CONSISTENCY_MOD_MIN = 0.5
+CONSISTENCY_MOD_MAX = 1.5
+PRD_STRENGTH_MAX = (
+    STRENGTH_BASE
+    * IMPORTANCE_MOD_MAX
+    * EMOTION_MOD_MAX
+    * REPETITION_MOD_MAX
+    * CONSISTENCY_MOD_MAX
+)
 
-_DEFAULT_STRENGTH_MIN = 0.25
-_DEFAULT_STRENGTH_MAX = 1.0
-_DEFAULT_REINFORCEMENT_RATE = 0.06
+_DEFAULT_STRENGTH_MIN = 0.2
+_DEFAULT_STRENGTH_MAX = PRD_STRENGTH_MAX
+_DEFAULT_RETRIEVAL_INCREMENT = 0.3
 _DEFAULT_RETRIEVAL_RELEVANCE_THRESHOLD = 0.25
+
+_STRENGTH_META_KEY = "hm_arch_strength"
 
 _EVENT_IMPORTANCE_BOOST: dict[EventType, float] = {
     EventType.ERROR: 0.20,
@@ -116,6 +101,17 @@ _EMOTION_LEXICON = frozenset(
         "wonderful",
     }
 )
+
+
+@dataclass(frozen=True)
+class StrengthFactors:
+    """Inputs persisted for recomputing PRD strength after retrieval."""
+
+    importance: float
+    emotion: float
+    encode_repetitions: int = 0
+    successful_retrievals: int = 0
+    consistency: ConsistencyKind = "neutral"
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -171,84 +167,153 @@ def score_local_emotion(
     return _clamp(score, 0.0, 1.0)
 
 
-def importance_modifier(importance: float) -> float:
-    """Bounded importance contribution to initial strength."""
+def importance_modifier_factor(importance: float) -> float:
+    """Map importance in ``[0, 1]`` to ``I_mod`` in ``[1.0, 2.0]``."""
     imp = _clamp(importance, 0.0, 1.0)
-    return _IMPORTANCE_SCALE * (imp - 0.5)
+    return IMPORTANCE_MOD_MIN + imp * (IMPORTANCE_MOD_MAX - IMPORTANCE_MOD_MIN)
 
 
-def emotion_modifier(emotion: float) -> float:
-    """Bounded emotion contribution to initial strength."""
+def emotion_modifier_factor(emotion: float) -> float:
+    """Map emotion in ``[0, 1]`` to ``E_mod`` in ``[0.8, 1.5]``."""
     emo = _clamp(emotion, 0.0, 1.0)
-    return _EMOTION_SCALE * (emo - 0.5)
+    return EMOTION_MOD_MIN + emo * (EMOTION_MOD_MAX - EMOTION_MOD_MIN)
 
 
-def repetition_modifier(repetition_count: int) -> float:
-    """Bounded boost from prior similar encodings (``repetition_count >= 0``)."""
-    if repetition_count < 0:
-        raise ValueError(f"repetition_count must be >= 0, got {repetition_count}")
-    return min(_REPETITION_CAP, _REPETITION_STEP * repetition_count)
+def repetition_modifier_factor(
+    *,
+    encode_repetitions: int = 0,
+    successful_retrievals: int = 0,
+    increment: float = _DEFAULT_RETRIEVAL_INCREMENT,
+) -> float:
+    """Map repetition counts to ``R_mod`` in ``[1.0, 3.0]``."""
+    if encode_repetitions < 0 or successful_retrievals < 0:
+        raise ValueError("repetition counts must be non-negative")
+    total = encode_repetitions + successful_retrievals
+    return _clamp(
+        REPETITION_MOD_MIN + increment * total,
+        REPETITION_MOD_MIN,
+        REPETITION_MOD_MAX,
+    )
 
 
-def consistency_modifier(kind: ConsistencyKind) -> float:
-    """Bounded consistency / conflict adjustment at encode time."""
+def consistency_modifier_factor(kind: ConsistencyKind) -> float:
+    """Return ``C_mod`` for the given consistency state."""
     if kind == "consistent":
-        return _CONSISTENT_BOOST
-    return 0.0
+        return CONSISTENCY_MOD_MAX
+    if kind == "conflict_superseded":
+        return CONSISTENCY_MOD_MIN
+    return 1.0
 
 
 def compute_initial_strength(
     *,
     importance: float,
     emotion: float,
-    repetition_count: int = 0,
+    encode_repetitions: int = 0,
+    successful_retrievals: int = 0,
     consistency: ConsistencyKind = "neutral",
     strength_min: float = _DEFAULT_STRENGTH_MIN,
     strength_max: float = _DEFAULT_STRENGTH_MAX,
+    retrieval_increment: float = _DEFAULT_RETRIEVAL_INCREMENT,
 ) -> float:
-    """Combine modifiers into a clamped initial strength."""
+    """Combine PRD factors into clamped initial strength ``S``."""
     raw = (
-        1.0
-        + importance_modifier(importance)
-        + emotion_modifier(emotion)
-        + repetition_modifier(repetition_count)
-        + consistency_modifier(consistency)
+        STRENGTH_BASE
+        * importance_modifier_factor(importance)
+        * emotion_modifier_factor(emotion)
+        * repetition_modifier_factor(
+            encode_repetitions=encode_repetitions,
+            successful_retrievals=successful_retrievals,
+            increment=retrieval_increment,
+        )
+        * consistency_modifier_factor(consistency)
     )
     return _clamp(raw, strength_min, strength_max)
+
+
+def compute_strength_from_factors(
+    factors: StrengthFactors,
+    *,
+    config: MemoryConfig | None = None,
+) -> float:
+    """Recompute ``S`` from :class:`StrengthFactors` and optional config."""
+    s_min, s_max, increment, _ = strength_bounds(config) if config else (
+        _DEFAULT_STRENGTH_MIN,
+        _DEFAULT_STRENGTH_MAX,
+        _DEFAULT_RETRIEVAL_INCREMENT,
+        _DEFAULT_RETRIEVAL_RELEVANCE_THRESHOLD,
+    )
+    return compute_initial_strength(
+        importance=factors.importance,
+        emotion=factors.emotion,
+        encode_repetitions=factors.encode_repetitions,
+        successful_retrievals=factors.successful_retrievals,
+        consistency=factors.consistency,
+        strength_min=s_min,
+        strength_max=s_max,
+        retrieval_increment=increment,
+    )
 
 
 def apply_strength_to_retention(
     layer_retention: float,
     initial_strength: float,
 ) -> float:
-    """Scale a layer decay sample by *initial_strength* (cap at 1)."""
-    return min(1.0, max(0.0, layer_retention) * _clamp(initial_strength, 0.0, 1.0))
+    """Scale a layer decay sample by PRD strength (cap at 1)."""
+    return min(1.0, max(0.0, layer_retention) * max(0.0, initial_strength))
 
 
-def reinforcement_delta(
+def strength_factors_to_metadata(factors: StrengthFactors) -> dict:
+    """Serialize factors into ``memory_index.metadata``."""
+    return {
+        _STRENGTH_META_KEY: {
+            "importance": factors.importance,
+            "emotion": factors.emotion,
+            "encode_repetitions": factors.encode_repetitions,
+            "successful_retrievals": factors.successful_retrievals,
+            "consistency": factors.consistency,
+        }
+    }
+
+
+def load_strength_factors(
+    metadata_json: str | None,
     *,
-    initial_strength: float,
-    current_retention: float,
-    relevance: float,
-    rate: float = _DEFAULT_REINFORCEMENT_RATE,
-    strength_max: float = _DEFAULT_STRENGTH_MAX,
-) -> tuple[float, float]:
-    """Return updated ``(initial_strength, current_retention)`` after retrieval."""
-    rel = _clamp(relevance, 0.0, 1.0)
-    strength = _clamp(initial_strength, 0.0, strength_max)
-    retention = _clamp(current_retention, 0.0, 1.0)
+    fallback_importance: float,
+    fallback_emotion: float,
+) -> StrengthFactors:
+    """Load persisted factors or build neutral defaults."""
+    meta = decode_metadata(metadata_json)
+    block = meta.get(_STRENGTH_META_KEY)
+    if not isinstance(block, dict):
+        return StrengthFactors(
+            importance=fallback_importance,
+            emotion=fallback_emotion,
+        )
+    consistency = block.get("consistency", "neutral")
+    if consistency not in ("neutral", "consistent", "conflict_superseded"):
+        consistency = "neutral"
+    return StrengthFactors(
+        importance=float(block.get("importance", fallback_importance)),
+        emotion=float(block.get("emotion", fallback_emotion)),
+        encode_repetitions=int(block.get("encode_repetitions", 0)),
+        successful_retrievals=int(block.get("successful_retrievals", 0)),
+        consistency=consistency,  # type: ignore[arg-type]
+    )
 
-    delta_s = rate * rel * (1.0 - strength)
-    new_strength = _clamp(strength + delta_s, 0.0, strength_max)
 
-    delta_r = rate * rel * (1.0 - retention)
-    new_retention = _clamp(retention + delta_r, 0.0, 1.0)
-
-    return new_strength, new_retention
+def merge_metadata_with_strength(
+    metadata: dict | None,
+    factors: StrengthFactors,
+) -> dict:
+    """Return caller metadata merged with strength factor block."""
+    base = dict(metadata) if metadata else {}
+    base.update(strength_factors_to_metadata(factors))
+    return base
 
 
 def count_l2_repetitions(db: SQLiteStore, content: str) -> int:
-    """Count active L2 rows with the same content hash (excluding the new row)."""
+    """Count active L2 rows with the same content hash before a new encode."""
     digest = content_hash(content)
     rows = db.query(
         """
@@ -263,43 +328,123 @@ def count_l2_repetitions(db: SQLiteStore, content: str) -> int:
     return int(rows[0]["cnt"]) if rows else 0
 
 
-def apply_consistent_strength_boost(
+def apply_retrieval_reinforcement(
     db: SQLiteStore,
     memory_id: str,
+    relevance: float,
     *,
-    strength_min: float = _DEFAULT_STRENGTH_MIN,
-    strength_max: float = _DEFAULT_STRENGTH_MAX,
-) -> None:
-    """Raise strength/retention for a reinforced consistent semantic fact."""
+    config: MemoryConfig,
+    time_provider: TimeProvider,
+) -> bool:
+    """Increment ``R_mod`` via successful retrieval (``+0.3``) and persist ``S``.
+
+    Returns ``True`` when reinforcement was applied.
+    """
+    _, _, increment, threshold = strength_bounds(config)
+    if relevance < threshold:
+        return False
+
     rows = db.query(
         """
-        SELECT initial_strength, current_retention
-        FROM   memory_index
-        WHERE  id = ?
+        SELECT mi.importance,
+               mi.initial_strength,
+               mi.current_retention,
+               mi.metadata,
+               e.emotion_score
+        FROM   memory_index mi
+        LEFT JOIN episodes e ON e.memory_id = mi.id
+        WHERE  mi.id = ? AND mi.status = 'active'
         """,
         (memory_id,),
     )
     if not rows:
-        return
-    strength = float(rows[0]["initial_strength"]) + _CONSISTENT_BOOST
-    retention = float(rows[0]["current_retention"]) + _CONSISTENT_BOOST
-    _write_strength(db, memory_id, strength, retention, strength_min, strength_max)
+        return False
+
+    row = rows[0]
+    emotion = row["emotion_score"]
+    if emotion is None:
+        emotion = 0.5
+    factors = load_strength_factors(
+        row["metadata"],
+        fallback_importance=float(row["importance"]),
+        fallback_emotion=float(emotion),
+    )
+    factors = StrengthFactors(
+        importance=factors.importance,
+        emotion=factors.emotion,
+        encode_repetitions=factors.encode_repetitions,
+        successful_retrievals=factors.successful_retrievals + 1,
+        consistency=factors.consistency,
+    )
+    new_strength = compute_strength_from_factors(factors, config=config)
+    old_strength = float(row["initial_strength"])
+    if new_strength <= old_strength:
+        return False
+
+    meta = decode_metadata(row["metadata"])
+    meta.update(strength_factors_to_metadata(factors))
+    retention = min(
+        1.0,
+        float(row["current_retention"])
+        * (new_strength / old_strength if old_strength > 0 else 1.0),
+    )
+    _write_strength(
+        db,
+        memory_id,
+        new_strength,
+        retention,
+        meta,
+        config=config,
+        time_provider=time_provider,
+    )
+    return True
+
+
+def apply_consistent_strength_boost(
+    db: SQLiteStore,
+    memory_id: str,
+    *,
+    config: MemoryConfig | None = None,
+    time_provider: TimeProvider | None = None,
+) -> None:
+    """Recompute strength with ``C_mod = 1.5`` for a consistent semantic fact."""
+    _recompute_with_consistency(
+        db,
+        memory_id,
+        consistency="consistent",
+        config=config,
+        time_provider=time_provider,
+    )
 
 
 def apply_conflict_superseded_penalty(
     db: SQLiteStore,
     memory_id: str,
     *,
-    strength_min: float = _DEFAULT_STRENGTH_MIN,
+    config: MemoryConfig | None = None,
+    time_provider: TimeProvider | None = None,
 ) -> None:
-    """Lower retention on facts superseded by a contradiction.
+    """Recompute strength with ``C_mod = 0.5`` for a superseded conflicting fact."""
+    _recompute_with_consistency(
+        db,
+        memory_id,
+        consistency="conflict_superseded",
+        config=config,
+        time_provider=time_provider,
+    )
 
-    ``initial_strength`` is left unchanged so transient supersession during
-    replay does not permanently alter decay for a later-active canonical row.
-    """
+
+def _recompute_with_consistency(
+    db: SQLiteStore,
+    memory_id: str,
+    *,
+    consistency: ConsistencyKind,
+    config: MemoryConfig | None,
+    time_provider: TimeProvider | None,
+) -> None:
     rows = db.query(
         """
-        SELECT initial_strength, current_retention
+        SELECT importance, current_retention, metadata
         FROM   memory_index
         WHERE  id = ?
         """,
@@ -307,9 +452,33 @@ def apply_conflict_superseded_penalty(
     )
     if not rows:
         return
-    strength = float(rows[0]["initial_strength"])
-    retention = float(rows[0]["current_retention"]) + _CONFLICT_SUPERSEDED_PENALTY
-    _write_strength(db, memory_id, strength, retention, strength_min, 1.0)
+    row = rows[0]
+    factors = load_strength_factors(
+        row["metadata"],
+        fallback_importance=float(row["importance"]),
+        fallback_emotion=0.5,
+    )
+    factors = StrengthFactors(
+        importance=factors.importance,
+        emotion=factors.emotion,
+        encode_repetitions=factors.encode_repetitions,
+        successful_retrievals=factors.successful_retrievals,
+        consistency=consistency,
+    )
+    new_strength = compute_strength_from_factors(factors, config=config)
+    meta = decode_metadata(row["metadata"])
+    meta.update(strength_factors_to_metadata(factors))
+    retention = apply_strength_to_retention(1.0, new_strength)
+    retention = min(float(row["current_retention"]), retention)
+    _write_strength(
+        db,
+        memory_id,
+        new_strength,
+        retention,
+        meta,
+        config=config,
+        time_provider=time_provider,
+    )
 
 
 def _write_strength(
@@ -317,37 +486,52 @@ def _write_strength(
     memory_id: str,
     initial_strength: float,
     current_retention: float,
-    strength_min: float,
-    strength_max: float,
+    metadata: dict,
+    *,
+    config: MemoryConfig | None = None,
+    time_provider: TimeProvider | None = None,
 ) -> None:
     from .time import SystemTimeProvider
 
-    strength = _clamp(initial_strength, strength_min, strength_max)
-    retention = _clamp(current_retention, strength_min, strength_max)
-    now = SystemTimeProvider().now().isoformat()
+    s_min, s_max, _, _ = strength_bounds(config) if config else (
+        _DEFAULT_STRENGTH_MIN,
+        _DEFAULT_STRENGTH_MAX,
+        _DEFAULT_RETRIEVAL_INCREMENT,
+        _DEFAULT_RETRIEVAL_RELEVANCE_THRESHOLD,
+    )
+    strength = _clamp(initial_strength, s_min, s_max)
+    retention = _clamp(current_retention, 0.0, 1.0)
+    clock = time_provider or SystemTimeProvider()
+    now = clock.now().isoformat()
     db.execute(
         """
         UPDATE memory_index
            SET initial_strength = ?,
                current_retention = ?,
+               metadata = ?,
                updated_at = ?
          WHERE id = ?
         """,
-        (strength, retention, now, memory_id),
+        (strength, retention, json.dumps(metadata), now, memory_id),
     )
 
 
-def strength_bounds(config: MemoryConfig) -> tuple[float, float, float, float]:
-    """Return ``(min, max, reinforcement_rate, relevance_threshold)`` from config."""
-    return (
-        getattr(config, "strength_min", _DEFAULT_STRENGTH_MIN),
-        getattr(config, "strength_max", _DEFAULT_STRENGTH_MAX),
-        getattr(config, "retrieval_reinforcement_rate", _DEFAULT_REINFORCEMENT_RATE),
-        getattr(
-            config,
-            "retrieval_relevance_threshold",
+def strength_bounds(
+    config: MemoryConfig | None,
+) -> tuple[float, float, float, float]:
+    """Return ``(min, max, retrieval_increment, relevance_threshold)``."""
+    if config is None:
+        return (
+            _DEFAULT_STRENGTH_MIN,
+            _DEFAULT_STRENGTH_MAX,
+            _DEFAULT_RETRIEVAL_INCREMENT,
             _DEFAULT_RETRIEVAL_RELEVANCE_THRESHOLD,
-        ),
+        )
+    return (
+        config.strength_min,
+        config.strength_max,
+        config.retrieval_reinforcement_increment,
+        config.retrieval_relevance_threshold,
     )
 
 
@@ -360,3 +544,4 @@ def decode_metadata(raw: str | None) -> dict:
     except json.JSONDecodeError:
         return {}
     return parsed if isinstance(parsed, dict) else {}
+
