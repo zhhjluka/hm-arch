@@ -1,13 +1,10 @@
-# HM-Arch v1.0.0 — GitHub Release notes (draft)
+# HM-Arch v1.0.0
 
-Use this document when creating the GitHub Release after explicit maintainer approval.
-Do **not** create the `v1.0.0` tag or publish the release until approved.
-
-HM-Arch **1.0.0** will be distributed through this GitHub Release only. It is **not** published to PyPI or any other package registry.
+HM-Arch **1.0.0** is distributed through this GitHub Release only. It is **not** published to PyPI or any other package registry.
 
 ## Install from release artifacts
 
-After this release is published, download `hm_arch-1.0.0-py3-none-any.whl` and/or `hm_arch-1.0.0.tar.gz` from the release assets, then install in a virtual environment (Python >= 3.10):
+Download `hm_arch-1.0.0-py3-none-any.whl` and/or `hm_arch-1.0.0.tar.gz` from the release assets, then install in a virtual environment (Python >= 3.10):
 
 ```bash
 python3 --version   # requires Python >= 3.10

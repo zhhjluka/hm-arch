@@ -2,7 +2,7 @@
 
 Python SDK for human-like agent memory: add, search, decay, consolidate, and inspect stats. Designed for coding agents with offline-first defaults (SQLite + deterministic local vector search; no API keys required for tests or demos).
 
-**Prepared version:** `1.0.0` (GitHub Release pending maintainer approval — not published to PyPI).
+**Current release:** `1.0.0` (distributed through GitHub Releases — not published to PyPI).
 
 ## Requirements
 
@@ -10,9 +10,9 @@ Python SDK for human-like agent memory: add, search, decay, consolidate, and ins
 
 ## Quick start
 
-### From a GitHub Release (wheel, after publication)
+### From a GitHub Release (wheel)
 
-Once the `v1.0.0` GitHub Release is published, download `hm_arch-1.0.0-py3-none-any.whl` from the [v1.0.0 release page](https://github.com/ZhangHangjianMA/memashuman/releases/tag/v1.0.0) (or the project [Releases](https://github.com/ZhangHangjianMA/memashuman/releases) index), then:
+Download `hm_arch-1.0.0-py3-none-any.whl` from the [v1.0.0 release page](https://github.com/ZhangHangjianMA/memashuman/releases/tag/v1.0.0) (or the project [Releases](https://github.com/ZhangHangjianMA/memashuman/releases) index), then:
 
 ```bash
 python3 --version   # requires Python >= 3.10
@@ -20,9 +20,6 @@ python3 -m venv .venv && source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install /path/to/hm_arch-1.0.0-py3-none-any.whl
 ```
-
-Until that release exists, install from source (below) or build a wheel locally per
-[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
 
 ### From source (development)
 
