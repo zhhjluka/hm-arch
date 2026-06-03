@@ -209,9 +209,8 @@ class L3SemanticMemory:
         if vector_store is not None:
             self._vector: VectorStoreProtocol = vector_store
         else:
-            local = LocalVectorStore()
-            self._vector = local
-            self._rebuild_vector_index()
+            self._vector = LocalVectorStore()
+        self._rebuild_vector_index()
 
     # ------------------------------------------------------------------
     # Primary public interface

@@ -51,6 +51,8 @@ REQUIRED_FIELDS = {
     "max_memories_l3",
     "max_skills_l5",
     # Providers
+    "enable_llm_providers",
+    "provider_fallback_to_local",
     "llm_provider",
     "llm_model",
     "llm_api_key",
@@ -58,6 +60,9 @@ REQUIRED_FIELDS = {
     "embedding_provider",
     "embedding_model",
     "embedding_dim",
+    "vector_backend",
+    "chroma_persist_directory",
+    "chroma_collection_prefix",
     # Database
     "db_path",
     "archive_root",
@@ -127,15 +132,16 @@ def test_default_storage_caps() -> None:
     assert cfg.max_skills_l5 == 10000
 
 
-def test_default_providers_match_prd() -> None:
+def test_default_providers_use_local_offline_fallback() -> None:
     cfg = MemoryConfig()
-    assert cfg.llm_provider == "deepseek"
-    assert cfg.llm_model == "deepseek-v4-flash"
+    assert cfg.enable_llm_providers is False
+    assert cfg.provider_fallback_to_local is True
+    assert cfg.llm_provider == "local"
+    assert cfg.embedding_provider == "local"
+    assert cfg.vector_backend == "local"
     assert cfg.llm_api_key is None
     assert cfg.llm_base_url is None
-    assert cfg.embedding_provider == "deepseek"
-    assert cfg.embedding_model == "deepseek-v4-flash"
-    assert cfg.embedding_dim == 1536
+    assert cfg.embedding_dim == 384
 
 
 def test_default_layer_priorities_cover_all_layers() -> None:

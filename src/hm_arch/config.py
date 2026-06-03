@@ -113,22 +113,32 @@ class MemoryConfig:
     """Maximum number of skill records stored in L5 procedural memory."""
 
     # -------------------------------------------------------------------
-    # LLM / embedding providers
+    # LLM / embedding providers (opt-in; local fallback is default)
     # -------------------------------------------------------------------
-    llm_provider: str = "deepseek"
-    """LLM provider identifier: ``"deepseek"``, ``"openai"``, or ``"local"``."""
-    llm_model: str = "deepseek-v4-flash"
+    enable_llm_providers: bool = False
+    """When ``True``, use configured remote providers for importance and extraction."""
+    provider_fallback_to_local: bool = True
+    """Fall back to local heuristics when API keys or optional deps are missing."""
+    llm_provider: str = "local"
+    """LLM provider identifier: ``"local"``, ``"deepseek"``, or ``"openai"``."""
+    llm_model: str = "deepseek-chat"
     """Model name used for importance scoring and semantic extraction."""
     llm_api_key: Optional[str] = None
     """Optional API key. ``None`` means provider code should read environment variables."""
     llm_base_url: Optional[str] = None
     """Optional provider base URL override."""
-    embedding_provider: str = "deepseek"
-    """Embedding provider identifier."""
-    embedding_model: str = "deepseek-v4-flash"
+    embedding_provider: str = "local"
+    """Embedding provider identifier: ``"local"``, ``"deepseek"``, or ``"openai"``."""
+    embedding_model: str = "text-embedding-3-small"
     """Model name for embedding generation."""
-    embedding_dim: int = 1536
+    embedding_dim: int = 384
     """Embedding dimensionality expected by the configured provider."""
+    vector_backend: str = "local"
+    """Vector store backend: ``"local"`` (token overlap) or ``"chroma"``."""
+    chroma_persist_directory: Optional[str] = None
+    """Directory for ChromaDB persistence.  Derived from ``db_path`` when ``None``."""
+    chroma_collection_prefix: str = "hm_arch"
+    """Prefix for Chroma collection names (episodic/semantic suffixes are appended)."""
 
     # -------------------------------------------------------------------
     # Retrieval

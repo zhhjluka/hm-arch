@@ -35,7 +35,9 @@ from pathlib import Path
 from typing import Iterator, Optional, Union
 
 from .config import MemoryConfig
-from .consolidation.replay import ConsolidationEngine
+from .consolidation.replay import ConsolidationEngine, SemanticExtractor
+from .providers import create_vector_store, resolve_llm_provider
+from .providers.semantic import ProviderSemanticExtractor
 from .context import AgentContext
 from .forgetting.controller import ForgettingController
 from .forgetting.decay import (
@@ -285,13 +287,22 @@ class HMArch:
         self._db.connect()
         self._db.initialize_schema()
 
+        self._llm = resolve_llm_provider(self._config)
+        l2_vector = create_vector_store(self._config, collection="l2_episodic")
+        l3_vector = create_vector_store(self._config, collection="l3_semantic")
+
         self._l0 = L0SensoryRegister(capacity=self._config.l0_capacity)
         self._l1 = L1WorkingMemory()
-        self._l2 = L2EpisodicBuffer(self._db, time_provider=self._time)
+        self._l2 = L2EpisodicBuffer(
+            self._db,
+            vector_store=l2_vector,
+            time_provider=self._time,
+        )
         self._l3 = L3SemanticMemory(
             self._db,
             max_memories=self._config.max_memories_l3,
             config=self._config,
+            vector_store=l3_vector,
             time_provider=self._time,
         )
         self._l4 = L4EpisodicLTM(_resolve_archive_root(self._config))
@@ -350,13 +361,18 @@ class HMArch:
             )
 
         strength_min, strength_max, retrieval_inc, _ = strength_bounds(self._config)
-        imp = (
-            importance
-            if importance is not None
-            else score_local_importance(
+        if importance is not None:
+            imp = importance
+        elif self._config.enable_llm_providers:
+            imp = self._llm.score_importance(
+                content,
+                event_type=event_type.value,
+                metadata=metadata,
+            )
+        else:
+            imp = score_local_importance(
                 content, event_type=event_type, metadata=metadata
             )
-        )
         emotion = score_local_emotion(content, event_type=event_type)
         repetition = count_l2_repetitions(self._db, content)
         factors = StrengthFactors(
@@ -668,12 +684,19 @@ class HMArch:
         LLM key is required.
         """
         consolidation_config = self._consolidation_config()
+        if self._config.enable_llm_providers:
+            extractor: SemanticExtractor | ProviderSemanticExtractor = (
+                ProviderSemanticExtractor(self._llm)
+            )
+        else:
+            extractor = SemanticExtractor()
         engine = ConsolidationEngine(
             self._db,
             self._l2,
             self._l3,
             l4=self._l4,
             config=consolidation_config,
+            extractor=extractor,
             time_provider=self._time,
         )
         return engine.run_consolidation_cycle()

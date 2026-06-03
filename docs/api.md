@@ -409,13 +409,18 @@ Time constants are expressed in hours, matching the PRD formulas.
 | `max_memories_l2` | `'int'` | (default: `100000`)|
 | `max_memories_l3` | `'int'` | (default: `50000`)|
 | `max_skills_l5` | `'int'` | (default: `10000`)|
-| `llm_provider` | `'str'` | (default: `'deepseek'`)|
-| `llm_model` | `'str'` | (default: `'deepseek-v4-flash'`)|
+| `enable_llm_providers` | `'bool'` | (default: `False`)|
+| `provider_fallback_to_local` | `'bool'` | (default: `True`)|
+| `llm_provider` | `'str'` | (default: `'local'`)|
+| `llm_model` | `'str'` | (default: `'deepseek-chat'`)|
 | `llm_api_key` | `'Optional[str]'` ||
 | `llm_base_url` | `'Optional[str]'` ||
-| `embedding_provider` | `'str'` | (default: `'deepseek'`)|
-| `embedding_model` | `'str'` | (default: `'deepseek-v4-flash'`)|
-| `embedding_dim` | `'int'` | (default: `1536`)|
+| `embedding_provider` | `'str'` | (default: `'local'`)|
+| `embedding_model` | `'str'` | (default: `'text-embedding-3-small'`)|
+| `embedding_dim` | `'int'` | (default: `384`)|
+| `vector_backend` | `'str'` | (default: `'local'`)|
+| `chroma_persist_directory` | `'Optional[str]'` ||
+| `chroma_collection_prefix` | `'str'` | (default: `'hm_arch'`)|
 | `layer_priorities` | `'dict[str, float]'` | (factory)|
 
 ### Presets

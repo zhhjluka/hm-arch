@@ -1,8 +1,8 @@
 """Storage sub-package for HM-Arch.
 
 Exposes the SQLite backend and the vector store abstraction (local fallback
-plus the structural protocol).  Future backends (ChromaDB, etc.) can be added
-without changing the public API of existing modules.
+plus optional ChromaDB).  Import :mod:`hm_arch.storage.chroma` only when the
+optional ``chromadb`` dependency is installed.
 """
 
 from hm_arch.storage.sqlite import SQLiteStore
@@ -19,4 +19,13 @@ __all__ = [
     "VectorDocument",
     "VectorSearchResult",
     "VectorStoreProtocol",
+    "ChromaVectorStore",
 ]
+
+
+def __getattr__(name: str):
+    if name == "ChromaVectorStore":
+        from hm_arch.storage.chroma import ChromaVectorStore
+
+        return ChromaVectorStore
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

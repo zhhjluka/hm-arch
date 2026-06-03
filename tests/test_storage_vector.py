@@ -14,6 +14,8 @@ Design principles
 
 from __future__ import annotations
 
+from unittest import mock
+
 import pytest
 
 from hm_arch.storage.vector import (
@@ -601,8 +603,31 @@ def test_importable_directly_from_vector_module() -> None:
 def test_storage_package_all_includes_vector_names() -> None:
     import hm_arch.storage as storage
 
-    for name in ("LocalVectorStore", "VectorDocument", "VectorSearchResult", "VectorStoreProtocol"):
+    for name in (
+        "LocalVectorStore",
+        "VectorDocument",
+        "VectorSearchResult",
+        "VectorStoreProtocol",
+        "ChromaVectorStore",
+    ):
         assert name in storage.__all__, f"{name} missing from hm_arch.storage.__all__"
+
+
+def test_chroma_vector_store_requires_chromadb_at_runtime() -> None:
+    from hm_arch.storage.chroma import ChromaVectorStore
+    from hm_arch.providers.local import LocalEmbeddingProvider
+
+    with mock.patch(
+        "hm_arch.storage.chroma.chromadb",
+        None,
+        create=True,
+    ):
+        with pytest.raises(ImportError, match="chromadb"):
+            ChromaVectorStore(
+                persist_directory="/tmp/chroma-missing",
+                collection_name="test",
+                embedding_provider=LocalEmbeddingProvider(16),
+            )
 
 
 # ---------------------------------------------------------------------------
