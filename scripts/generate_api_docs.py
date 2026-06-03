@@ -238,7 +238,8 @@ def build_markdown() -> str:
         "| Value | Dependency | Persistence |",
         "|-------|------------|---------------|",
         "| `local` | stdlib only | In-process token overlap (default). |",
-        "| `chroma` | `pip install 'hm-arch[chroma]'` | `chroma_persist_directory` or "
+        "| `chroma` | `chromadb>=0.5.0` (source: `pip install -e '.[chroma]'`; release wheel: "
+        "`pip install 'hm_arch-*.whl[chroma]'`; not on PyPI) | `chroma_persist_directory` or "
         "`{db_parent}/chroma`; collections `{chroma_collection_prefix}_l2_episodic` and "
         "`{prefix}_l3_semantic`. SQLite remains the source of truth; L2/L3 rebuild vector "
         "indexes from SQLite on startup. |",

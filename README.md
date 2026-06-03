@@ -1,6 +1,8 @@
 # HM-Arch
 
-Python SDK for human-like agent memory: add, search, decay, consolidate, and inspect stats. Designed for coding agents with offline-first defaults (SQLite + deterministic local vector fallback; no API keys required for tests or demos).
+Python SDK for human-like agent memory: add, search, decay, consolidate, and inspect stats. Designed for coding agents with offline-first defaults (SQLite + deterministic local vector search; no API keys required for tests or demos).
+
+**Prepared version:** `1.0.0` (GitHub Release pending maintainer approval — not published to PyPI).
 
 ## Requirements
 
@@ -8,9 +10,25 @@ Python SDK for human-like agent memory: add, search, decay, consolidate, and ins
 
 ## Quick start
 
-From a fresh clone:
+### From a GitHub Release (wheel, after publication)
+
+Once the `v1.0.0` GitHub Release is published, download `hm_arch-1.0.0-py3-none-any.whl` from the [v1.0.0 release page](https://github.com/ZhangHangjianMA/memashuman/releases/tag/v1.0.0) (or the project [Releases](https://github.com/ZhangHangjianMA/memashuman/releases) index), then:
 
 ```bash
+python3 --version   # requires Python >= 3.10
+python3 -m venv .venv && source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install /path/to/hm_arch-1.0.0-py3-none-any.whl
+```
+
+Until that release exists, install from source (below) or build a wheel locally per
+[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
+
+### From source (development)
+
+```bash
+git clone https://github.com/ZhangHangjianMA/memashuman.git
+cd memashuman
 python -m pip install -e .
 ```
 
@@ -131,13 +149,28 @@ PRD scale and performance benchmarks (10k L2, latency p95, storage, 7-day scenar
 documented in [docs/benchmarks.md](docs/benchmarks.md). They are excluded from default
 `pytest` via the `benchmark` marker.
 
+## Optional backends
+
+| Backend | When to use | Setup |
+|---------|-------------|-------|
+| Local (default) | Offline tests, demos, CI | None |
+| OpenAI / DeepSeek | LLM scoring and semantic extraction | `MemoryConfig(enable_llm_providers=True)` + API key |
+| ChromaDB | Persistent vector index | From source: `pip install -e '.[chroma]'`. From a published release wheel: `pip install '/path/to/hm_arch-1.0.0-py3-none-any.whl[chroma]'`. Then `vector_backend="chroma"`. |
+
+When `provider_fallback_to_local=True` (the default), missing optional dependencies,
+credentials, or runtime provider failures use local deterministic behavior. With
+`provider_fallback_to_local=False`, those conditions raise actionable errors instead.
+
 ## Release documentation
 
 | Document | Purpose |
 |----------|---------|
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
+| [docs/RELEASE_NOTES_v1.0.0.md](docs/RELEASE_NOTES_v1.0.0.md) | Draft GitHub Release notes for v1.0.0 |
 | [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Test, build, tag, and GitHub Release steps |
 | [docs/VERSIONING.md](docs/VERSIONING.md) | How to bump `src/hm_arch/_version.py` |
+
+HM-Arch is distributed via **GitHub Releases** (wheel/sdist artifacts). There is no `pip install hm-arch` from PyPI.
 
 ## Project layout
 

@@ -21,7 +21,7 @@ src/hm_arch/_version.py   →   __version__
 | New features, layers, or config fields (backward compatible) | **MINOR** |
 | Bug fixes, docs, tests, internal refactors | **PATCH** |
 
-Pre-1.0 releases may use `0.MINOR.PATCH`; treat MINOR bumps as the primary API evolution signal.
+Pre-1.0 releases used `0.MINOR.PATCH`. From **1.0.0** onward, follow semver for public API changes.
 
 ## Release bump checklist
 

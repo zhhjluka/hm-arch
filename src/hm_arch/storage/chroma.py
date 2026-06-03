@@ -28,7 +28,10 @@ class ChromaVectorStore:
             import chromadb  # type: ignore[import-untyped]
         except ImportError as exc:
             raise ImportError(
-                "chromadb is not installed. Install with: pip install 'hm-arch[chroma]'"
+                "chromadb is not installed. HM-Arch is not on PyPI. "
+                "Install with pip install 'chromadb>=0.5.0', from source pip install -e '.[chroma]', "
+                "or add the [chroma] extra when installing a release wheel "
+                "(e.g. pip install '/path/to/hm_arch-*.whl[chroma]')."
             ) from exc
 
         self._embedding = embedding_provider

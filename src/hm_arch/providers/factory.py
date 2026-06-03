@@ -191,8 +191,10 @@ def create_vector_store(
             return LocalVectorStore()
         raise ImportError(
             "ChromaDB vector backend requires the optional 'chromadb' package. "
-            "Install with: pip install 'hm-arch[chroma]' "
-            "or set vector_backend='local' / provider_fallback_to_local=True."
+            "HM-Arch is not on PyPI. Install with pip install 'chromadb>=0.5.0', "
+            "from source pip install -e '.[chroma]', or add the [chroma] extra when "
+            "installing a release wheel. Alternatively set vector_backend='local' "
+            "or provider_fallback_to_local=True."
         ) from exc
 
     persist_dir = config.chroma_persist_directory
@@ -218,6 +220,8 @@ def create_vector_store(
             return LocalVectorStore()
         raise ImportError(
             "ChromaDB vector backend requires the optional 'chromadb' package. "
-            "Install with: pip install 'hm-arch[chroma]' "
-            "or set vector_backend='local' / provider_fallback_to_local=True."
+            "HM-Arch is not on PyPI. Install with pip install 'chromadb>=0.5.0', "
+            "from source pip install -e '.[chroma]', or add the [chroma] extra when "
+            "installing a release wheel. Alternatively set vector_backend='local' "
+            "or provider_fallback_to_local=True."
         ) from exc
