@@ -179,12 +179,16 @@ class L3SemanticMemory:
         vector_store: VectorStoreProtocol | None = None,
         default_confidence: float = 1.0,
         default_importance: float = 0.8,
+        max_memories: int | None = None,
     ) -> None:
+        if max_memories is not None and max_memories < 1:
+            raise ValueError(f"max_memories must be >= 1, got {max_memories!r}")
         _validate_unit_interval("default_confidence", default_confidence)
         _validate_unit_interval("default_importance", default_importance)
         self._db = db
         self._default_confidence = default_confidence
         self._default_importance = default_importance
+        self._max_memories = max_memories
 
         if vector_store is not None:
             self._vector: VectorStoreProtocol = vector_store
@@ -275,12 +279,24 @@ class L3SemanticMemory:
 
         # --- Step 2: find conflicting active triples --------------------
         conflicts = self._find_active_conflicts(entity, relation, value)
+        same_key_replacement = bool(conflicts)
         if similarity_threshold is not None:
             conflicts = [
                 c
                 for c in conflicts
                 if _symmetric_text_similarity(value, c["value"]) < similarity_threshold
             ]
+
+        if (
+            self._max_memories is not None
+            and not same_key_replacement
+            and self.count() >= self._max_memories
+        ):
+            raise ValueError(
+                f"max_memories limit ({self._max_memories}) reached; "
+                f"cannot upsert ({entity!r}, {relation!r}, {value!r})"
+            )
+
         next_version = 1
         if conflicts:
             # Determine next version from the highest existing version.

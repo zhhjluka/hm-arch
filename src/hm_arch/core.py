@@ -1,9 +1,10 @@
 """HMArch — public facade for the HM-Arch memory SDK.
 
-Wires together L1 (working memory), L2 (episodic buffer), and L3 (semantic
-memory) into a single ergonomic interface.  All persistence uses SQLite with
-a local deterministic vector fallback so the facade works fully offline
-without any external API keys.
+Wires together L0–L6 into a single ergonomic interface: sensory register,
+working memory, episodic buffer, semantic memory, long-term archive,
+procedural skills, and meta-memory policies.  Persistence uses SQLite with a
+local deterministic vector fallback so the facade works fully offline without
+any external API keys.
 
 Scoring formula::
 
@@ -25,8 +26,10 @@ Usage example::
 from __future__ import annotations
 
 import json
+import math
 import time
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator, Optional, Union
@@ -39,11 +42,15 @@ from .forgetting.decay import (
     predict_memory_retention_curve,
     predict_retention_curve,
 )
+from .layers.base import LayerItem
+from .layers.l0_sensory import L0SensoryRegister
 from .layers.l1_working import L1WorkingMemory
 from .layers.l2_episodic import L2EpisodicBuffer
 from .layers.l3_semantic import L3SemanticMemory
 from .layers.l4_ltm import L4EpisodicLTM
-from .layers.l6_meta import L6MetaMemory
+from .layers.l5_procedural import L5ProceduralMemory, SkillRecord
+from .layers.l6_meta import HotMemoryRecord, L6MetaMemory, StrategyPlan
+from .layers.l6_meta import _parse_hot_access_threshold
 from .storage.sqlite import SQLiteStore
 from .storage.vector import _token_overlap_score, _tokenize
 from .types import (
@@ -59,7 +66,8 @@ from .types import (
 
 __all__ = ["HMArch", "AgentContext"]
 
-_DEFAULT_SEARCH_LAYERS: tuple[int, ...] = (1, 2, 3, 4)
+_DEFAULT_SEARCH_LAYERS: tuple[int, ...] = (0, 1, 2, 3, 4)
+_HOT_MEMORY_SCORE_BOOST: float = 1.25
 
 
 def _relevance(query: str, text: str) -> float:
@@ -151,6 +159,42 @@ def _days_up_to(days_ahead: int) -> list[int]:
     return sorted(days)
 
 
+def _archive_storage_mb(l4: L4EpisodicLTM) -> float:
+    """Return total on-disk size of L4 gzip archives in megabytes."""
+    total_bytes = sum(entry.compressed_bytes for entry in l4.list_archives())
+    return total_bytes / (1024 * 1024)
+
+
+def _l4_index_count(db: SQLiteStore) -> int:
+    rows = db.query(
+        """
+        SELECT COUNT(*) AS n
+        FROM   memory_index
+        WHERE  layer = 4 AND status = 'archived'
+        """
+    )
+    return int(rows[0]["n"]) if rows else 0
+
+
+def _l6_persisted_count(db: SQLiteStore) -> int:
+    """Count L6-owned rows in ``meta_memory`` (policies, access tallies, totals)."""
+    rows = db.query(
+        """
+        SELECT COUNT(*) AS n
+        FROM   meta_memory
+        WHERE  key LIKE 'hm_arch.l6.%'
+        """
+    )
+    return int(rows[0]["n"]) if rows else 0
+
+
+def _parse_policy_float(raw: str, default: float) -> float:
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
 def _database_size_mb(db: SQLiteStore) -> float:
     """Approximate on-disk database size in megabytes."""
     path = db.path
@@ -214,10 +258,16 @@ class HMArch:
         self._db.connect()
         self._db.initialize_schema()
 
+        self._l0 = L0SensoryRegister(capacity=self._config.l0_capacity)
         self._l1 = L1WorkingMemory()
         self._l2 = L2EpisodicBuffer(self._db)
-        self._l3 = L3SemanticMemory(self._db)
+        self._l3 = L3SemanticMemory(
+            self._db, max_memories=self._config.max_memories_l3
+        )
         self._l4 = L4EpisodicLTM(_resolve_archive_root(self._config))
+        self._l5 = L5ProceduralMemory(
+            self._db, max_skills=self._config.max_skills_l5
+        )
         self._l6 = L6MetaMemory(self._db)
 
     # ------------------------------------------------------------------
@@ -231,11 +281,11 @@ class HMArch:
         metadata: Optional[dict] = None,
         importance: Optional[float] = None,
     ) -> MemoryReceipt:
-        """Store *content* in working memory (L1) and the episodic buffer (L2).
+        """Store *content* in L0, L1, and the episodic buffer (L2).
 
-        ``add()`` always succeeds without an external LLM key.  L3 semantic
-        extraction is **not** triggered here; it happens during
-        ``consolidate()`` (a later milestone).
+        ``add()`` always succeeds without an external LLM key when capacity
+        limits allow.  L3 semantic extraction is **not** triggered here; it
+        happens during ``consolidate()``.
 
         Parameters
         ----------
@@ -256,6 +306,11 @@ class HMArch:
             Confirmation including the ``memory_id`` assigned by L2, which
             is the durable database-backed identifier for the event.
         """
+        if self._l2.count() >= self._config.max_memories_l2:
+            raise ValueError(
+                f"max_memories_l2 limit ({self._config.max_memories_l2}) reached"
+            )
+
         # L2 episodic buffer — persisted to SQLite, survives restarts
         l2_mid = self._l2.encode(
             content,
@@ -263,6 +318,10 @@ class HMArch:
             metadata=metadata,
             importance=importance,
         )
+
+        l0_meta = dict(metadata) if metadata is not None else {}
+        l0_meta["source_l2_memory_id"] = l2_mid
+        self._l0.add(content, metadata=l0_meta)
 
         # L1 uses the same memory_id as L2 so forget() can remove both layers
         self._l1.add(content, metadata=metadata, memory_id=l2_mid)
@@ -287,8 +346,9 @@ class HMArch:
     ) -> SearchResult:
         """Return the top-*k* memories most relevant to *query*.
 
-        Queries L1 working memory, L2 episodic buffer, L3 semantic memory, and
-        L4 archived episodic memories.  Candidates from all layers are merged,
+        Queries L0 sensory register, L1 working memory, L2 episodic buffer,
+        L3 semantic memory, and L4 archived episodic memories.  Candidates from
+        all layers are merged,
         ``memory_id``, scored as::
 
             score = retention × relevance × layer_priority
@@ -311,7 +371,10 @@ class HMArch:
             Defaults to ``0.1`` (PRD).
         layer_filter:
             When provided, only search these layer indices (e.g. ``[1, 2, 3]``).
-            When ``None``, all supported layers ``(1, 2, 3, 4)`` are queried.
+            When ``None``, all supported layers ``(0, 1, 2, 3, 4)`` are queried.
+
+        L6 policies ``retrieval_top_k_multiplier`` and ``prefer_hot_memories``
+        adjust the effective *top_k* and ranking scores when configured.
 
         Returns
         -------
@@ -329,17 +392,46 @@ class HMArch:
             set(layer_filter) if layer_filter is not None else set(_DEFAULT_SEARCH_LAYERS)
         )
 
+        effective_top_k = self._effective_search_top_k(top_k)
+
         t0 = time.monotonic()
         priorities = self._config.layer_priorities
 
         candidates: list[MemoryItem] = []
-        source_breakdown: dict[int, int] = {1: 0, 2: 0, 3: 0, 4: 0}
+        source_breakdown: dict[int, int] = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
+
+        # ---- L0: sensory register ----------------------------------------
+        l0_hits = (
+            self._l0.retrieve(query, top_k=effective_top_k)
+            if 0 in allowed_layers
+            else []
+        )
+        source_breakdown[0] = len(l0_hits)
+        l0_priority = priorities.get("L0", 1.0)
+        for item in l0_hits:
+            if not self._l0_searchable(item):
+                continue
+            rel = _relevance(query, item.content)
+            score = 1.0 * rel * l0_priority
+            candidates.append(
+                MemoryItem(
+                    memory_id=item.memory_id,
+                    layer=0,
+                    content=item.content,
+                    retention=1.0,
+                    relevance=rel,
+                    score=score,
+                    metadata=item.metadata,
+                )
+            )
 
         # ---- L1: in-memory working memory --------------------------------
         # Pull up to top_k candidates from each layer; the merged pool is
         # then re-ranked by the combined score formula.
         l1_hits = (
-            self._l1.retrieve(query, top_k=top_k) if 1 in allowed_layers else []
+            self._l1.retrieve(query, top_k=effective_top_k)
+            if 1 in allowed_layers
+            else []
         )
         source_breakdown[1] = len(l1_hits)
         l1_priority = priorities.get("L1", 0.9)
@@ -363,7 +455,9 @@ class HMArch:
 
         # ---- L2: episodic buffer -----------------------------------------
         l2_hits = (
-            self._l2.retrieve(query, top_k=top_k) if 2 in allowed_layers else []
+            self._l2.retrieve(query, top_k=effective_top_k)
+            if 2 in allowed_layers
+            else []
         )
         source_breakdown[2] = len(l2_hits)
         l2_priority = priorities.get("L2", 0.7)
@@ -383,7 +477,9 @@ class HMArch:
 
         # ---- L3: semantic memory -----------------------------------------
         l3_hits = (
-            self._l3.search(query, top_k=top_k) if 3 in allowed_layers else []
+            self._l3.search(query, top_k=effective_top_k)
+            if 3 in allowed_layers
+            else []
         )
         source_breakdown[3] = len(l3_hits)
         l3_priority = priorities.get("L3", 0.8)
@@ -404,7 +500,9 @@ class HMArch:
 
         # ---- L4: archived episodic long-term memory ----------------------
         l4_hits = (
-            self._l4.search(query, top_k=top_k) if 4 in allowed_layers else []
+            self._l4.search(query, top_k=effective_top_k)
+            if 4 in allowed_layers
+            else []
         )
         source_breakdown[4] = len(l4_hits)
         l4_priority = priorities.get("L4", 0.5)
@@ -442,6 +540,7 @@ class HMArch:
             if prev is None or item.layer > prev.layer:
                 by_id[item.memory_id] = item
         candidates = list(by_id.values())
+        candidates = self._apply_hot_memory_boost(candidates)
 
         # Sort descending by score; stable sort preserves layer order as tiebreak
         candidates.sort(key=lambda x: -x.score)
@@ -450,10 +549,10 @@ class HMArch:
             item
             for item in candidates
             if item.layer in allowed_layers
-            and (item.layer == 4 or item.retention >= min_retention)
+            and (item.layer in (0, 4) or item.retention >= min_retention)
         ]
 
-        final_results = filtered[:top_k]
+        final_results = filtered[:effective_top_k]
         for item in final_results:
             self._l6.track_access(item.memory_id, item.layer)
 
@@ -475,12 +574,13 @@ class HMArch:
         schedules reviews for important low-retention memories.  No external
         LLM key is required.
         """
+        consolidation_config = self._consolidation_config()
         engine = ConsolidationEngine(
             self._db,
             self._l2,
             self._l3,
             l4=self._l4,
-            config=self._config,
+            config=consolidation_config,
         )
         return engine.run_consolidation_cycle()
 
@@ -628,15 +728,20 @@ class HMArch:
     def get_stats(self) -> MemoryStats:
         """Return aggregated statistics about the memory store.
 
-        Counts include in-session L1 items plus persisted L2/L3 rows with
-        ``status = 'active'``.  Retention histogram buckets are computed from
-        ``memory_index.current_retention`` for all active persisted memories.
+        Counts include in-session L0/L1 items, persisted L2/L3 active rows,
+        archived L4 index rows, L5 skills, and L6 persisted ``meta_memory`` rows.
+        Retention histogram buckets are computed from ``memory_index`` for
+        active persisted memories.  :attr:`~MemoryStats.archive_storage_mb`
+        reports on-disk L4 gzip usage.
         """
         by_layer = {
-            0: 0,
+            0: self._l0.size,
             1: self._l1.size,
             2: self._l2.count(),
             3: self._l3.count(status="active"),
+            4: _l4_index_count(self._db),
+            5: self._l5.count(),
+            6: _l6_persisted_count(self._db),
         }
         total_memories = sum(by_layer.values())
 
@@ -644,6 +749,7 @@ class HMArch:
         review_queue_length = _review_queue_length(self._db)
         last_consolidation_at = _last_consolidation_at(self._db)
         storage_size_mb = _database_size_mb(self._db)
+        archive_storage_mb = _archive_storage_mb(self._l4)
 
         return MemoryStats(
             total_memories=total_memories,
@@ -652,7 +758,70 @@ class HMArch:
             retention_distribution=retention_distribution,
             review_queue_length=review_queue_length,
             last_consolidation_at=last_consolidation_at,
+            archive_storage_mb=archive_storage_mb,
         )
+
+    # ------------------------------------------------------------------
+    # L5 procedural memory (public facade)
+    # ------------------------------------------------------------------
+
+    def store_skill(
+        self,
+        name: str,
+        *,
+        description: str | None = None,
+        code: str | None = None,
+    ) -> SkillRecord:
+        """Persist or update a procedural skill in L5."""
+        return self._l5.store_skill(name, description=description, code=code)
+
+    def match_skill(
+        self, query: str, *, record_usage: bool = True
+    ) -> SkillRecord | None:
+        """Return the best-matching L5 skill for *query*, or ``None``."""
+        return self._l5.match_skill(query, record_usage=record_usage)
+
+    def list_skills(self) -> list[SkillRecord]:
+        """Return all L5 skills sorted by name."""
+        return self._l5.list_skills()
+
+    def record_skill_result(
+        self,
+        skill_id_or_name: str,
+        success: bool,
+        *,
+        duration_ms: float | None = None,
+    ) -> SkillRecord:
+        """Record the outcome of applying an L5 skill."""
+        return self._l5.record_skill_result(
+            skill_id_or_name, success, duration_ms=duration_ms
+        )
+
+    def get_skill(self, skill_id_or_name: str) -> SkillRecord | None:
+        """Return an L5 skill by id or name without matching."""
+        return self._l5.get_skill(skill_id_or_name)
+
+    # ------------------------------------------------------------------
+    # L6 meta memory (public facade)
+    # ------------------------------------------------------------------
+
+    def set_policy(self, name: str, value: str) -> None:
+        """Persist an L6 policy that tunes retrieval or consolidation."""
+        self._l6.set_policy(name, value)
+
+    def get_policy(self, name: str) -> str:
+        """Return an L6 policy value (built-in default when unset)."""
+        return self._l6.get_policy(name)
+
+    def get_hot_memories(
+        self, limit: int = 10, *, layer: int | None = None
+    ) -> list[HotMemoryRecord]:
+        """Return frequently accessed memories tracked by L6."""
+        return self._l6.get_hot_memories(limit, layer=layer)
+
+    def strategy_plan(self) -> StrategyPlan:
+        """Return current L6 policies and deterministic recommendations."""
+        return self._l6.strategy_plan()
 
     def agent_context(self) -> AgentContext:
         """Return a stable :class:`~hm_arch.context.AgentContext` for this store."""
@@ -688,6 +857,65 @@ class HMArch:
             yield ctx
         finally:
             self._l1.load_snapshot(saved_l1)
+
+    # ------------------------------------------------------------------
+    # L6 policy helpers
+    # ------------------------------------------------------------------
+
+    def _effective_search_top_k(self, top_k: int) -> int:
+        multiplier = _parse_policy_float(
+            self._l6.get_policy("retrieval_top_k_multiplier"), 1.0
+        )
+        if multiplier <= 0.0:
+            multiplier = 1.0
+        return max(1, math.ceil(top_k * multiplier))
+
+    def _apply_hot_memory_boost(self, candidates: list[MemoryItem]) -> list[MemoryItem]:
+        if self._l6.get_policy("prefer_hot_memories").lower() != "true":
+            return candidates
+        threshold = _parse_hot_access_threshold(
+            self._l6.get_policy("hot_access_threshold")
+        )
+        hot_ids = {
+            record.memory_id
+            for record in self._l6.get_hot_memories(limit=1000)
+            if record.access_count >= threshold
+        }
+        if not hot_ids:
+            return candidates
+        boosted: list[MemoryItem] = []
+        for item in candidates:
+            if item.memory_id in hot_ids:
+                boosted.append(
+                    MemoryItem(
+                        memory_id=item.memory_id,
+                        layer=item.layer,
+                        content=item.content,
+                        retention=item.retention,
+                        relevance=item.relevance,
+                        score=item.score * _HOT_MEMORY_SCORE_BOOST,
+                        metadata=item.metadata,
+                    )
+                )
+            else:
+                boosted.append(item)
+        return boosted
+
+    def _consolidation_config(self) -> MemoryConfig:
+        """Return config for consolidation, honoring only explicit L6 overrides."""
+        policy_key = "hm_arch.l6.policy.consolidation_replay_ratio"
+        rows = self._db.query(
+            "SELECT value FROM meta_memory WHERE key = ?",
+            (policy_key,),
+        )
+        if not rows:
+            return self._config
+        replay = _parse_policy_float(
+            str(rows[0]["value"]), self._config.replay_sample_ratio
+        )
+        if not 0.0 < replay <= 1.0:
+            return self._config
+        return replace(self._config, replay_sample_ratio=replay)
 
     # ------------------------------------------------------------------
     # Forgetting helpers
@@ -805,6 +1033,7 @@ class HMArch:
             archive_thresh = _archive_threshold_for_layer(2, self._config)
             if retention < archive_thresh and self._archive_l2_for_forget(row):
                 self._remove_l1_by_id(mid)
+                self._remove_l0_by_l2_id(mid)
                 return "archived", 4, nbytes
 
         if layer == 4 or row["status"] == "archived":
@@ -824,6 +1053,7 @@ class HMArch:
         self._db.execute("DELETE FROM review_queue WHERE memory_id = ?", (mid,))
         self._mark_memory_deleted(mid)
         self._remove_l1_by_id(mid)
+        self._remove_l0_by_l2_id(mid)
         return "deleted", layer, nbytes
 
     def _archive_l2_for_forget(self, row: dict) -> bool:
@@ -900,6 +1130,30 @@ class HMArch:
         if not rows:
             return True
         return rows[0]["status"] == "active"
+
+    def _l0_searchable(self, item: LayerItem) -> bool:
+        """Return whether an L0 item should appear in search results."""
+        linked = item.metadata.get("source_l2_memory_id")
+        if not linked:
+            return True
+        rows = self._db.query(
+            "SELECT status FROM memory_index WHERE id = ?",
+            (linked,),
+        )
+        if not rows:
+            return True
+        return rows[0]["status"] == "active"
+
+    def _remove_l0_by_l2_id(self, l2_memory_id: str) -> None:
+        remaining = [
+            item
+            for item in self._l0.snapshot()
+            if item.metadata.get("source_l2_memory_id") != l2_memory_id
+        ]
+        if len(remaining) != self._l0.size:
+            self._l0.clear()
+            for item in remaining:
+                self._l0.add(item.content, metadata=dict(item.metadata))
 
     # ------------------------------------------------------------------
     # Connection lifecycle

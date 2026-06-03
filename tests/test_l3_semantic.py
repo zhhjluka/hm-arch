@@ -899,6 +899,29 @@ def test_restart_search_excludes_superseded_after_restart() -> None:
 
 
 # ---------------------------------------------------------------------------
+# max_memories capacity
+# ---------------------------------------------------------------------------
+
+
+def test_max_memories_rejects_net_new_fact_at_capacity(db) -> None:
+    l3 = L3SemanticMemory(db, max_memories=1)
+    l3.upsert("user", "likes", "Python")
+    with pytest.raises(ValueError, match="max_memories"):
+        l3.upsert("team", "likes", "Java")
+
+
+def test_max_memories_allows_superseding_replacement_at_capacity(db) -> None:
+    l3 = L3SemanticMemory(db, max_memories=1)
+    l3.upsert("user", "likes", "Python")
+    rust_id = l3.upsert("user", "likes", "Rust")
+    fact = l3.get_by_entity_relation("user", "likes")
+    assert fact is not None
+    assert fact.memory_id == rust_id
+    assert fact.value == "Rust"
+    assert l3.count(status="active") == 1
+
+
+# ---------------------------------------------------------------------------
 # merge_redundant_active_pairs — cross-key safety
 # ---------------------------------------------------------------------------
 

@@ -37,9 +37,9 @@ def test_get_stats_returns_memory_stats(mem: HMArch) -> None:
 def test_get_stats_empty_store(mem: HMArch) -> None:
     stats = mem.get_stats()
     assert stats.total_memories == 0
-    assert stats.by_layer[1] == 0
-    assert stats.by_layer[2] == 0
-    assert stats.by_layer[3] == 0
+    for layer in range(7):
+        assert stats.by_layer[layer] == 0
+    assert stats.archive_storage_mb >= 0.0
     assert stats.review_queue_length == 0
     assert stats.last_consolidation_at is None
 
@@ -48,9 +48,10 @@ def test_get_stats_counts_after_add(mem: HMArch) -> None:
     mem.add("first")
     mem.add("second")
     stats = mem.get_stats()
+    assert stats.by_layer[0] == 2
     assert stats.by_layer[1] == 2
     assert stats.by_layer[2] == 2
-    assert stats.total_memories == 4
+    assert stats.total_memories == 6
 
 
 def test_get_stats_includes_l3_semantics(mem: HMArch) -> None:
@@ -95,6 +96,13 @@ def test_get_stats_last_consolidation_after_cycle(mem: HMArch) -> None:
     stats = mem.get_stats()
     assert stats.last_consolidation_at is not None
     assert isinstance(stats.last_consolidation_at, datetime)
+
+
+def test_get_stats_l6_counts_persisted_policies(mem: HMArch) -> None:
+    assert mem.get_stats().by_layer[6] == 0
+    mem.set_policy("prefer_hot_memories", "true")
+    stats = mem.get_stats()
+    assert stats.by_layer[6] >= 1
 
 
 def test_get_stats_review_queue_after_consolidation(mem: HMArch) -> None:
