@@ -100,6 +100,7 @@ The facade is `HMArch` with methods: `add()`, `search()`, `forget()`, `consolida
 ```python
 from hm_arch import (
     HMArch,
+    AgentContext,
     MemoryConfig,
     EventType,
     MemoryReceipt,
@@ -108,8 +109,17 @@ from hm_arch import (
     ConsolidationReport,
     RetentionCurve,
     MemoryStats,
+    ForgetResult,
 )
 ```
+
+Phase 3 public contract (see `docs/spec.md`):
+
+- `add()` defaults to `EventType.CONVERSATION`; L1 and L2 share the same `memory_id`.
+- `search()` defaults to `top_k=10` and `min_retention=0.1`; supports `layer_filter`.
+- `forget(memory_id=None, force=False)` returns `ForgetResult` and clears searchable layers.
+- `get_retention_curve(memory_id, days_ahead=90)` or `get_retention_curve(layer=2)`.
+- `with memory.context() as ctx:` yields `AgentContext` with `load_session()` / `save_session()`.
 
 See [docs/api.md](docs/api.md) for the full public API reference (methods, dataclasses, config, and layers).
 Regenerate after API changes: `python scripts/generate_api_docs.py`.

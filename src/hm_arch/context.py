@@ -83,6 +83,11 @@ class AgentContext:
     def __init__(self, memory: "HMArch") -> None:
         self._memory = memory
 
+    @property
+    def memory(self) -> "HMArch":
+        """Parent :class:`~hm_arch.core.HMArch` instance (for scoped ``add`` / ``search``)."""
+        return self._memory
+
     def save_session(self) -> None:
         """Persist the current L1 working-memory snapshot to ``meta_memory``."""
         payload = _serialize_l1(self._memory._l1.snapshot())
