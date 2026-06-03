@@ -201,6 +201,21 @@ class TestOpenAIProviderMocked:
             with pytest.raises(ProviderRuntimeError, match="importance scoring"):
                 llm.score_importance("hello")
 
+    def test_extraction_http_failure_raises_when_fallback_disabled(self) -> None:
+        from hm_arch.providers.http_common import ProviderHTTPError
+
+        llm = OpenAILLMProvider(
+            api_key="test-key",
+            model="gpt-4o-mini",
+            fallback_to_local=False,
+        )
+        with mock.patch(
+            "hm_arch.providers.openai.post_json",
+            side_effect=ProviderHTTPError("network down"),
+        ):
+            with pytest.raises(ProviderRuntimeError, match="semantic extraction"):
+                llm.extract_semantic_triples("User prefers Python")
+
 
 class TestProviderSemanticExtractor:
     def test_delegates_to_llm_then_fallback_when_enabled(self) -> None:
