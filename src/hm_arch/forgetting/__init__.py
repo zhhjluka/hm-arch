@@ -17,6 +17,7 @@ from .decay import (
     l2_retention_from_config,
     l3_retention,
     l3_retention_from_config,
+    predict_memory_retention_curve,
     predict_retention_curve,
 )
 
@@ -26,6 +27,7 @@ __all__ = [
     "l2_retention_from_config",
     "l3_retention",
     "l3_retention_from_config",
+    "predict_memory_retention_curve",
     "predict_retention_curve",
     # asm2
     "ReviewResult",

@@ -19,6 +19,7 @@ use but are not required for the primary agent workflow.
 |------|------|
 | `__version__` | str |
 | `HMArch` | class |
+| `AgentContext` | export |
 | `MemoryConfig` | dataclass |
 | `EventType` | enum |
 | `MemoryReceipt` | dataclass |
@@ -95,6 +96,12 @@ query:
 top_k:
     Maximum number of :class:`~hm_arch.types.MemoryItem` results to
     return.  Defaults to ``5``.
+min_retention:
+    Exclude hits whose retention is strictly below this value.
+    Defaults to ``0.0`` for backward compatibility.
+layer_filter:
+    When provided, only search these layer indices (e.g. ``[1, 2, 3]``).
+    When ``None``, all supported layers ``(1, 2, 3, 4)`` are queried.
 
 Returns
 -------
@@ -104,7 +111,7 @@ SearchResult
     per-layer breakdown).
 
 ```python
-HMArch.search(self, query: 'str', top_k: 'int' = 5) -> 'SearchResult'
+HMArch.search(self, query: 'str', top_k: 'int' = 5, *, min_retention: 'float' = 0.0, layer_filter: 'list[int] | None' = None) -> 'SearchResult'
 ```
 
 ### `HMArch.consolidate`
@@ -128,13 +135,16 @@ Parameters
 ----------
 layer:
     Memory layer index: ``2`` for episodic (biexponential), ``3`` for
-    semantic (power-law).
+    semantic (power-law).  Ignored when *memory_id* is provided.
+memory_id:
+    When provided, build the curve for that memory's layer and
+    ``initial_strength`` from ``memory_index``.
 days:
     Optional sorted day offsets to sample; defaults to
     ``[1, 3, 7, 14, 30, 60, 90]``.
 
 ```python
-HMArch.get_retention_curve(self, layer: 'int' = 2, *, days: 'list[int] | None' = None) -> 'RetentionCurve'
+HMArch.get_retention_curve(self, layer: 'int' = 2, *, memory_id: 'str | None' = None, days: 'list[int] | None' = None) -> 'RetentionCurve'
 ```
 
 ### `HMArch.get_stats`
@@ -157,6 +167,9 @@ On entry, a snapshot of the current L1 store is taken.  On exit (even
 when an exception is raised), L1 is restored to that snapshot so
 ephemeral session additions inside the block do not leak into the
 outer agent turn.  L2/L3 persisted data is unaffected.
+
+For explicit cross-restart persistence, use
+:meth:`AgentContext.save_session` and :meth:`AgentContext.load_session`.
 
 Examples
 --------

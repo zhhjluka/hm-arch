@@ -73,6 +73,21 @@ def main() -> None:
                 f"L2 30-day predicted retention: {curve.retention[day30_idx]:.2f}"
             )
 
+        mem_curve = memory.get_retention_curve(memory_id=r1.memory_id)
+        print(
+            f"Per-memory curve (30d): {mem_curve.retention[mem_curve.days.index(30)]:.2f}"
+            if 30 in mem_curve.days
+            else "Per-memory curve computed"
+        )
+
+        filtered = memory.search(
+            "用户",
+            top_k=5,
+            min_retention=0.0,
+            layer_filter=[1, 2, 3],
+        )
+        print(f"Layer-filtered search hits: {len(filtered.results)}")
+
         print("\nBasic usage example completed successfully.")
 
 

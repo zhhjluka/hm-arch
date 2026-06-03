@@ -2,6 +2,7 @@
 
 from ._version import __version__
 from .config import MemoryConfig
+from .context import AgentContext
 from .core import HMArch
 from .types import (
     ConsolidationReport,
@@ -17,6 +18,7 @@ from .types import (
 __all__ = [
     "__version__",
     "HMArch",
+    "AgentContext",
     "MemoryConfig",
     "EventType",
     "MemoryReceipt",

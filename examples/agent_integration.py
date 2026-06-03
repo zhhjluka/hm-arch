@@ -17,7 +17,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from hm_arch import EventType, HMArch, MemoryConfig
+from hm_arch import AgentContext, EventType, HMArch, MemoryConfig
 
 
 def main() -> None:
@@ -38,7 +38,8 @@ def main() -> None:
 
             # --- Scoped sub-task: L1 changes roll back on exit ----------
             l1_before_context = memory._l1.size
-            with memory.context():
+            ctx = AgentContext(memory)
+            with ctx:
                 memory.add(
                     "Scratch: try importing hm_arch from src layout",
                     event_type=EventType.TASK,
@@ -47,6 +48,8 @@ def main() -> None:
 
             # L1 restored to pre-block snapshot
             assert memory._l1.size == l1_before_context
+
+            ctx.save_session()
 
             # --- Durable episodic memory still accumulates ---------------
             memory.add(

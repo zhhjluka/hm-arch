@@ -159,6 +159,33 @@ def _find_crossing_day(
     return lo
 
 
+def predict_memory_retention_curve(
+    *,
+    layer: int,
+    initial_strength: float,
+    config: MemoryConfig,
+    days: Optional[list[int]] = None,
+) -> RetentionCurve:
+    """Build a retention curve scaled by a specific memory's initial strength.
+
+    Samples use the layer's decay function multiplied by *initial_strength*
+    (capped at 1.0), so memories encoded with lower strength follow a lower
+    curve than the layer default.
+    """
+    if not 0.0 <= initial_strength <= 1.0:
+        raise ValueError(
+            f"initial_strength must be in [0, 1], got {initial_strength!r}"
+        )
+    base = predict_retention_curve(layer=layer, config=config, days=days)
+    scaled = [min(1.0, r * initial_strength) for r in base.retention]
+    return RetentionCurve(
+        days=base.days,
+        retention=scaled,
+        review_suggested_at_day=base.review_suggested_at_day,
+        archive_at_day=base.archive_at_day,
+    )
+
+
 def predict_retention_curve(
     *,
     layer: int,
