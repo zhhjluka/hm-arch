@@ -7,22 +7,22 @@ HM-Arch **1.0.0** is distributed through this GitHub Release only. It is **not**
 
 ## Install from release artifacts
 
-Download `hm_arch-1.0.0-py3-none-any.whl` and/or `hm_arch-1.0.0.tar.gz` from this release, then install in a virtual environment:
+After this release is published, download `hm_arch-1.0.0-py3-none-any.whl` and/or `hm_arch-1.0.0.tar.gz` from the release assets, then install in a virtual environment (Python 3.10+):
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python3.12 -m venv .venv && source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install /path/to/hm_arch-1.0.0-py3-none-any.whl
 python -c "import hm_arch; print(hm_arch.__version__)"
 python examples/release_smoke.py
 ```
 
-For development from source, use an editable install instead:
+For development from source (before or without a published release):
 
 ```bash
 git clone https://github.com/ZhangHangjianMA/memashuman.git
 cd memashuman
-python -m pip install -e ".[dev]"
+python3.12 -m pip install -e ".[dev]"
 ```
 
 ## What's included
@@ -55,9 +55,9 @@ All layers are reachable through the `HMArch` facade with accurate cross-layer s
 | **Local (default)** | Deterministic token-overlap vectors and rule-based semantic extraction | None |
 | **OpenAI** | LLM scoring and extraction | `enable_llm_providers=True`, API key |
 | **DeepSeek** | LLM scoring and extraction | `enable_llm_providers=True`, API key |
-| **ChromaDB** | Persistent vector store | `pip install 'hm-arch[chroma]'`, `vector_backend="chroma"` |
+| **ChromaDB** | Persistent vector store | Install `chromadb` plus the release wheel (`pip install /path/to/hm_arch-*.whl chromadb`), or from source `pip install -e ".[chroma]"`; set `vector_backend="chroma"` |
 
-When optional dependencies or credentials are missing, the SDK falls back to local behavior (tests and demos run fully offline).
+When `provider_fallback_to_local=True` (the default), missing optional dependencies or credentials use local deterministic behavior. With `provider_fallback_to_local=False`, misconfiguration or provider failures raise actionable errors.
 
 ### Agent integration examples
 
@@ -68,7 +68,7 @@ Set `HM_ARCH_DB_PATH` to choose the SQLite database file.
 
 ## Benchmark evidence (HM-31)
 
-Reproducible PRD benchmarks validate single-process, local-fallback operation. See [benchmarks.md](benchmarks.md).
+Reproducible PRD benchmarks validate single-process, local-fallback operation. See https://github.com/ZhangHangjianMA/memashuman/blob/main/docs/benchmarks.md
 
 Example observed results (Linux, Python 3.12, local fallback, 2026-06-03):
 
@@ -92,9 +92,9 @@ uv run python scripts/run_prd_benchmarks.py
 - **Not on PyPI** — install from GitHub Release artifacts or source only.
 - **No MCP server** — SDK library only; MCP tooling remains out of scope.
 - **Single-process, single-agent** — no multi-user sharing, encryption, or distributed storage.
-- **L4 archive PRD formula deviation** — uniform 30-day-old L2 rows typically do not archive because modeled retention (~0.26) stays above `l2_archive_threshold` (0.15). Mixed-age and agent-simulation scenarios are documented in [docs/benchmarks.md](benchmarks.md).
+- **L4 archive PRD formula deviation** — uniform 30-day-old L2 rows typically do not archive because modeled retention (~0.26) stays above `l2_archive_threshold` (0.15). Mixed-age and agent-simulation scenarios are documented at https://github.com/ZhangHangjianMA/memashuman/blob/main/docs/benchmarks.md
 - **Week 9 stretch targets** — reported for information only; they do not gate benchmark acceptance.
-- **Optional backends** — OpenAI, DeepSeek, and Chroma require extra packages and credentials; behavior without them is identical to the offline default path.
+- **Optional backends** — OpenAI, DeepSeek, and Chroma require extra packages and credentials; with default `provider_fallback_to_local=True`, missing backends use the local path.
 
 ## Verification (maintainers)
 
@@ -102,12 +102,12 @@ Before tagging `v1.0.0`:
 
 ```bash
 uv run pytest && uv run python examples/release_smoke.py
-python -m pip install build && python -m build
+uv run --with build python -m build
 # Clean wheel + sdist install — see docs/RELEASE_CHECKLIST.md
 ```
 
-Full checklist: [docs/RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+Full checklist: https://github.com/ZhangHangjianMA/memashuman/blob/main/docs/RELEASE_CHECKLIST.md
 
 ## Full changelog
 
-See [CHANGELOG.md](../CHANGELOG.md#100---2026-06-03).
+https://github.com/ZhangHangjianMA/memashuman/blob/main/CHANGELOG.md#100---2026-06-03

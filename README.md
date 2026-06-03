@@ -2,7 +2,7 @@
 
 Python SDK for human-like agent memory: add, search, decay, consolidate, and inspect stats. Designed for coding agents with offline-first defaults (SQLite + deterministic local vector fallback; no API keys required for tests or demos).
 
-**Current release:** `1.0.0` (GitHub Releases only — not published to PyPI).
+**Prepared version:** `1.0.0` (GitHub Release pending maintainer approval — not published to PyPI).
 
 ## Requirements
 
@@ -10,15 +10,19 @@ Python SDK for human-like agent memory: add, search, decay, consolidate, and ins
 
 ## Quick start
 
-### From a GitHub Release (wheel)
+### From a GitHub Release (wheel, after publication)
 
-Download `hm_arch-1.0.0-py3-none-any.whl` from the [latest GitHub Release](https://github.com/ZhangHangjianMA/memashuman/releases), then:
+Once the `v1.0.0` GitHub Release is published, download `hm_arch-1.0.0-py3-none-any.whl` from
+[github.com/ZhangHangjianMA/memashuman/releases](https://github.com/ZhangHangjianMA/memashuman/releases), then:
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python3.12 -m venv .venv && source .venv/bin/activate   # Python 3.10+ required
 python -m pip install --upgrade pip
 python -m pip install /path/to/hm_arch-1.0.0-py3-none-any.whl
 ```
+
+Until that release exists, install from source (below) or build a wheel locally per
+[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
 
 ### From source (development)
 
@@ -151,9 +155,11 @@ documented in [docs/benchmarks.md](docs/benchmarks.md). They are excluded from d
 |---------|-------------|-------|
 | Local (default) | Offline tests, demos, CI | None |
 | OpenAI / DeepSeek | LLM scoring and semantic extraction | `MemoryConfig(enable_llm_providers=True)` + API key |
-| ChromaDB | Persistent vector index | `pip install 'hm-arch[chroma]'` and `vector_backend="chroma"` |
+| ChromaDB | Persistent vector index | From source: `pip install -e ".[chroma]"`. From a published release wheel: `pip install /path/to/hm_arch-*.whl chromadb`. Then `vector_backend="chroma"`. |
 
-Missing optional dependencies or credentials fall back to local deterministic behavior.
+When `provider_fallback_to_local=True` (the default), missing optional dependencies or
+credentials use local deterministic behavior. With `provider_fallback_to_local=False`,
+misconfiguration or provider failures raise actionable errors instead.
 
 ## Release documentation
 

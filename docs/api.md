@@ -474,7 +474,7 @@ Provider-backed importance scoring runs in `HMArch.add()` when `enable_llm_provi
 | Value | Dependency | Persistence |
 |-------|------------|---------------|
 | `local` | stdlib only | In-process token overlap (default). |
-| `chroma` | `pip install 'hm-arch[chroma]'` | `chroma_persist_directory` or `{db_parent}/chroma`; collections `{chroma_collection_prefix}_l2_episodic` and `{prefix}_l3_semantic`. SQLite remains the source of truth; L2/L3 rebuild vector indexes from SQLite on startup. |
+| `chroma` | `pip install chromadb` (after hm-arch wheel or `pip install -e ".[chroma]"` from source; not on PyPI) | `chroma_persist_directory` or `{db_parent}/chroma`; collections `{chroma_collection_prefix}_l2_episodic` and `{prefix}_l3_semantic`. SQLite remains the source of truth; L2/L3 rebuild vector indexes from SQLite on startup. |
 
 ### Protocols (`hm_arch.providers`)
 
