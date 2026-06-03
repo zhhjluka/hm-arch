@@ -769,7 +769,7 @@ S = S_base * I_mod * E_mod * R_mod * C_mod
 
 Maximum product (before clamp): ``6.75``. ``MemoryConfig.strength_min``, ``strength_max``, ``retrieval_reinforcement_increment``, and ``retrieval_relevance_threshold`` control bounds and retrieval reinforcement.
 
-Retention scales as ``R(t) = min(1.0, R_layer(t) * S)``. At encode, ``current_retention = min(1.0, S)`` while ``initial_strength`` keeps the full PRD multiplier. Each successful retrieval increments ``successful_retrievals`` and recomputes ``S`` (at most once per underlying memory per search).
+Retention scales as ``R(t) = min(1.0, R_layer(t) * S)``. At encode, ``current_retention = min(1.0, S)`` while ``initial_strength`` keeps the full PRD multiplier. Each successful search reinforces each underlying L2/L3 memory at most once (best relevance wins when L0/L1 and L2 share a link). Each successful retrieval increments ``successful_retrievals`` and recomputes ``S``.
 
 Exported helpers include ``compute_initial_strength``, ``apply_retrieval_reinforcement``, ``StrengthFactors``, and modifier factor functions.
 

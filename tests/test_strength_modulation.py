@@ -194,6 +194,9 @@ class TestFacadeStrength:
             assert strength > 1.0
             assert retention <= 1.0
             assert retention == pytest.approx(min(1.0, strength))
+            assert float(row["initial_strength"]) == pytest.approx(
+                receipt.initial_strength
+            )
         finally:
             mem.close()
 
