@@ -45,10 +45,19 @@ Confirm:
 
 ## 2. Build (local wheel/sdist only)
 
-Verify the package builds without publishing to any registry:
+Verify the package builds without publishing to any registry. Use **Python >= 3.10** (matches `requires-python` in `pyproject.toml`):
 
 ```bash
-uv run --with build python -m build
+python3 --version   # must be >= 3.10
+uv run --with build python -m build --outdir dist
+```
+
+Or without uv:
+
+```bash
+python3 --version
+python3 -m pip install -U pip build
+python3 -m build --outdir dist
 ```
 
 Inspect artifacts under `dist/` (do not commit `dist/` — it is gitignored):
@@ -69,7 +78,7 @@ python3.12 -m venv /tmp/hm-arch-wheel-verify
 ```bash
 rm -rf /tmp/hm-arch-sdist-verify
 python3.12 -m venv /tmp/hm-arch-sdist-verify
-/tmp/hm-arch-sdist-verify/bin/pip install --upgrade pip
+/tmp/hm-arch-sdist-verify/bin/pip install --upgrade pip build
 /tmp/hm-arch-sdist-verify/bin/pip install dist/hm_arch-*.tar.gz
 /tmp/hm-arch-sdist-verify/bin/python -c "import hm_arch; assert hm_arch.__version__ == '1.0.0'"
 ```
@@ -119,7 +128,7 @@ After the tag is pushed, create a GitHub Release for the same version:
 | Step | Command / artifact | Agent allowed? |
 |------|-------------------|----------------|
 | Test | `uv run pytest`, `examples/release_smoke.py` | Yes |
-| Build | `uv run --with build python -m build` | Yes (local only) |
+| Build | `uv run --with build python -m build --outdir dist` (Python >= 3.10) | Yes (local only) |
 | Verify install | wheel + sdist in throwaway venvs (Python 3.10+) | Yes |
 | Docs | `uv run python scripts/generate_api_docs.py` | Yes |
 | Tag | `git tag`, `git push origin vX.Y.Z` | No (unless asked) |
