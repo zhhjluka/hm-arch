@@ -61,9 +61,8 @@ class OpenAILLMProvider:
         )
         try:
             text = self._chat(prompt, system="You output only a number between 0 and 1.")
-            value = _parse_importance_score(text)
-            return max(0.0, min(1.0, value))
-        except (ProviderHTTPError, ValueError, IndexError) as exc:
+            return _parse_importance_score(text)
+        except (ProviderHTTPError, ValueError) as exc:
             if self._fallback_to_local:
                 return self._fallback.score_importance(
                     content, event_type=event_type, metadata=metadata
@@ -162,12 +161,16 @@ class OpenAIEmbeddingProvider:
             response = post_json(
                 url, payload, api_key=self._api_key, timeout=self._timeout
             )
-            return _parse_embedding_vectors(response, expected_dim=self._dimension)
+            return _parse_embedding_vectors(
+                response,
+                expected_dim=self._dimension,
+                expected_count=len(texts),
+            )
         except ProviderHTTPError as exc:
             return self._embedding_failure(texts, exc, reason="HTTP request failed")
-        except (ValueError, KeyError, TypeError, IndexError) as exc:
+        except ValueError as exc:
             return self._embedding_failure(
-                texts, exc, reason="unexpected embeddings response shape"
+                texts, exc, reason="invalid embeddings response"
             )
 
     def _embedding_failure(
@@ -190,7 +193,11 @@ def _parse_importance_score(text: str) -> float:
     parts = stripped.split()
     if not parts:
         raise ValueError("empty importance response")
-    return float(parts[0])
+    try:
+        value = float(parts[0])
+    except ValueError as exc:
+        raise ValueError(f"non-numeric importance score: {parts[0]!r}") from exc
+    return max(0.0, min(1.0, value))
 
 
 def _model_supports_dimensions(model: str) -> bool:
@@ -208,18 +215,29 @@ def _embeddings_request_payload(
 
 
 def _parse_embedding_vectors(
-    response: dict[str, Any], *, expected_dim: int
+    response: dict[str, Any],
+    *,
+    expected_dim: int,
+    expected_count: int,
 ) -> list[list[float]]:
     """Extract embedding vectors and enforce the configured dimension contract."""
     data = response.get("data")
     if not isinstance(data, list):
         raise ValueError("embeddings response missing data list")
+    if len(data) != expected_count:
+        raise ValueError(
+            f"expected {expected_count} embeddings, got {len(data)}"
+        )
 
-    vectors: list[list[float]] = []
-    for item in sorted(data, key=lambda row: row.get("index", 0)):
+    ordered: list[list[float] | None] = [None] * expected_count
+    for item in data:
         if not isinstance(item, dict):
             raise ValueError("embeddings item is not an object")
-        embedding = item.get("embedding")
+        try:
+            index = int(item["index"])
+            embedding = item["embedding"]
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("malformed embedding item") from exc
         if not isinstance(embedding, list):
             raise ValueError("embeddings item missing embedding vector")
         if len(embedding) != expected_dim:
@@ -227,8 +245,14 @@ def _parse_embedding_vectors(
                 f"embedding dimension mismatch: expected {expected_dim}, "
                 f"got {len(embedding)}"
             )
-        vectors.append(embedding)
-    return vectors
+        if not all(isinstance(x, (int, float)) for x in embedding):
+            raise ValueError("embedding vector contains non-numeric values")
+        if index < 0 or index >= expected_count:
+            raise ValueError(f"embedding index out of range: {index}")
+        ordered[index] = [float(x) for x in embedding]
+    if any(vector is None for vector in ordered):
+        raise ValueError("missing embedding indices in response")
+    return ordered  # type: list[list[float]]
 
 
 def _parse_triple_lines(text: str) -> list[tuple[str, str, str]]:
