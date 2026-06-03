@@ -61,10 +61,19 @@ def main() -> int:
         print(payload)
 
     failed = [name for name, ok in report.assertions.items() if not ok]
+    stretch_failed = [
+        name for name, ok in report.stretch_assertions.items() if not ok
+    ]
+    if stretch_failed:
+        print(
+            "\nWeek 9 stretch (report-only, not acceptance):",
+            ", ".join(stretch_failed),
+            file=sys.stderr,
+        )
     if failed:
-        print("\nFAILED assertions:", ", ".join(failed), file=sys.stderr)
+        print("\nFAILED acceptance assertions:", ", ".join(failed), file=sys.stderr)
         return 1
-    print("\nAll PRD benchmark assertions passed.", file=sys.stderr)
+    print("\nAll PRD acceptance assertions passed.", file=sys.stderr)
     if tmp_ctx is not None:
         tmp_ctx.cleanup()
     return 0

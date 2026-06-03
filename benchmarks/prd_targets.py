@@ -6,8 +6,9 @@ The original HM-Arch developer PRD defines **two** performance tables:
    consolidate ≤60s @10k L2, storage <500MB for 10k L2 + 5k L3.
 2. **Week 9 optimization** (stretch): add <30ms, search <50ms, consolidate <5s.
 
-Both are reported in benchmark output; assertions use the test-benchmark table
-unless noted otherwise. See ``docs/benchmarks.md``.
+Both are reported in benchmark output; **acceptance** uses the test-benchmark table
+only. Week 9 results live in ``stretch_assertions`` and ``contract_compliance.week9_optimization``
+(report-only). See ``docs/benchmarks.md``.
 """
 
 from __future__ import annotations
