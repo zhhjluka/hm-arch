@@ -258,5 +258,6 @@ def test_generate_api_docs_includes_lifecycle_contract(tmp_path: Path) -> None:
         "LLMProviderProtocol",
         "ChromaDB",
         "does not document embeddings",
+        "embedding_dim",
     ):
         assert needle in api_md, f"missing {needle!r} in docs/api.md"

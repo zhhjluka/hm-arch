@@ -23,7 +23,7 @@ from hm_arch.providers import (
     resolve_llm_provider,
 )
 from hm_arch.providers.factory import resolve_api_key, resolve_embedding_model
-from hm_arch.providers.openai import OpenAILLMProvider
+from hm_arch.providers.openai import OpenAIEmbeddingProvider, OpenAILLMProvider
 from hm_arch.providers.protocol import EmbeddingProviderProtocol, LLMProviderProtocol
 from hm_arch.storage.sqlite import SQLiteStore
 from hm_arch.storage.vector import LocalVectorStore, VectorStoreProtocol
@@ -215,6 +215,155 @@ class TestOpenAIProviderMocked:
         ):
             with pytest.raises(ProviderRuntimeError, match="semantic extraction"):
                 llm.extract_semantic_triples("User prefers Python")
+
+    def test_empty_importance_response_falls_back_when_enabled(self) -> None:
+        llm = OpenAILLMProvider(
+            api_key="test-key",
+            model="gpt-4o-mini",
+            fallback_to_local=True,
+        )
+        response = {"choices": [{"message": {"content": "   "}}]}
+        with mock.patch("hm_arch.providers.openai.post_json", return_value=response):
+            score = llm.score_importance("hello")
+        local = LocalLLMProvider().score_importance("hello")
+        assert score == pytest.approx(local)
+
+    def test_empty_importance_response_raises_when_fallback_disabled(self) -> None:
+        llm = OpenAILLMProvider(
+            api_key="test-key",
+            model="gpt-4o-mini",
+            fallback_to_local=False,
+        )
+        response = {"choices": [{"message": {"content": ""}}]}
+        with mock.patch("hm_arch.providers.openai.post_json", return_value=response):
+            with pytest.raises(ProviderRuntimeError, match="importance scoring"):
+                llm.score_importance("hello")
+
+
+class TestOpenAIEmbeddingProviderMocked:
+    def test_embeddings_payload_includes_dimensions_for_v3_models(self) -> None:
+        emb = OpenAIEmbeddingProvider(
+            api_key="test-key",
+            model="text-embedding-3-small",
+            dimension=384,
+            fallback_to_local=False,
+        )
+        captured: dict = {}
+
+        def capture_post(url, payload, **kwargs):  # type: ignore[no-untyped-def]
+            captured["payload"] = payload
+            return {
+                "data": [
+                    {"index": 0, "embedding": [0.1] * 384},
+                ]
+            }
+
+        with mock.patch(
+            "hm_arch.providers.openai.post_json",
+            side_effect=capture_post,
+        ):
+            vectors = emb.embed(["hello"])
+        assert captured["payload"]["dimensions"] == 384
+        assert captured["payload"]["model"] == "text-embedding-3-small"
+        assert len(vectors[0]) == 384
+
+    def test_embeddings_payload_omits_dimensions_for_legacy_models(self) -> None:
+        emb = OpenAIEmbeddingProvider(
+            api_key="test-key",
+            model="text-embedding-ada-002",
+            dimension=384,
+            fallback_to_local=False,
+        )
+        captured: dict = {}
+
+        def capture_post(url, payload, **kwargs):  # type: ignore[no-untyped-def]
+            captured["payload"] = payload
+            return {
+                "data": [
+                    {"index": 0, "embedding": [0.1] * 384},
+                ]
+            }
+
+        with mock.patch(
+            "hm_arch.providers.openai.post_json",
+            side_effect=capture_post,
+        ):
+            emb.embed(["hello"])
+        assert "dimensions" not in captured["payload"]
+
+    def test_matching_dimensions_returned(self) -> None:
+        emb = OpenAIEmbeddingProvider(
+            api_key="test-key",
+            model="text-embedding-3-small",
+            dimension=64,
+            fallback_to_local=False,
+        )
+        response = {
+            "data": [
+                {"index": 0, "embedding": [0.5] * 64},
+                {"index": 1, "embedding": [0.25] * 64},
+            ]
+        }
+        with mock.patch("hm_arch.providers.openai.post_json", return_value=response):
+            vectors = emb.embed(["a", "b"])
+        assert len(vectors) == 2
+        assert all(len(v) == 64 for v in vectors)
+
+    def test_dimension_mismatch_falls_back_when_enabled(self) -> None:
+        emb = OpenAIEmbeddingProvider(
+            api_key="test-key",
+            model="text-embedding-3-small",
+            dimension=384,
+            fallback_to_local=True,
+        )
+        response = {
+            "data": [
+                {"index": 0, "embedding": [0.1] * 1536},
+            ]
+        }
+        with mock.patch("hm_arch.providers.openai.post_json", return_value=response):
+            vectors = emb.embed(["hello"])
+        assert len(vectors[0]) == 384
+
+    def test_dimension_mismatch_raises_when_fallback_disabled(self) -> None:
+        emb = OpenAIEmbeddingProvider(
+            api_key="test-key",
+            model="text-embedding-3-small",
+            dimension=384,
+            fallback_to_local=False,
+        )
+        response = {
+            "data": [
+                {"index": 0, "embedding": [0.1] * 1536},
+            ]
+        }
+        with mock.patch("hm_arch.providers.openai.post_json", return_value=response):
+            with pytest.raises(ProviderRuntimeError, match="dimension mismatch"):
+                emb.embed(["hello"])
+
+    def test_missing_embedding_key_falls_back_when_enabled(self) -> None:
+        emb = OpenAIEmbeddingProvider(
+            api_key="test-key",
+            model="text-embedding-3-small",
+            dimension=384,
+            fallback_to_local=True,
+        )
+        response = {"data": [{"index": 0}]}
+        with mock.patch("hm_arch.providers.openai.post_json", return_value=response):
+            vectors = emb.embed(["hello"])
+        assert len(vectors[0]) == 384
+
+    def test_missing_embedding_key_raises_when_fallback_disabled(self) -> None:
+        emb = OpenAIEmbeddingProvider(
+            api_key="test-key",
+            model="text-embedding-3-small",
+            dimension=384,
+            fallback_to_local=False,
+        )
+        response = {"data": [{"index": 0}]}
+        with mock.patch("hm_arch.providers.openai.post_json", return_value=response):
+            with pytest.raises(ProviderRuntimeError, match="response shape"):
+                emb.embed(["hello"])
 
 
 class TestProviderSemanticExtractor:

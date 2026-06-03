@@ -61,9 +61,9 @@ class OpenAILLMProvider:
         )
         try:
             text = self._chat(prompt, system="You output only a number between 0 and 1.")
-            value = float(text.split()[0])
+            value = _parse_importance_score(text)
             return max(0.0, min(1.0, value))
-        except (ProviderHTTPError, ValueError) as exc:
+        except (ProviderHTTPError, ValueError, IndexError) as exc:
             if self._fallback_to_local:
                 return self._fallback.score_importance(
                     content, event_type=event_type, metadata=metadata
@@ -155,26 +155,80 @@ class OpenAIEmbeddingProvider:
         if not texts:
             return []
         url = f"{self._base_url}/embeddings"
-        payload = {"model": self._model, "input": texts}
+        payload = _embeddings_request_payload(
+            self._model, texts, dimension=self._dimension
+        )
         try:
             response = post_json(
                 url, payload, api_key=self._api_key, timeout=self._timeout
             )
+            return _parse_embedding_vectors(response, expected_dim=self._dimension)
         except ProviderHTTPError as exc:
-            if self._fallback_to_local:
-                return self._local_fallback.embed(texts)
-            raise ProviderRuntimeError(
-                "OpenAI embedding provider failed. "
-                "Set provider_fallback_to_local=True to use local hash embeddings, "
-                f"or fix the API error: {exc}"
-            ) from exc
-        data = response.get("data")
-        if not isinstance(data, list):
-            if self._fallback_to_local:
-                return self._local_fallback.embed(texts)
-            raise ProviderRuntimeError("Unexpected OpenAI embeddings response shape.")
-        vectors = [item["embedding"] for item in sorted(data, key=lambda x: x["index"])]
-        return vectors
+            return self._embedding_failure(texts, exc, reason="HTTP request failed")
+        except (ValueError, KeyError, TypeError, IndexError) as exc:
+            return self._embedding_failure(
+                texts, exc, reason="unexpected embeddings response shape"
+            )
+
+    def _embedding_failure(
+        self, texts: list[str], exc: BaseException, *, reason: str
+    ) -> list[list[float]]:
+        if self._fallback_to_local:
+            return self._local_fallback.embed(texts)
+        raise ProviderRuntimeError(
+            f"OpenAI embedding provider failed ({reason}). "
+            "Set provider_fallback_to_local=True to use local hash embeddings, "
+            f"or fix the API error: {exc}"
+        ) from exc
+
+
+def _parse_importance_score(text: str) -> float:
+    """Parse a single numeric importance value from provider text."""
+    stripped = text.strip()
+    if not stripped:
+        raise ValueError("empty importance response")
+    parts = stripped.split()
+    if not parts:
+        raise ValueError("empty importance response")
+    return float(parts[0])
+
+
+def _model_supports_dimensions(model: str) -> bool:
+    """Return whether the OpenAI embeddings API accepts a ``dimensions`` field."""
+    return model.startswith("text-embedding-3-")
+
+
+def _embeddings_request_payload(
+    model: str, texts: list[str], *, dimension: int
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {"model": model, "input": texts}
+    if _model_supports_dimensions(model):
+        payload["dimensions"] = dimension
+    return payload
+
+
+def _parse_embedding_vectors(
+    response: dict[str, Any], *, expected_dim: int
+) -> list[list[float]]:
+    """Extract embedding vectors and enforce the configured dimension contract."""
+    data = response.get("data")
+    if not isinstance(data, list):
+        raise ValueError("embeddings response missing data list")
+
+    vectors: list[list[float]] = []
+    for item in sorted(data, key=lambda row: row.get("index", 0)):
+        if not isinstance(item, dict):
+            raise ValueError("embeddings item is not an object")
+        embedding = item.get("embedding")
+        if not isinstance(embedding, list):
+            raise ValueError("embeddings item missing embedding vector")
+        if len(embedding) != expected_dim:
+            raise ValueError(
+                f"embedding dimension mismatch: expected {expected_dim}, "
+                f"got {len(embedding)}"
+            )
+        vectors.append(embedding)
+    return vectors
 
 
 def _parse_triple_lines(text: str) -> list[tuple[str, str, str]]:

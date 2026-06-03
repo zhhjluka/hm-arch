@@ -467,6 +467,8 @@ Provider-backed importance scoring runs in `HMArch.add()` when `enable_llm_provi
 | `openai` | Yes | `/embeddings`; default model `text-embedding-3-small` when unset. |
 | `deepseek` | **No** | DeepSeek's public API does not document embeddings. With fallback enabled, local embeddings are used; otherwise configuration raises. |
 
+`embedding_dim` is enforced for OpenAI embeddings: v3 models send a `dimensions` request field; every returned vector must match `embedding_dim` or the provider falls back locally / raises `ProviderRuntimeError` per `provider_fallback_to_local`.
+
 ### Vector backends (`vector_backend`)
 
 | Value | Dependency | Persistence |
