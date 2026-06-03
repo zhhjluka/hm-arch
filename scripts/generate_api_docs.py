@@ -126,9 +126,11 @@ def build_markdown() -> str:
         "__init__",
         "add",
         "search",
+        "forget",
         "consolidate",
         "get_retention_curve",
         "get_stats",
+        "agent_context",
         "context",
         "close",
         "__enter__",
@@ -170,7 +172,7 @@ def build_markdown() -> str:
         ("ConsolidationReport", ConsolidationReport, "Returned by `HMArch.consolidate()`."),
         ("RetentionCurve", RetentionCurve, "Returned by `HMArch.get_retention_curve()`."),
         ("MemoryStats", MemoryStats, "Returned by `HMArch.get_stats()`."),
-        ("ForgetResult", ForgetResult, "Type for future `forget()` API; exported for contract stability."),
+        ("ForgetResult", ForgetResult, "Returned by `HMArch.forget()`."),
     ]
     for title, cls, note in dataclasses_doc:
         lines += ["---", "", f"## `{title}`", "", note, ""]

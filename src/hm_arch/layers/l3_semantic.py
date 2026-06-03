@@ -558,6 +558,10 @@ class L3SemanticMemory:
 
         return merged
 
+    def remove_from_vector_index(self, memory_id: str) -> bool:
+        """Remove *memory_id* from the vector index without deleting SQLite rows."""
+        return self._vector.delete(memory_id)
+
     def count(self, status: str = "active") -> int:
         """Return the number of L3 triples with the given *status* in SQLite.
 

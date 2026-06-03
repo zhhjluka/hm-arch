@@ -19,7 +19,7 @@ from hm_arch import HMArch, EventType
 
 memory = HMArch(db_path="./.agent_memory.db")
 memory.add("用户偏好 Python", event_type=EventType.CONVERSATION)
-results = memory.search("用户喜欢什么语言", top_k=5)
+results = memory.search("用户喜欢什么语言")
 report = memory.consolidate()
 memory.close()
 ```
@@ -95,11 +95,12 @@ See `examples/codex_hooks/README.md` and `examples/claude_code_hooks/README.md` 
 
 ## Public API
 
-The facade is `HMArch` with methods: `add()`, `search()`, `consolidate()`, `get_retention_curve()`, `get_stats()`, and `context()`. Types and config presets are exported from the top-level package:
+The facade is `HMArch` with methods: `add()`, `search()`, `forget()`, `consolidate()`, `get_retention_curve()`, `get_stats()`, `context()`, and `agent_context()`. Types and config presets are exported from the top-level package:
 
 ```python
 from hm_arch import (
     HMArch,
+    AgentContext,
     MemoryConfig,
     EventType,
     MemoryReceipt,
@@ -108,8 +109,17 @@ from hm_arch import (
     ConsolidationReport,
     RetentionCurve,
     MemoryStats,
+    ForgetResult,
 )
 ```
+
+Phase 3 public contract (see `docs/spec.md`):
+
+- `add()` defaults to `EventType.CONVERSATION`; L1 and L2 share the same `memory_id`.
+- `search()` defaults to `top_k=10` and `min_retention=0.1`; supports `layer_filter`.
+- `forget(memory_id=None, force=False)` returns `ForgetResult` and clears searchable layers.
+- `get_retention_curve(memory_id, days_ahead=90)` or `get_retention_curve(layer=2)`.
+- `with memory.context() as ctx:` yields `AgentContext` with `load_session()` / `save_session()`.
 
 See [docs/api.md](docs/api.md) for the full public API reference (methods, dataclasses, config, and layers).
 Regenerate after API changes: `python scripts/generate_api_docs.py`.

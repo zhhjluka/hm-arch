@@ -17,22 +17,28 @@ Usage example::
 
     memory = HMArch(db_path=":memory:")
     memory.add("用户偏好 Python", event_type=EventType.CONVERSATION)
-    results = memory.search("用户喜欢什么语言", top_k=5)
+    results = memory.search("用户喜欢什么语言", top_k=10)
     report = memory.consolidate()
     curve = memory.get_retention_curve(layer=2)
 """
 
 from __future__ import annotations
 
+import json
 import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Iterator, Optional, Union
 
 from .config import MemoryConfig
 from .consolidation.replay import ConsolidationEngine
-from .forgetting.decay import predict_retention_curve
+from .context import AgentContext
+from .forgetting.decay import (
+    _DEFAULT_DAYS,
+    predict_memory_retention_curve,
+    predict_retention_curve,
+)
 from .layers.l1_working import L1WorkingMemory
 from .layers.l2_episodic import L2EpisodicBuffer
 from .layers.l3_semantic import L3SemanticMemory
@@ -43,6 +49,7 @@ from .storage.vector import _token_overlap_score, _tokenize
 from .types import (
     ConsolidationReport,
     EventType,
+    ForgetResult,
     MemoryItem,
     MemoryReceipt,
     MemoryStats,
@@ -50,7 +57,9 @@ from .types import (
     SearchResult,
 )
 
-__all__ = ["HMArch"]
+__all__ = ["HMArch", "AgentContext"]
+
+_DEFAULT_SEARCH_LAYERS: tuple[int, ...] = (1, 2, 3, 4)
 
 
 def _relevance(query: str, text: str) -> float:
@@ -116,6 +125,32 @@ def _resolve_archive_root(config: MemoryConfig) -> Path:
     return Path(config.db_path).parent / "agent_data"
 
 
+def _delete_threshold_for_layer(layer: int, config: MemoryConfig) -> float:
+    if layer == 2:
+        return config.l2_delete_threshold
+    if layer == 3:
+        return config.l3_delete_threshold
+    return 0.0
+
+
+def _archive_threshold_for_layer(layer: int, config: MemoryConfig) -> float:
+    if layer == 2:
+        return config.l2_archive_threshold
+    if layer == 3:
+        return config.l3_archive_threshold
+    return 0.0
+
+
+def _days_up_to(days_ahead: int) -> list[int]:
+    """PRD day checkpoints capped by *days_ahead*."""
+    if days_ahead < 1:
+        raise ValueError(f"days_ahead must be >= 1, got {days_ahead}")
+    days = [d for d in _DEFAULT_DAYS if d <= days_ahead]
+    if days_ahead not in days:
+        days.append(days_ahead)
+    return sorted(days)
+
+
 def _database_size_mb(db: SQLiteStore) -> float:
     """Approximate on-disk database size in megabytes."""
     path = db.path
@@ -155,7 +190,7 @@ class HMArch:
 
         memory = HMArch(db_path=":memory:")
         memory.add("用户偏好 Python", event_type=EventType.CONVERSATION)
-        results = memory.search("用户喜欢什么语言", top_k=5)
+        results = memory.search("用户喜欢什么语言", top_k=10)
         assert results.results[0].score > 0
         memory.close()
 
@@ -192,7 +227,7 @@ class HMArch:
     def add(
         self,
         content: str,
-        event_type: EventType = EventType.OBSERVATION,
+        event_type: EventType = EventType.CONVERSATION,
         metadata: Optional[dict] = None,
         importance: Optional[float] = None,
     ) -> MemoryReceipt:
@@ -208,7 +243,7 @@ class HMArch:
             Text to remember.
         event_type:
             Classification for the event; defaults to
-            :attr:`~hm_arch.types.EventType.OBSERVATION`.
+            :attr:`~hm_arch.types.EventType.CONVERSATION`.
         metadata:
             Optional key/value pairs attached to the memory record.
         importance:
@@ -221,9 +256,6 @@ class HMArch:
             Confirmation including the ``memory_id`` assigned by L2, which
             is the durable database-backed identifier for the event.
         """
-        # L1 in-memory working memory — fast access within the current session
-        self._l1.add(content, metadata=metadata)
-
         # L2 episodic buffer — persisted to SQLite, survives restarts
         l2_mid = self._l2.encode(
             content,
@@ -231,6 +263,9 @@ class HMArch:
             metadata=metadata,
             importance=importance,
         )
+
+        # L1 uses the same memory_id as L2 so forget() can remove both layers
+        self._l1.add(content, metadata=metadata, memory_id=l2_mid)
 
         imp = importance if importance is not None else 0.5
         return MemoryReceipt(
@@ -245,7 +280,10 @@ class HMArch:
     def search(
         self,
         query: str,
-        top_k: int = 5,
+        top_k: int = 10,
+        *,
+        min_retention: float = 0.1,
+        layer_filter: list[int] | None = None,
     ) -> SearchResult:
         """Return the top-*k* memories most relevant to *query*.
 
@@ -267,7 +305,13 @@ class HMArch:
             Free-text search string.
         top_k:
             Maximum number of :class:`~hm_arch.types.MemoryItem` results to
-            return.  Defaults to ``5``.
+            return.  Defaults to ``10`` (PRD).
+        min_retention:
+            Exclude hits whose retention is strictly below this value.
+            Defaults to ``0.1`` (PRD).
+        layer_filter:
+            When provided, only search these layer indices (e.g. ``[1, 2, 3]``).
+            When ``None``, all supported layers ``(1, 2, 3, 4)`` are queried.
 
         Returns
         -------
@@ -276,23 +320,32 @@ class HMArch:
             plus diagnostic metadata (total candidates scanned, timing,
             per-layer breakdown).
         """
+        if not 0.0 <= min_retention <= 1.0:
+            raise ValueError(
+                f"min_retention must be in [0, 1], got {min_retention!r}"
+            )
+
+        allowed_layers = (
+            set(layer_filter) if layer_filter is not None else set(_DEFAULT_SEARCH_LAYERS)
+        )
+
         t0 = time.monotonic()
         priorities = self._config.layer_priorities
 
         candidates: list[MemoryItem] = []
-        seen_ids: set[str] = set()
         source_breakdown: dict[int, int] = {1: 0, 2: 0, 3: 0, 4: 0}
 
         # ---- L1: in-memory working memory --------------------------------
         # Pull up to top_k candidates from each layer; the merged pool is
         # then re-ranked by the combined score formula.
-        l1_hits = self._l1.retrieve(query, top_k=top_k)
+        l1_hits = (
+            self._l1.retrieve(query, top_k=top_k) if 1 in allowed_layers else []
+        )
         source_breakdown[1] = len(l1_hits)
         l1_priority = priorities.get("L1", 0.9)
         for item in l1_hits:
-            if item.memory_id in seen_ids:
+            if not self._l1_searchable(item.memory_id):
                 continue
-            seen_ids.add(item.memory_id)
             rel = _relevance(query, item.content)
             # In-session items have no decay yet; retention = 1.0
             score = 1.0 * rel * l1_priority
@@ -309,13 +362,12 @@ class HMArch:
             )
 
         # ---- L2: episodic buffer -----------------------------------------
-        l2_hits = self._l2.retrieve(query, top_k=top_k)
+        l2_hits = (
+            self._l2.retrieve(query, top_k=top_k) if 2 in allowed_layers else []
+        )
         source_breakdown[2] = len(l2_hits)
         l2_priority = priorities.get("L2", 0.7)
         for item in l2_hits:
-            if item.memory_id in seen_ids:
-                continue
-            seen_ids.add(item.memory_id)
             score = item.retention * item.relevance * l2_priority
             candidates.append(
                 MemoryItem(
@@ -330,13 +382,12 @@ class HMArch:
             )
 
         # ---- L3: semantic memory -----------------------------------------
-        l3_hits = self._l3.search(query, top_k=top_k)
+        l3_hits = (
+            self._l3.search(query, top_k=top_k) if 3 in allowed_layers else []
+        )
         source_breakdown[3] = len(l3_hits)
         l3_priority = priorities.get("L3", 0.8)
         for item in l3_hits:
-            if item.memory_id in seen_ids:
-                continue
-            seen_ids.add(item.memory_id)
             content = f"{item.entity} {item.relation} {item.value}"
             score = item.retention * item.relevance * l3_priority
             candidates.append(
@@ -352,14 +403,22 @@ class HMArch:
             )
 
         # ---- L4: archived episodic long-term memory ----------------------
-        l4_hits = self._l4.search(query, top_k=top_k)
+        l4_hits = (
+            self._l4.search(query, top_k=top_k) if 4 in allowed_layers else []
+        )
         source_breakdown[4] = len(l4_hits)
         l4_priority = priorities.get("L4", 0.5)
         for hit in l4_hits:
             record = hit.record
-            if record.memory_id in seen_ids:
+            archived_rows = self._db.query(
+                """
+                SELECT id FROM memory_index
+                WHERE id = ? AND status = 'archived' AND layer = 4
+                """,
+                (record.memory_id,),
+            )
+            if not archived_rows:
                 continue
-            seen_ids.add(record.memory_id)
             rel = hit.relevance
             score = record.retention * rel * l4_priority
             metadata = dict(record.metadata)
@@ -376,10 +435,25 @@ class HMArch:
                 )
             )
 
+        # When L1/L2 share a memory_id, keep the higher-layer (persisted) item
+        by_id: dict[str, MemoryItem] = {}
+        for item in candidates:
+            prev = by_id.get(item.memory_id)
+            if prev is None or item.layer > prev.layer:
+                by_id[item.memory_id] = item
+        candidates = list(by_id.values())
+
         # Sort descending by score; stable sort preserves layer order as tiebreak
         candidates.sort(key=lambda x: -x.score)
 
-        final_results = candidates[:top_k]
+        filtered = [
+            item
+            for item in candidates
+            if item.layer in allowed_layers
+            and (item.layer == 4 or item.retention >= min_retention)
+        ]
+
+        final_results = filtered[:top_k]
         for item in final_results:
             self._l6.track_access(item.memory_id, item.layer)
 
@@ -410,27 +484,145 @@ class HMArch:
         )
         return engine.run_consolidation_cycle()
 
+    def forget(
+        self,
+        memory_id: str | None = None,
+        *,
+        force: bool = False,
+    ) -> ForgetResult:
+        """Forget one memory or run a global deletable-memory scan.
+
+        When *memory_id* is provided, only that memory is considered.  When
+        ``memory_id`` is ``None``, every row with ``status='deletable'`` is
+        processed (and, when *force* is ``True``, active rows below the layer
+        delete threshold are included as well).
+
+        L2 memories below the archive threshold are moved to L4 when possible;
+        otherwise they are marked ``deleted``.  Archived L4 rows purge the gzip
+        artifact.  L3 rows are marked ``deleted`` and removed from the vector
+        index.
+
+        Parameters
+        ----------
+        memory_id:
+            Target memory identifier, or ``None`` for a global scan.
+        force:
+            When ``True``, forget eligible memories even if they are still
+            ``active`` (below the layer delete threshold).  When ``False``,
+            only ``deletable`` rows (or a single memory below threshold) are
+            affected.
+
+        Returns
+        -------
+        ForgetResult
+            Structured counts and per-memory actions.
+        """
+        if memory_id is not None:
+            rows = self._fetch_memory_rows(memory_id=memory_id)
+        elif force:
+            rows = self._fetch_memory_rows(global_forget=True, include_active=True)
+        else:
+            rows = self._fetch_memory_rows(global_forget=True, include_active=False)
+
+        details: list[dict] = []
+        forgotten = 0
+        archived = 0
+        affected_layers: set[int] = set()
+        freed_bytes = 0
+
+        for row in rows:
+            action, layer, nbytes = self._forget_one_row(row, force=force)
+            if action is None:
+                continue
+            details.append({"memory_id": row["id"], "action": action})
+            affected_layers.add(layer)
+            freed_bytes += nbytes
+            if action == "archived":
+                archived += 1
+            elif action == "deleted":
+                forgotten += 1
+
+        return ForgetResult(
+            forgotten_count=forgotten,
+            archived_count=archived,
+            freed_memory_mb=freed_bytes / (1024 * 1024),
+            affected_layers=sorted(affected_layers),
+            details=details,
+        )
+
     def get_retention_curve(
         self,
-        layer: int = 2,
+        layer_or_memory_id: Union[int, str] = 2,
+        days_ahead: int = 90,
         *,
+        layer: int | None = None,
+        memory_id: str | None = None,
         days: list[int] | None = None,
     ) -> RetentionCurve:
         """Return predicted retention samples for L2 or L3 decay curves.
 
+        Supports the PRD positional form ``get_retention_curve(memory_id,
+        days_ahead=90)`` as well as the layer-based form
+        ``get_retention_curve(layer=2)``.
+
         Parameters
         ----------
+        layer_or_memory_id:
+            When an ``int`` in ``(2, 3)``, selects the layer decay curve.
+            When a ``str``, treated as *memory_id* (PRD positional call).
+        days_ahead:
+            Maximum day offset to sample when building the default day list.
+            Ignored when *days* is provided.
         layer:
-            Memory layer index: ``2`` for episodic (biexponential), ``3`` for
-            semantic (power-law).
+            Keyword-only layer index (overrides *layer_or_memory_id* when set).
+        memory_id:
+            Keyword-only memory identifier (overrides *layer_or_memory_id*).
         days:
-            Optional sorted day offsets to sample; defaults to
-            ``[1, 3, 7, 14, 30, 60, 90]``.
+            Optional sorted day offsets to sample; defaults to PRD checkpoints
+            up to *days_ahead*.
         """
+        resolved_memory_id: str | None = memory_id
+        resolved_layer: int | None = layer
+
+        if resolved_memory_id is None and isinstance(layer_or_memory_id, str):
+            resolved_memory_id = layer_or_memory_id
+        elif resolved_layer is None and isinstance(layer_or_memory_id, int):
+            resolved_layer = layer_or_memory_id
+
+        if resolved_layer is None and resolved_memory_id is None:
+            resolved_layer = 2
+
+        sample_days = days if days is not None else _days_up_to(days_ahead)
+
+        if resolved_memory_id is not None:
+            rows = self._db.query(
+                """
+                SELECT layer, initial_strength
+                FROM   memory_index
+                WHERE  id = ?
+                """,
+                (resolved_memory_id,),
+            )
+            if not rows:
+                raise ValueError(f"memory_id not found: {resolved_memory_id!r}")
+            mem_layer = int(rows[0]["layer"])
+            strength = float(rows[0]["initial_strength"])
+            if mem_layer not in (2, 3):
+                raise ValueError(
+                    f"per-memory retention curves require layer 2 or 3, got {mem_layer}"
+                )
+            return predict_memory_retention_curve(
+                layer=mem_layer,
+                initial_strength=strength,
+                config=self._config,
+                days=sample_days,
+            )
+
+        assert resolved_layer is not None
         return predict_retention_curve(
-            layer=layer,
+            layer=resolved_layer,
             config=self._config,
-            days=days,
+            days=sample_days,
         )
 
     def get_stats(self) -> MemoryStats:
@@ -462,29 +654,252 @@ class HMArch:
             last_consolidation_at=last_consolidation_at,
         )
 
+    def agent_context(self) -> AgentContext:
+        """Return a stable :class:`~hm_arch.context.AgentContext` for this store."""
+        return AgentContext(self)
+
     @contextmanager
-    def context(self) -> Iterator["HMArch"]:
+    def context(self) -> Iterator[AgentContext]:
         """Save and restore L1 working-memory session state.
 
-        On entry, a snapshot of the current L1 store is taken.  On exit (even
-        when an exception is raised), L1 is restored to that snapshot so
-        ephemeral session additions inside the block do not leak into the
-        outer agent turn.  L2/L3 persisted data is unaffected.
+        Yields an :class:`~hm_arch.context.AgentContext` so callers can use the
+        PRD pattern ``with memory.context() as ctx: ctx.load_session(); ...;
+        ctx.save_session()``.  On exit, L1 is rolled back to the pre-block
+        snapshot (even when an exception is raised).  L2/L3 persisted data is
+        unaffected.
+
+        Existing integrations may keep using the outer ``memory`` variable for
+        ``add()`` / ``search()`` inside the block.
 
         Examples
         --------
         ::
 
             memory.add("baseline context")
-            with memory.context():
+            with memory.context() as ctx:
+                ctx.load_session()
                 memory.add("temporary task note")
+                ctx.save_session()
             # L1 is back to the pre-block snapshot; L2 still has both adds.
         """
+        ctx = self.agent_context()
         saved_l1 = self._l1.snapshot()
         try:
-            yield self
+            yield ctx
         finally:
             self._l1.load_snapshot(saved_l1)
+
+    # ------------------------------------------------------------------
+    # Forgetting helpers
+    # ------------------------------------------------------------------
+
+    def _fetch_memory_rows(
+        self,
+        *,
+        memory_id: str | None = None,
+        global_forget: bool = False,
+        include_active: bool = False,
+    ) -> list[dict]:
+        if memory_id is not None:
+            return self._db.query(
+                """
+                SELECT mi.id,
+                       mi.layer,
+                       mi.status,
+                       mi.current_retention,
+                       mi.importance,
+                       mi.metadata,
+                       mi.created_at,
+                       mi.updated_at,
+                       e.content AS episode_content
+                FROM   memory_index mi
+                LEFT JOIN episodes e ON e.memory_id = mi.id
+                WHERE  mi.id = ?
+                  AND  mi.status != 'deleted'
+                """,
+                (memory_id,),
+            )
+
+        if not global_forget:
+            return []
+
+        if include_active:
+            cfg = self._config
+            return self._db.query(
+                """
+                SELECT mi.id,
+                       mi.layer,
+                       mi.status,
+                       mi.current_retention,
+                       mi.importance,
+                       mi.metadata,
+                       mi.created_at,
+                       mi.updated_at,
+                       e.content AS episode_content
+                FROM   memory_index mi
+                LEFT JOIN episodes e ON e.memory_id = mi.id
+                WHERE  mi.status IN ('deletable', 'active', 'archived')
+                  AND  mi.layer IN (2, 3, 4)
+                  AND  (
+                        mi.status = 'deletable'
+                     OR mi.status = 'archived'
+                     OR (mi.layer = 2 AND mi.current_retention < ?)
+                     OR (mi.layer = 3 AND mi.current_retention < ?)
+                  )
+                """,
+                (cfg.l2_delete_threshold, cfg.l3_delete_threshold),
+            )
+
+        return self._db.query(
+            """
+            SELECT mi.id,
+                   mi.layer,
+                   mi.status,
+                   mi.current_retention,
+                   mi.importance,
+                   mi.metadata,
+                   mi.created_at,
+                   mi.updated_at,
+                   e.content AS episode_content
+            FROM   memory_index mi
+            LEFT JOIN episodes e ON e.memory_id = mi.id
+            WHERE  mi.status = 'deletable'
+            """
+        )
+
+    def _is_eligible_for_forget(self, row: dict, *, force: bool) -> bool:
+        row = dict(row)
+        status = row["status"]
+        layer = int(row["layer"])
+        retention = float(row["current_retention"])
+
+        if status == "deleted":
+            return False
+        if force:
+            return status in ("active", "deletable", "archived")
+        if status == "deletable" or status == "archived":
+            return True
+        if status != "active":
+            return False
+        threshold = _delete_threshold_for_layer(layer, self._config)
+        return retention < threshold
+
+    def _forget_one_row(
+        self, row: dict, *, force: bool
+    ) -> tuple[str | None, int, int]:
+        """Forget a single memory row.
+
+        Returns ``(action, layer, freed_bytes)`` where *action* is
+        ``"archived"``, ``"deleted"``, or ``None`` when skipped.
+        """
+        row = dict(row)
+        if not self._is_eligible_for_forget(row, force=force):
+            return None, int(row["layer"]), 0
+
+        mid = row["id"]
+        layer = int(row["layer"])
+        retention = float(row["current_retention"])
+        nbytes = len((row.get("episode_content") or "").encode("utf-8"))
+
+        if layer == 2 and row["status"] == "active" and not force:
+            archive_thresh = _archive_threshold_for_layer(2, self._config)
+            if retention < archive_thresh and self._archive_l2_for_forget(row):
+                self._remove_l1_by_id(mid)
+                return "archived", 4, nbytes
+
+        if layer == 4 or row["status"] == "archived":
+            purge = self._l4.purge(mid)
+            if purge.removed:
+                nbytes += 1024
+            self._mark_memory_deleted(mid)
+            return "deleted", 4, nbytes
+
+        if layer == 2:
+            self._l2.remove_from_vector_index(mid)
+            self._db.execute("DELETE FROM episodes WHERE memory_id = ?", (mid,))
+        elif layer == 3:
+            self._l3.remove_from_vector_index(mid)
+            self._db.execute("DELETE FROM semantics WHERE memory_id = ?", (mid,))
+
+        self._db.execute("DELETE FROM review_queue WHERE memory_id = ?", (mid,))
+        self._mark_memory_deleted(mid)
+        self._remove_l1_by_id(mid)
+        return "deleted", layer, nbytes
+
+    def _archive_l2_for_forget(self, row: dict) -> bool:
+        content = row.get("episode_content")
+        if not content:
+            ep = self._db.query(
+                "SELECT content FROM episodes WHERE memory_id = ?",
+                (row["id"],),
+            )
+            if not ep:
+                return False
+            content = ep[0]["content"]
+
+        metadata = json.loads(row["metadata"] or "{}")
+        metadata["source_l2_memory_id"] = row["id"]
+        created_at = _parse_iso_timestamp(row["created_at"])
+        updated_raw = row.get("updated_at")
+        updated_at = (
+            _parse_iso_timestamp(updated_raw) if updated_raw else None
+        )
+
+        self._l4.archive(
+            row["id"],
+            content,
+            layer=2,
+            created_at=created_at,
+            updated_at=updated_at,
+            retention=float(row["current_retention"]),
+            importance=float(row["importance"]),
+            metadata=metadata,
+        )
+
+        now_str = datetime.now(tz=timezone.utc).isoformat()
+        self._db.execute(
+            """
+            UPDATE memory_index
+               SET status     = 'archived',
+                   layer      = 4,
+                   metadata   = ?,
+                   updated_at = ?
+             WHERE id = ?
+            """,
+            (json.dumps(metadata), now_str, row["id"]),
+        )
+        self._l2.remove_from_vector_index(row["id"])
+        return True
+
+    def _mark_memory_deleted(self, memory_id: str) -> None:
+        now_str = datetime.now(tz=timezone.utc).isoformat()
+        self._db.execute(
+            """
+            UPDATE memory_index
+               SET status = 'deleted', updated_at = ?
+             WHERE id = ?
+            """,
+            (now_str, memory_id),
+        )
+
+    def _remove_l1_by_id(self, memory_id: str) -> None:
+        remaining = [
+            item
+            for item in self._l1.snapshot()
+            if item.memory_id != memory_id
+        ]
+        if len(remaining) != self._l1.size:
+            self._l1.load_snapshot(remaining)
+
+    def _l1_searchable(self, memory_id: str) -> bool:
+        """Return whether an L1 item should appear in search results."""
+        rows = self._db.query(
+            "SELECT status FROM memory_index WHERE id = ?",
+            (memory_id,),
+        )
+        if not rows:
+            return True
+        return rows[0]["status"] == "active"
 
     # ------------------------------------------------------------------
     # Connection lifecycle

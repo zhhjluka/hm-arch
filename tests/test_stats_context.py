@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from hm_arch import EventType, HMArch, MemoryConfig, MemoryStats
+from hm_arch import AgentContext, EventType, HMArch, MemoryConfig, MemoryStats
 from hm_arch.consolidation import ConsolidationEngine
 
 
@@ -120,6 +120,11 @@ def test_get_stats_review_queue_after_consolidation(mem: HMArch) -> None:
 # ---------------------------------------------------------------------------
 # context()
 # ---------------------------------------------------------------------------
+
+
+def test_context_yields_agent_context(mem: HMArch) -> None:
+    with mem.context() as ctx:
+        assert isinstance(ctx, AgentContext)
 
 
 def test_context_restores_l1_size(mem: HMArch) -> None:

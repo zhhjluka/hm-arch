@@ -60,7 +60,13 @@ class L1WorkingMemory(BaseLayer):
     # BaseLayer interface
     # ------------------------------------------------------------------
 
-    def add(self, content: str, metadata: dict | None = None) -> str:
+    def add(
+        self,
+        content: str,
+        metadata: dict | None = None,
+        *,
+        memory_id: str | None = None,
+    ) -> str:
         """Append *content* to working memory.
 
         If the store is already at :attr:`capacity`, the oldest item is
@@ -72,13 +78,16 @@ class L1WorkingMemory(BaseLayer):
             Text to store.
         metadata:
             Optional key/value pairs attached to the item.
+        memory_id:
+            Optional durable L2 identifier to reuse so L1/L2 rows share the
+            same ``memory_id`` (used by :class:`~hm_arch.core.HMArch.add`).
 
         Returns
         -------
         str
             The ``memory_id`` of the newly inserted item.
         """
-        mid = self._make_id()
+        mid = memory_id if memory_id is not None else self._make_id()
         item = LayerItem(
             memory_id=mid,
             layer=self.LAYER_INDEX,
