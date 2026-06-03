@@ -51,6 +51,18 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from ..config import MemoryConfig
+from ..forgetting.strength import (
+    StrengthFactors,
+    apply_conflict_superseded_penalty,
+    apply_consistent_strength_boost,
+    compute_initial_strength,
+    encode_current_retention,
+    merge_metadata_with_strength,
+    score_local_importance,
+    strength_bounds,
+)
+from ..forgetting.time import SystemTimeProvider, TimeProvider
 from ..storage.sqlite import SQLiteStore
 from ..storage.vector import (
     LocalVectorStore,
@@ -180,6 +192,8 @@ class L3SemanticMemory:
         default_confidence: float = 1.0,
         default_importance: float = 0.8,
         max_memories: int | None = None,
+        config: MemoryConfig | None = None,
+        time_provider: TimeProvider | None = None,
     ) -> None:
         if max_memories is not None and max_memories < 1:
             raise ValueError(f"max_memories must be >= 1, got {max_memories!r}")
@@ -189,6 +203,8 @@ class L3SemanticMemory:
         self._default_confidence = default_confidence
         self._default_importance = default_importance
         self._max_memories = max_memories
+        self._config = config
+        self._time = time_provider or SystemTimeProvider()
 
         if vector_store is not None:
             self._vector: VectorStoreProtocol = vector_store
@@ -260,12 +276,16 @@ class L3SemanticMemory:
             _validate_unit_interval("similarity_threshold", similarity_threshold)
 
         episodes_json = json.dumps(list(source_episodes) if source_episodes else [])
-        meta_str = json.dumps(dict(metadata) if metadata is not None else {})
-
         # --- Step 1: check for exact match (idempotent return) ----------
         existing_id = self._find_active_exact(entity, relation, value)
         if existing_id is not None:
             self._append_source_episodes(existing_id, source_episodes)
+            apply_consistent_strength_boost(
+                self._db,
+                existing_id,
+                config=self._config,
+                time_provider=self._time,
+            )
             return existing_id
 
         # --- Step 1b: merge near-duplicate values on the same key -------
@@ -275,6 +295,12 @@ class L3SemanticMemory:
             )
             if similar_id is not None:
                 self._append_source_episodes(similar_id, source_episodes)
+                apply_consistent_strength_boost(
+                    self._db,
+                    similar_id,
+                    config=self._config,
+                    time_provider=self._time,
+                )
                 return similar_id
 
         # --- Step 2: find conflicting active triples --------------------
@@ -306,6 +332,32 @@ class L3SemanticMemory:
         # --- Step 3: insert the new triple (needs memory_id first) -----
         mid = uuid.uuid4().hex
         now_str = _iso_now()
+        triple_text = _triple_text(entity, relation, value)
+        if importance is not None:
+            effective_importance = imp
+        else:
+            effective_importance = max(
+                imp, score_local_importance(triple_text)
+            )
+        s_min, s_max, retrieval_inc, _ = strength_bounds(self._config)
+        factors = StrengthFactors(importance=effective_importance, emotion=0.5)
+        initial_strength = compute_initial_strength(
+            importance=factors.importance,
+            emotion=factors.emotion,
+            encode_repetitions=factors.encode_repetitions,
+            successful_retrievals=factors.successful_retrievals,
+            consistency=factors.consistency,
+            strength_min=s_min,
+            strength_max=s_max,
+            retrieval_increment=retrieval_inc,
+        )
+        meta_str = json.dumps(
+            merge_metadata_with_strength(
+                dict(metadata) if metadata is not None else {},
+                factors,
+            )
+        )
+        current_retention = encode_current_retention(initial_strength)
 
         self._db.execute(
             """
@@ -320,9 +372,9 @@ class L3SemanticMemory:
                 self.LAYER_INDEX,
                 now_str,
                 now_str,
-                imp,
-                1.0,
-                1.0,
+                effective_importance,
+                initial_strength,
+                current_retention,
                 "active",
                 "[]",
                 meta_str,
@@ -361,6 +413,12 @@ class L3SemanticMemory:
                      WHERE id = ?
                     """,
                     (now_str, mid, conflict["memory_id"]),
+                )
+                apply_conflict_superseded_penalty(
+                    self._db,
+                    conflict["memory_id"],
+                    config=self._config,
+                    time_provider=self._time,
                 )
                 # Remove superseded entry from vector store so it is not
                 # returned by future search() calls.

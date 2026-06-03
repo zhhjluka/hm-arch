@@ -43,6 +43,16 @@ from .forgetting.decay import (
     predict_memory_retention_curve,
     predict_retention_curve,
 )
+from .forgetting.strength import (
+    StrengthFactors,
+    apply_retrieval_reinforcement,
+    compute_initial_strength,
+    count_l2_repetitions,
+    merge_metadata_with_strength,
+    score_local_emotion,
+    score_local_importance,
+    strength_bounds,
+)
 from .forgetting.time import SystemTimeProvider, TimeProvider
 from .layers.base import LayerItem
 from .layers.l0_sensory import L0SensoryRegister
@@ -279,7 +289,10 @@ class HMArch:
         self._l1 = L1WorkingMemory()
         self._l2 = L2EpisodicBuffer(self._db, time_provider=self._time)
         self._l3 = L3SemanticMemory(
-            self._db, max_memories=self._config.max_memories_l3
+            self._db,
+            max_memories=self._config.max_memories_l3,
+            config=self._config,
+            time_provider=self._time,
         )
         self._l4 = L4EpisodicLTM(_resolve_archive_root(self._config))
         self._l5 = L5ProceduralMemory(
@@ -336,12 +349,42 @@ class HMArch:
                 f"max_memories_l2 limit ({self._config.max_memories_l2}) reached"
             )
 
+        strength_min, strength_max, retrieval_inc, _ = strength_bounds(self._config)
+        imp = (
+            importance
+            if importance is not None
+            else score_local_importance(
+                content, event_type=event_type, metadata=metadata
+            )
+        )
+        emotion = score_local_emotion(content, event_type=event_type)
+        repetition = count_l2_repetitions(self._db, content)
+        factors = StrengthFactors(
+            importance=imp,
+            emotion=emotion,
+            encode_repetitions=repetition,
+        )
+        strength = compute_initial_strength(
+            importance=factors.importance,
+            emotion=factors.emotion,
+            encode_repetitions=factors.encode_repetitions,
+            successful_retrievals=factors.successful_retrievals,
+            consistency=factors.consistency,
+            strength_min=strength_min,
+            strength_max=strength_max,
+            retrieval_increment=retrieval_inc,
+        )
+        merged_meta = merge_metadata_with_strength(metadata, factors)
+
         # L2 episodic buffer — persisted to SQLite, survives restarts
         l2_mid = self._l2.encode(
             content,
             event_type=event_type,
-            metadata=metadata,
-            importance=importance,
+            metadata=merged_meta,
+            importance=imp,
+            emotion_score=emotion,
+            initial_strength=strength,
+            strength_max=strength_max,
         )
 
         l0_meta = dict(metadata) if metadata is not None else {}
@@ -351,13 +394,22 @@ class HMArch:
         # L1 uses the same memory_id as L2 so forget() can remove both layers
         self._l1.add(content, metadata=metadata, memory_id=l2_mid)
 
-        imp = importance if importance is not None else 0.5
+        sample_days = [1, 7, 30]
+        curve = predict_memory_retention_curve(
+            layer=2,
+            initial_strength=strength,
+            config=self._config,
+            days=sample_days,
+        )
+        decay_estimate = {
+            f"{d}d": curve.retention[i] for i, d in enumerate(curve.days)
+        }
         receipt = MemoryReceipt(
             memory_id=l2_mid,
             layer=2,
             importance=imp,
-            initial_strength=1.0,
-            decay_estimate={"1d": 0.92, "7d": 0.65, "30d": 0.26},
+            initial_strength=strength,
+            decay_estimate=decay_estimate,
             consolidation_scheduled=self._time.now(),
         )
         self._run_lifecycle_tick()
@@ -581,8 +633,19 @@ class HMArch:
         ]
 
         final_results = filtered[:effective_top_k]
+        reinforce_targets: dict[str, float] = {}
         for item in final_results:
             self._l6.track_access(item.memory_id, item.layer)
+            reinforce_id = item.memory_id
+            if item.layer in (0, 1):
+                linked = item.metadata.get("source_l2_memory_id")
+                if isinstance(linked, str) and linked:
+                    reinforce_id = linked
+            if item.layer in (2, 3) or reinforce_id != item.memory_id:
+                prev = reinforce_targets.get(reinforce_id, 0.0)
+                reinforce_targets[reinforce_id] = max(prev, item.relevance)
+        for memory_id, relevance in reinforce_targets.items():
+            self._reinforce_after_retrieval(memory_id, relevance)
 
         elapsed_ms = (time.monotonic() - t0) * 1000
         total_scanned = sum(source_breakdown.values())
@@ -626,6 +689,16 @@ class HMArch:
 
     def _run_lifecycle_tick(self) -> None:
         self._forgetting.run_lifecycle_tick()
+
+    def _reinforce_after_retrieval(self, memory_id: str, relevance: float) -> None:
+        """Boost PRD ``R_mod`` after a successful search hit (L2/L3)."""
+        apply_retrieval_reinforcement(
+            self._db,
+            memory_id,
+            relevance,
+            config=self._config,
+            time_provider=self._time,
+        )
 
     def forget(
         self,

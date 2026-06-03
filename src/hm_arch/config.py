@@ -85,6 +85,18 @@ class MemoryConfig:
     """Fraction of eligible L2 episodes replayed per consolidation cycle."""
 
     # -------------------------------------------------------------------
+    # Memory strength modulation (HM-29)
+    # -------------------------------------------------------------------
+    strength_min: float = 0.2
+    """Lower bound for ``initial_strength`` after PRD modulation."""
+    strength_max: float = 6.75
+    """Upper bound for ``initial_strength`` (``0.5×2×1.5×3×1.5`` PRD product)."""
+    retrieval_reinforcement_increment: float = 0.3
+    """``R_mod`` increment per successful retrieval (PRD: ``+0.3``)."""
+    retrieval_relevance_threshold: float = 0.25
+    """Minimum query relevance required to count as a successful retrieval."""
+
+    # -------------------------------------------------------------------
     # In-memory layer caps
     # -------------------------------------------------------------------
     l0_capacity: int = 7

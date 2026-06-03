@@ -294,7 +294,9 @@ def test_upsert_custom_metadata_stored(db: SQLiteStore, l3: L3SemanticMemory) ->
 
     mid = l3.upsert("user", "likes", "Python", metadata={"source": "test"})
     rows = db.query("SELECT metadata FROM memory_index WHERE id = ?", (mid,))
-    assert json.loads(rows[0]["metadata"]) == {"source": "test"}
+    meta = json.loads(rows[0]["metadata"])
+    assert meta["source"] == "test"
+    assert "hm_arch_strength" in meta
 
 
 # ---------------------------------------------------------------------------
@@ -786,7 +788,8 @@ def test_semantic_fact_confidence_roundtrip(l3: L3SemanticMemory) -> None:
 def test_semantic_fact_metadata_roundtrip(l3: L3SemanticMemory) -> None:
     mid = l3.upsert("user", "likes", "Python", metadata={"key": "val"})
     results = l3.search("user likes Python")
-    assert results[0].metadata == {"key": "val"}
+    assert results[0].metadata["key"] == "val"
+    assert "hm_arch_strength" in results[0].metadata
 
 
 # ---------------------------------------------------------------------------

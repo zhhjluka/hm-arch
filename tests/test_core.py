@@ -11,7 +11,7 @@ add()
 * Returns a MemoryReceipt with a non-empty memory_id.
 * Receipt layer is 2 (L2 is the durable layer).
 * Receipt importance matches the supplied value.
-* Receipt initial_strength is 1.0.
+* Receipt initial_strength follows the PRD default neutral factors.
 * Receipt decay_estimate is a non-empty dict.
 * add() stores the item in L2 (count increases).
 * add() stores the item in L1 (session snapshot grows).
@@ -130,8 +130,11 @@ def test_add_receipt_layer_is_2(mem: HMArch) -> None:
 
 
 def test_add_receipt_initial_strength_is_1(mem: HMArch) -> None:
+    from hm_arch.forgetting.strength import compute_initial_strength
+
     receipt = mem.add("Hello world")
-    assert receipt.initial_strength == 1.0
+    neutral = compute_initial_strength(importance=0.5, emotion=0.5)
+    assert receipt.initial_strength == pytest.approx(neutral, abs=0.15)
 
 
 def test_add_receipt_importance_reflects_supplied_value(mem: HMArch) -> None:
@@ -145,9 +148,10 @@ def test_add_receipt_decay_estimate_nonempty(mem: HMArch) -> None:
     assert len(receipt.decay_estimate) > 0
 
 
-def test_add_receipt_default_importance_is_half(mem: HMArch) -> None:
+def test_add_receipt_default_importance_is_autoscored(mem: HMArch) -> None:
     receipt = mem.add("Hello world")
-    assert receipt.importance == pytest.approx(0.5)
+    assert 0.0 <= receipt.importance <= 1.0
+    assert receipt.importance == pytest.approx(0.5, abs=0.1)
 
 
 # ---------------------------------------------------------------------------

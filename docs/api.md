@@ -12,6 +12,7 @@ Advanced lifecycle helpers live in ``hm_arch.forgetting``:
 
 ```python
 from hm_arch.forgetting import ManualTimeProvider, ForgettingController
+from hm_arch.forgetting import compute_initial_strength, strength_bounds
 ```
 
 Layer implementations (`hm_arch.layers`) are available for advanced
@@ -400,6 +401,10 @@ Time constants are expressed in hours, matching the PRD formulas.
 | `deletion_safety_period_hours` | `'int'` | (default: `168`)|
 | `forgetting_score_threshold` | `'float'` | (default: `0.35`)|
 | `replay_sample_ratio` | `'float'` | (default: `0.2`)|
+| `strength_min` | `'float'` | (default: `0.2`)|
+| `strength_max` | `'float'` | (default: `6.75`)|
+| `retrieval_reinforcement_increment` | `'float'` | (default: `0.3`)|
+| `retrieval_relevance_threshold` | `'float'` | (default: `0.25`)|
 | `l0_capacity` | `'int'` | (default: `7`)|
 | `max_memories_l2` | `'int'` | (default: `100000`)|
 | `max_memories_l3` | `'int'` | (default: `50000`)|
@@ -747,6 +752,26 @@ Forgetting_Score =
 
 `HMArch.forget(memory_id=None)` applies this score during the global scan.
 Automated physical cleanup waits for `deletion_safety_period_hours`.
+
+### Memory strength modulation (HM-29)
+
+PRD multiplicative initial strength (offline, deterministic):
+
+```
+S = S_base * I_mod * E_mod * R_mod * C_mod
+```
+
+* ``S_base = 0.5``
+* ``I_mod`` in ``[1.0, 2.0]`` from importance ``[0, 1]``
+* ``E_mod`` in ``[0.8, 1.5]`` from emotion ``[0, 1]``
+* ``R_mod`` in ``[1.0, 3.0]``: ``1.0 + 0.3 * (encode_repetitions + successful_retrievals)``
+* ``C_mod`` in ``[0.5, 1.5]`` (neutral ``1.0``, consistent ``1.5``, superseded conflict ``0.5``)
+
+Maximum product (before clamp): ``6.75``. ``MemoryConfig.strength_min``, ``strength_max``, ``retrieval_reinforcement_increment``, and ``retrieval_relevance_threshold`` control bounds and retrieval reinforcement.
+
+Retention scales as ``R(t) = min(1.0, R_layer(t) * S)``. At encode, ``current_retention = min(1.0, S)`` while ``initial_strength`` keeps the full PRD multiplier. Each successful search reinforces each underlying L2/L3 memory at most once (best relevance wins when L0/L1 and L2 share a link). Each successful retrieval increments ``successful_retrievals`` and recomputes ``S``.
+
+Exported helpers include ``compute_initial_strength``, ``apply_retrieval_reinforcement``, ``StrengthFactors``, and modifier factor functions.
 
 ---
 
