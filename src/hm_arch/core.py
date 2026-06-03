@@ -176,6 +176,18 @@ def _l4_index_count(db: SQLiteStore) -> int:
     return int(rows[0]["n"]) if rows else 0
 
 
+def _l6_persisted_count(db: SQLiteStore) -> int:
+    """Count L6-owned rows in ``meta_memory`` (policies, access tallies, totals)."""
+    rows = db.query(
+        """
+        SELECT COUNT(*) AS n
+        FROM   meta_memory
+        WHERE  key LIKE 'hm_arch.l6.%'
+        """
+    )
+    return int(rows[0]["n"]) if rows else 0
+
+
 def _parse_policy_float(raw: str, default: float) -> float:
     try:
         return float(raw)
@@ -717,7 +729,7 @@ class HMArch:
         """Return aggregated statistics about the memory store.
 
         Counts include in-session L0/L1 items, persisted L2/L3 active rows,
-        archived L4 index rows, L5 skills, and L6 (always ``0`` — meta layer).
+        archived L4 index rows, L5 skills, and L6 persisted ``meta_memory`` rows.
         Retention histogram buckets are computed from ``memory_index`` for
         active persisted memories.  :attr:`~MemoryStats.archive_storage_mb`
         reports on-disk L4 gzip usage.
@@ -729,7 +741,7 @@ class HMArch:
             3: self._l3.count(status="active"),
             4: _l4_index_count(self._db),
             5: self._l5.count(),
-            6: 0,
+            6: _l6_persisted_count(self._db),
         }
         total_memories = sum(by_layer.values())
 

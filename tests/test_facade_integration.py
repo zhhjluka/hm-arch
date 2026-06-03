@@ -124,6 +124,13 @@ def test_get_stats_reports_l0_through_l6(mem: HMArch) -> None:
     assert stats.archive_storage_mb >= 0.0
 
 
+def test_get_stats_l6_counts_persisted_policies(mem: HMArch) -> None:
+    assert mem.get_stats().by_layer[6] == 0
+    mem.set_policy("prefer_hot_memories", "true")
+    stats = mem.get_stats()
+    assert stats.by_layer[6] >= 1
+
+
 def test_get_stats_archive_storage_after_l4_archive(tmp_path: Path) -> None:
     archive_root = tmp_path / "archives"
     cfg = MemoryConfig(
@@ -167,7 +174,22 @@ def test_l3_capacity_limit_enforced(mem: HMArch) -> None:
     try:
         limited._l3.upsert("user", "likes", "Python")
         with pytest.raises(ValueError, match="max_memories"):
-            limited._l3.upsert("user", "likes", "Java")
+            limited._l3.upsert("team", "likes", "Java")
+    finally:
+        limited.close()
+
+
+def test_l3_capacity_allows_superseding_replacement(mem: HMArch) -> None:
+    cfg = MemoryConfig(db_path=":memory:", max_memories_l3=1)
+    limited = HMArch(config=cfg)
+    try:
+        limited._l3.upsert("user", "likes", "Python")
+        rust_id = limited._l3.upsert("user", "likes", "Rust")
+        fact = limited._l3.get_by_entity_relation("user", "likes")
+        assert fact is not None
+        assert fact.memory_id == rust_id
+        assert fact.value == "Rust"
+        assert limited._l3.count(status="active") == 1
     finally:
         limited.close()
 

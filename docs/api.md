@@ -44,11 +44,11 @@ HMArch.__init__(self, db_path: 'str' = './.agent_memory.db', config: 'Optional[M
 
 ### `HMArch.add`
 
-Store *content* in working memory (L1) and the episodic buffer (L2).
+Store *content* in L0, L1, and the episodic buffer (L2).
 
-``add()`` always succeeds without an external LLM key.  L3 semantic
-extraction is **not** triggered here; it happens during
-``consolidate()`` (a later milestone).
+``add()`` always succeeds without an external LLM key when capacity
+limits allow.  L3 semantic extraction is **not** triggered here; it
+happens during ``consolidate()``.
 
 Parameters
 ----------
@@ -77,8 +77,9 @@ HMArch.add(self, content: 'str', event_type: 'EventType' = <EventType.CONVERSATI
 
 Return the top-*k* memories most relevant to *query*.
 
-Queries L1 working memory, L2 episodic buffer, L3 semantic memory, and
-L4 archived episodic memories.  Candidates from all layers are merged,
+Queries L0 sensory register, L1 working memory, L2 episodic buffer,
+L3 semantic memory, and L4 archived episodic memories.  Candidates from
+all layers are merged,
 ``memory_id``, scored as::
 
     score = retention × relevance × layer_priority
@@ -101,7 +102,10 @@ min_retention:
     Defaults to ``0.1`` (PRD).
 layer_filter:
     When provided, only search these layer indices (e.g. ``[1, 2, 3]``).
-    When ``None``, all supported layers ``(1, 2, 3, 4)`` are queried.
+    When ``None``, all supported layers ``(0, 1, 2, 3, 4)`` are queried.
+
+L6 policies ``retrieval_top_k_multiplier`` and ``prefer_hot_memories``
+adjust the effective *top_k* and ranking scores when configured.
 
 Returns
 -------
@@ -192,12 +196,86 @@ HMArch.get_retention_curve(self, layer_or_memory_id: 'Union[int, str]' = 2, days
 
 Return aggregated statistics about the memory store.
 
-Counts include in-session L1 items plus persisted L2/L3 rows with
-``status = 'active'``.  Retention histogram buckets are computed from
-``memory_index.current_retention`` for all active persisted memories.
+Counts include in-session L0/L1 items, persisted L2/L3 active rows,
+archived L4 index rows, L5 skills, and L6 persisted ``meta_memory`` rows.
+Retention histogram buckets are computed from ``memory_index`` for
+active persisted memories.  :attr:`~MemoryStats.archive_storage_mb`
+reports on-disk L4 gzip usage.
 
 ```python
 HMArch.get_stats(self) -> 'MemoryStats'
+```
+
+### `HMArch.store_skill`
+
+Persist or update a procedural skill in L5.
+
+```python
+HMArch.store_skill(self, name: 'str', *, description: 'str | None' = None, code: 'str | None' = None) -> 'SkillRecord'
+```
+
+### `HMArch.match_skill`
+
+Return the best-matching L5 skill for *query*, or ``None``.
+
+```python
+HMArch.match_skill(self, query: 'str', *, record_usage: 'bool' = True) -> 'SkillRecord | None'
+```
+
+### `HMArch.list_skills`
+
+Return all L5 skills sorted by name.
+
+```python
+HMArch.list_skills(self) -> 'list[SkillRecord]'
+```
+
+### `HMArch.record_skill_result`
+
+Record the outcome of applying an L5 skill.
+
+```python
+HMArch.record_skill_result(self, skill_id_or_name: 'str', success: 'bool', *, duration_ms: 'float | None' = None) -> 'SkillRecord'
+```
+
+### `HMArch.get_skill`
+
+Return an L5 skill by id or name without matching.
+
+```python
+HMArch.get_skill(self, skill_id_or_name: 'str') -> 'SkillRecord | None'
+```
+
+### `HMArch.set_policy`
+
+Persist an L6 policy that tunes retrieval or consolidation.
+
+```python
+HMArch.set_policy(self, name: 'str', value: 'str') -> 'None'
+```
+
+### `HMArch.get_policy`
+
+Return an L6 policy value (built-in default when unset).
+
+```python
+HMArch.get_policy(self, name: 'str') -> 'str'
+```
+
+### `HMArch.get_hot_memories`
+
+Return frequently accessed memories tracked by L6.
+
+```python
+HMArch.get_hot_memories(self, limit: 'int' = 10, *, layer: 'int | None' = None) -> 'list[HotMemoryRecord]'
+```
+
+### `HMArch.strategy_plan`
+
+Return current L6 policies and deterministic recommendations.
+
+```python
+HMArch.strategy_plan(self) -> 'StrategyPlan'
 ```
 
 ### `HMArch.agent_context`
@@ -288,6 +366,7 @@ Time constants are expressed in hours, matching the PRD formulas.
 | `auto_consolidate` | `'bool'` | (default: `True`)|
 | `consolidate_interval_hours` | `'int'` | (default: `24`)|
 | `replay_sample_ratio` | `'float'` | (default: `0.2`)|
+| `l0_capacity` | `'int'` | (default: `7`)|
 | `max_memories_l2` | `'int'` | (default: `100000`)|
 | `max_memories_l3` | `'int'` | (default: `50000`)|
 | `max_skills_l5` | `'int'` | (default: `10000`)|
@@ -496,7 +575,8 @@ Attributes
 total_memories:
     Total number of active memories across all layers.
 by_layer:
-    Per-layer counts keyed by integer layer index.
+    Per-layer counts keyed by integer layer index (L6 counts persisted
+    ``meta_memory`` rows under ``hm_arch.l6.*``).
 storage_size_mb:
     On-disk storage used by the database in megabytes.
 retention_distribution:
@@ -507,6 +587,8 @@ review_queue_length:
 last_consolidation_at:
     Timestamp of the most recent consolidation cycle, or ``None`` if
     consolidation has not yet run.
+archive_storage_mb:
+    On-disk size of L4 gzip archives under the archive root, in megabytes.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -516,10 +598,13 @@ last_consolidation_at:
 | `retention_distribution` | `'dict'` ||
 | `review_queue_length` | `'int'` ||
 | `last_consolidation_at` | `'datetime | None'` ||
+| `archive_storage_mb` | `'float'` | (default: `0.0`)|
 
 ---
 
 ## `ForgetResult`
+
+Returned by `HMArch.forget()`.
 
 Result returned by :py:meth:`HMArch.forget`.
 

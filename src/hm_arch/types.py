@@ -173,7 +173,8 @@ class MemoryStats:
     total_memories:
         Total number of active memories across all layers.
     by_layer:
-        Per-layer counts keyed by integer layer index.
+        Per-layer counts keyed by integer layer index (L6 counts persisted
+        ``meta_memory`` rows under ``hm_arch.l6.*``).
     storage_size_mb:
         On-disk storage used by the database in megabytes.
     retention_distribution:

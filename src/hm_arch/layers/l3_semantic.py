@@ -268,12 +268,6 @@ class L3SemanticMemory:
             self._append_source_episodes(existing_id, source_episodes)
             return existing_id
 
-        if self._max_memories is not None and self.count() >= self._max_memories:
-            raise ValueError(
-                f"max_memories limit ({self._max_memories}) reached; "
-                f"cannot upsert ({entity!r}, {relation!r}, {value!r})"
-            )
-
         # --- Step 1b: merge near-duplicate values on the same key -------
         if similarity_threshold is not None:
             similar_id = self._find_active_similar_value(
@@ -291,6 +285,17 @@ class L3SemanticMemory:
                 for c in conflicts
                 if _symmetric_text_similarity(value, c["value"]) < similarity_threshold
             ]
+
+        if (
+            self._max_memories is not None
+            and not conflicts
+            and self.count() >= self._max_memories
+        ):
+            raise ValueError(
+                f"max_memories limit ({self._max_memories}) reached; "
+                f"cannot upsert ({entity!r}, {relation!r}, {value!r})"
+            )
+
         next_version = 1
         if conflicts:
             # Determine next version from the highest existing version.
