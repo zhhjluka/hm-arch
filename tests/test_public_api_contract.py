@@ -19,6 +19,39 @@ def mem() -> HMArch:
     instance.close()
 
 
+def test_forget_removes_memory_from_default_search(mem: HMArch) -> None:
+    receipt = mem.add("secret forgotten probe", importance=0.5)
+    mem.forget(receipt.memory_id, force=True)
+    result = mem.search("secret forgotten probe", min_retention=0.0)
+    assert not any(
+        "secret forgotten probe" in item.content for item in result.results
+    )
+
+
+def test_context_prd_load_save_pattern(mem: HMArch) -> None:
+    mem.add("persisted baseline")
+    with mem.context() as ctx:
+        assert hasattr(ctx, "load_session")
+        assert hasattr(ctx, "save_session")
+        ctx.load_session()
+        mem.add("scoped note")
+        ctx.save_session()
+    assert mem._l1.size >= 1
+
+
+def test_get_retention_curve_positional_memory_id(mem: HMArch) -> None:
+    receipt = mem.add("positional curve probe")
+    curve = mem.get_retention_curve(receipt.memory_id, days_ahead=90)
+    assert 90 in curve.days
+    assert len(curve.days) == len(curve.retention)
+
+
+def test_get_retention_curve_positional_days_ahead(mem: HMArch) -> None:
+    receipt = mem.add("curve horizon probe")
+    curve = mem.get_retention_curve(receipt.memory_id, 30)
+    assert max(curve.days) <= 30
+
+
 def test_forget_single_memory_marks_deleted(mem: HMArch) -> None:
     receipt = mem.add("ephemeral fact", importance=0.2)
     mem._db.execute(
@@ -61,6 +94,22 @@ def test_forget_global_scan_processes_deletable(mem: HMArch) -> None:
     result = mem.forget()
     assert result.forgotten_count >= 1
     assert any(d["memory_id"] == receipt.memory_id for d in result.details)
+
+
+def test_search_default_min_retention_is_prd(mem: HMArch) -> None:
+    import inspect
+
+    sig = inspect.signature(HMArch.search)
+    assert sig.parameters["min_retention"].default == pytest.approx(0.1)
+    assert sig.parameters["top_k"].default == 10
+
+
+def test_add_default_event_type_is_conversation(mem: HMArch) -> None:
+    import inspect
+    from hm_arch import EventType
+
+    sig = inspect.signature(HMArch.add)
+    assert sig.parameters["event_type"].default is EventType.CONVERSATION
 
 
 def test_search_min_retention_filters_low_retention(mem: HMArch) -> None:

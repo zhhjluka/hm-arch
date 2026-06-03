@@ -34,7 +34,7 @@ def main() -> None:
 
         # --- Search -----------------------------------------------------------
         print("\n--- Search: 用户喜欢什么语言 ---")
-        results = memory.search("用户喜欢什么语言", top_k=5)
+        results = memory.search("用户喜欢什么语言")
         print(
             f"Scanned {results.total_scanned} candidates in"
             f" {results.timing_ms:.1f} ms"
@@ -80,12 +80,7 @@ def main() -> None:
             else "Per-memory curve computed"
         )
 
-        filtered = memory.search(
-            "用户",
-            top_k=5,
-            min_retention=0.0,
-            layer_filter=[1, 2, 3],
-        )
+        filtered = memory.search("用户", layer_filter=[1, 2, 3])
         print(f"Layer-filtered search hits: {len(filtered.results)}")
 
         print("\nBasic usage example completed successfully.")

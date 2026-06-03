@@ -132,9 +132,14 @@ class AgentContext:
         finally:
             self._memory._l1.load_snapshot(saved)
 
-    def __enter__(self) -> "HMArch":
-        self._saved_l1 = self._memory._l1.snapshot()
+    @property
+    def memory(self) -> "HMArch":
+        """Parent :class:`~hm_arch.core.HMArch` instance."""
         return self._memory
+
+    def __enter__(self) -> "AgentContext":
+        self._saved_l1 = self._memory._l1.snapshot()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self._memory._l1.load_snapshot(self._saved_l1)

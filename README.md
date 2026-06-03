@@ -19,7 +19,7 @@ from hm_arch import HMArch, EventType
 
 memory = HMArch(db_path="./.agent_memory.db")
 memory.add("用户偏好 Python", event_type=EventType.CONVERSATION)
-results = memory.search("用户喜欢什么语言", top_k=5)
+results = memory.search("用户喜欢什么语言")
 report = memory.consolidate()
 memory.close()
 ```
@@ -95,7 +95,7 @@ See `examples/codex_hooks/README.md` and `examples/claude_code_hooks/README.md` 
 
 ## Public API
 
-The facade is `HMArch` with methods: `add()`, `search()`, `consolidate()`, `get_retention_curve()`, `get_stats()`, and `context()`. Types and config presets are exported from the top-level package:
+The facade is `HMArch` with methods: `add()`, `search()`, `forget()`, `consolidate()`, `get_retention_curve()`, `get_stats()`, `context()`, and `agent_context()`. Types and config presets are exported from the top-level package:
 
 ```python
 from hm_arch import (

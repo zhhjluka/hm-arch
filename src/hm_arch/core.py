@@ -17,7 +17,7 @@ Usage example::
 
     memory = HMArch(db_path=":memory:")
     memory.add("用户偏好 Python", event_type=EventType.CONVERSATION)
-    results = memory.search("用户喜欢什么语言", top_k=5)
+    results = memory.search("用户喜欢什么语言", top_k=10)
     report = memory.consolidate()
     curve = memory.get_retention_curve(layer=2)
 """
@@ -29,12 +29,16 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Iterator, Optional, Union
 
 from .config import MemoryConfig
 from .consolidation.replay import ConsolidationEngine
 from .context import AgentContext
-from .forgetting.decay import predict_memory_retention_curve, predict_retention_curve
+from .forgetting.decay import (
+    _DEFAULT_DAYS,
+    predict_memory_retention_curve,
+    predict_retention_curve,
+)
 from .layers.l1_working import L1WorkingMemory
 from .layers.l2_episodic import L2EpisodicBuffer
 from .layers.l3_semantic import L3SemanticMemory
@@ -137,6 +141,16 @@ def _archive_threshold_for_layer(layer: int, config: MemoryConfig) -> float:
     return 0.0
 
 
+def _days_up_to(days_ahead: int) -> list[int]:
+    """PRD day checkpoints capped by *days_ahead*."""
+    if days_ahead < 1:
+        raise ValueError(f"days_ahead must be >= 1, got {days_ahead}")
+    days = [d for d in _DEFAULT_DAYS if d <= days_ahead]
+    if days_ahead not in days:
+        days.append(days_ahead)
+    return sorted(days)
+
+
 def _database_size_mb(db: SQLiteStore) -> float:
     """Approximate on-disk database size in megabytes."""
     path = db.path
@@ -176,7 +190,7 @@ class HMArch:
 
         memory = HMArch(db_path=":memory:")
         memory.add("用户偏好 Python", event_type=EventType.CONVERSATION)
-        results = memory.search("用户喜欢什么语言", top_k=5)
+        results = memory.search("用户喜欢什么语言", top_k=10)
         assert results.results[0].score > 0
         memory.close()
 
@@ -213,7 +227,7 @@ class HMArch:
     def add(
         self,
         content: str,
-        event_type: EventType = EventType.OBSERVATION,
+        event_type: EventType = EventType.CONVERSATION,
         metadata: Optional[dict] = None,
         importance: Optional[float] = None,
     ) -> MemoryReceipt:
@@ -229,7 +243,7 @@ class HMArch:
             Text to remember.
         event_type:
             Classification for the event; defaults to
-            :attr:`~hm_arch.types.EventType.OBSERVATION`.
+            :attr:`~hm_arch.types.EventType.CONVERSATION`.
         metadata:
             Optional key/value pairs attached to the memory record.
         importance:
@@ -242,9 +256,6 @@ class HMArch:
             Confirmation including the ``memory_id`` assigned by L2, which
             is the durable database-backed identifier for the event.
         """
-        # L1 in-memory working memory — fast access within the current session
-        self._l1.add(content, metadata=metadata)
-
         # L2 episodic buffer — persisted to SQLite, survives restarts
         l2_mid = self._l2.encode(
             content,
@@ -252,6 +263,9 @@ class HMArch:
             metadata=metadata,
             importance=importance,
         )
+
+        # L1 uses the same memory_id as L2 so forget() can remove both layers
+        self._l1.add(content, metadata=metadata, memory_id=l2_mid)
 
         imp = importance if importance is not None else 0.5
         return MemoryReceipt(
@@ -266,9 +280,9 @@ class HMArch:
     def search(
         self,
         query: str,
-        top_k: int = 5,
+        top_k: int = 10,
         *,
-        min_retention: float = 0.0,
+        min_retention: float = 0.1,
         layer_filter: list[int] | None = None,
     ) -> SearchResult:
         """Return the top-*k* memories most relevant to *query*.
@@ -291,10 +305,10 @@ class HMArch:
             Free-text search string.
         top_k:
             Maximum number of :class:`~hm_arch.types.MemoryItem` results to
-            return.  Defaults to ``5``.
+            return.  Defaults to ``10`` (PRD).
         min_retention:
             Exclude hits whose retention is strictly below this value.
-            Defaults to ``0.0`` for backward compatibility.
+            Defaults to ``0.1`` (PRD).
         layer_filter:
             When provided, only search these layer indices (e.g. ``[1, 2, 3]``).
             When ``None``, all supported layers ``(1, 2, 3, 4)`` are queried.
@@ -319,7 +333,6 @@ class HMArch:
         priorities = self._config.layer_priorities
 
         candidates: list[MemoryItem] = []
-        seen_ids: set[str] = set()
         source_breakdown: dict[int, int] = {1: 0, 2: 0, 3: 0, 4: 0}
 
         # ---- L1: in-memory working memory --------------------------------
@@ -331,9 +344,8 @@ class HMArch:
         source_breakdown[1] = len(l1_hits)
         l1_priority = priorities.get("L1", 0.9)
         for item in l1_hits:
-            if item.memory_id in seen_ids:
+            if not self._l1_searchable(item.memory_id):
                 continue
-            seen_ids.add(item.memory_id)
             rel = _relevance(query, item.content)
             # In-session items have no decay yet; retention = 1.0
             score = 1.0 * rel * l1_priority
@@ -356,9 +368,6 @@ class HMArch:
         source_breakdown[2] = len(l2_hits)
         l2_priority = priorities.get("L2", 0.7)
         for item in l2_hits:
-            if item.memory_id in seen_ids:
-                continue
-            seen_ids.add(item.memory_id)
             score = item.retention * item.relevance * l2_priority
             candidates.append(
                 MemoryItem(
@@ -379,9 +388,6 @@ class HMArch:
         source_breakdown[3] = len(l3_hits)
         l3_priority = priorities.get("L3", 0.8)
         for item in l3_hits:
-            if item.memory_id in seen_ids:
-                continue
-            seen_ids.add(item.memory_id)
             content = f"{item.entity} {item.relation} {item.value}"
             score = item.retention * item.relevance * l3_priority
             candidates.append(
@@ -404,8 +410,6 @@ class HMArch:
         l4_priority = priorities.get("L4", 0.5)
         for hit in l4_hits:
             record = hit.record
-            if record.memory_id in seen_ids:
-                continue
             archived_rows = self._db.query(
                 """
                 SELECT id FROM memory_index
@@ -415,7 +419,6 @@ class HMArch:
             )
             if not archived_rows:
                 continue
-            seen_ids.add(record.memory_id)
             rel = hit.relevance
             score = record.retention * rel * l4_priority
             metadata = dict(record.metadata)
@@ -432,13 +435,22 @@ class HMArch:
                 )
             )
 
+        # When L1/L2 share a memory_id, keep the higher-layer (persisted) item
+        by_id: dict[str, MemoryItem] = {}
+        for item in candidates:
+            prev = by_id.get(item.memory_id)
+            if prev is None or item.layer > prev.layer:
+                by_id[item.memory_id] = item
+        candidates = list(by_id.values())
+
         # Sort descending by score; stable sort preserves layer order as tiebreak
         candidates.sort(key=lambda x: -x.score)
 
         filtered = [
             item
             for item in candidates
-            if item.retention >= min_retention and item.layer in allowed_layers
+            if item.layer in allowed_layers
+            and (item.layer == 4 or item.retention >= min_retention)
         ]
 
         final_results = filtered[:top_k]
@@ -540,36 +552,59 @@ class HMArch:
 
     def get_retention_curve(
         self,
-        layer: int = 2,
+        layer_or_memory_id: Union[int, str] = 2,
+        days_ahead: int = 90,
         *,
+        layer: int | None = None,
         memory_id: str | None = None,
         days: list[int] | None = None,
     ) -> RetentionCurve:
         """Return predicted retention samples for L2 or L3 decay curves.
 
+        Supports the PRD positional form ``get_retention_curve(memory_id,
+        days_ahead=90)`` as well as the layer-based form
+        ``get_retention_curve(layer=2)``.
+
         Parameters
         ----------
+        layer_or_memory_id:
+            When an ``int`` in ``(2, 3)``, selects the layer decay curve.
+            When a ``str``, treated as *memory_id* (PRD positional call).
+        days_ahead:
+            Maximum day offset to sample when building the default day list.
+            Ignored when *days* is provided.
         layer:
-            Memory layer index: ``2`` for episodic (biexponential), ``3`` for
-            semantic (power-law).  Ignored when *memory_id* is provided.
+            Keyword-only layer index (overrides *layer_or_memory_id* when set).
         memory_id:
-            When provided, build the curve for that memory's layer and
-            ``initial_strength`` from ``memory_index``.
+            Keyword-only memory identifier (overrides *layer_or_memory_id*).
         days:
-            Optional sorted day offsets to sample; defaults to
-            ``[1, 3, 7, 14, 30, 60, 90]``.
+            Optional sorted day offsets to sample; defaults to PRD checkpoints
+            up to *days_ahead*.
         """
-        if memory_id is not None:
+        resolved_memory_id: str | None = memory_id
+        resolved_layer: int | None = layer
+
+        if resolved_memory_id is None and isinstance(layer_or_memory_id, str):
+            resolved_memory_id = layer_or_memory_id
+        elif resolved_layer is None and isinstance(layer_or_memory_id, int):
+            resolved_layer = layer_or_memory_id
+
+        if resolved_layer is None and resolved_memory_id is None:
+            resolved_layer = 2
+
+        sample_days = days if days is not None else _days_up_to(days_ahead)
+
+        if resolved_memory_id is not None:
             rows = self._db.query(
                 """
                 SELECT layer, initial_strength
                 FROM   memory_index
                 WHERE  id = ?
                 """,
-                (memory_id,),
+                (resolved_memory_id,),
             )
             if not rows:
-                raise ValueError(f"memory_id not found: {memory_id!r}")
+                raise ValueError(f"memory_id not found: {resolved_memory_id!r}")
             mem_layer = int(rows[0]["layer"])
             strength = float(rows[0]["initial_strength"])
             if mem_layer not in (2, 3):
@@ -580,13 +615,14 @@ class HMArch:
                 layer=mem_layer,
                 initial_strength=strength,
                 config=self._config,
-                days=days,
+                days=sample_days,
             )
 
+        assert resolved_layer is not None
         return predict_retention_curve(
-            layer=layer,
+            layer=resolved_layer,
             config=self._config,
-            days=days,
+            days=sample_days,
         )
 
     def get_stats(self) -> MemoryStats:
@@ -623,28 +659,35 @@ class HMArch:
         return AgentContext(self)
 
     @contextmanager
-    def context(self) -> Iterator["HMArch"]:
+    def context(self) -> Iterator[AgentContext]:
         """Save and restore L1 working-memory session state.
 
-        On entry, a snapshot of the current L1 store is taken.  On exit (even
-        when an exception is raised), L1 is restored to that snapshot so
-        ephemeral session additions inside the block do not leak into the
-        outer agent turn.  L2/L3 persisted data is unaffected.
+        Yields an :class:`~hm_arch.context.AgentContext` so callers can use the
+        PRD pattern ``with memory.context() as ctx: ctx.load_session(); ...;
+        ctx.save_session()``.  On exit, L1 is rolled back to the pre-block
+        snapshot (even when an exception is raised).  L2/L3 persisted data is
+        unaffected.
 
-        For explicit cross-restart persistence, use
-        :meth:`AgentContext.save_session` and :meth:`AgentContext.load_session`.
+        Existing integrations may keep using the outer ``memory`` variable for
+        ``add()`` / ``search()`` inside the block.
 
         Examples
         --------
         ::
 
             memory.add("baseline context")
-            with memory.context():
+            with memory.context() as ctx:
+                ctx.load_session()
                 memory.add("temporary task note")
+                ctx.save_session()
             # L1 is back to the pre-block snapshot; L2 still has both adds.
         """
-        with self.agent_context():
-            yield self
+        ctx = self.agent_context()
+        saved_l1 = self._l1.snapshot()
+        try:
+            yield ctx
+        finally:
+            self._l1.load_snapshot(saved_l1)
 
     # ------------------------------------------------------------------
     # Forgetting helpers
@@ -761,6 +804,7 @@ class HMArch:
         if layer == 2 and row["status"] == "active" and not force:
             archive_thresh = _archive_threshold_for_layer(2, self._config)
             if retention < archive_thresh and self._archive_l2_for_forget(row):
+                self._remove_l1_by_id(mid)
                 return "archived", 4, nbytes
 
         if layer == 4 or row["status"] == "archived":
@@ -846,6 +890,16 @@ class HMArch:
         ]
         if len(remaining) != self._l1.size:
             self._l1.load_snapshot(remaining)
+
+    def _l1_searchable(self, memory_id: str) -> bool:
+        """Return whether an L1 item should appear in search results."""
+        rows = self._db.query(
+            "SELECT status FROM memory_index WHERE id = ?",
+            (memory_id,),
+        )
+        if not rows:
+            return True
+        return rows[0]["status"] == "active"
 
     # ------------------------------------------------------------------
     # Connection lifecycle

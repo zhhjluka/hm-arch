@@ -56,7 +56,7 @@ content:
     Text to remember.
 event_type:
     Classification for the event; defaults to
-    :attr:`~hm_arch.types.EventType.OBSERVATION`.
+    :attr:`~hm_arch.types.EventType.CONVERSATION`.
 metadata:
     Optional key/value pairs attached to the memory record.
 importance:
@@ -70,7 +70,7 @@ MemoryReceipt
     is the durable database-backed identifier for the event.
 
 ```python
-HMArch.add(self, content: 'str', event_type: 'EventType' = <EventType.OBSERVATION: 'observation'>, metadata: 'Optional[dict]' = None, importance: 'Optional[float]' = None) -> 'MemoryReceipt'
+HMArch.add(self, content: 'str', event_type: 'EventType' = <EventType.CONVERSATION: 'conversation'>, metadata: 'Optional[dict]' = None, importance: 'Optional[float]' = None) -> 'MemoryReceipt'
 ```
 
 ### `HMArch.search`
@@ -95,10 +95,10 @@ query:
     Free-text search string.
 top_k:
     Maximum number of :class:`~hm_arch.types.MemoryItem` results to
-    return.  Defaults to ``5``.
+    return.  Defaults to ``10`` (PRD).
 min_retention:
     Exclude hits whose retention is strictly below this value.
-    Defaults to ``0.0`` for backward compatibility.
+    Defaults to ``0.1`` (PRD).
 layer_filter:
     When provided, only search these layer indices (e.g. ``[1, 2, 3]``).
     When ``None``, all supported layers ``(1, 2, 3, 4)`` are queried.
@@ -111,7 +111,40 @@ SearchResult
     per-layer breakdown).
 
 ```python
-HMArch.search(self, query: 'str', top_k: 'int' = 5, *, min_retention: 'float' = 0.0, layer_filter: 'list[int] | None' = None) -> 'SearchResult'
+HMArch.search(self, query: 'str', top_k: 'int' = 10, *, min_retention: 'float' = 0.1, layer_filter: 'list[int] | None' = None) -> 'SearchResult'
+```
+
+### `HMArch.forget`
+
+Forget one memory or run a global deletable-memory scan.
+
+When *memory_id* is provided, only that memory is considered.  When
+``memory_id`` is ``None``, every row with ``status='deletable'`` is
+processed (and, when *force* is ``True``, active rows below the layer
+delete threshold are included as well).
+
+L2 memories below the archive threshold are moved to L4 when possible;
+otherwise they are marked ``deleted``.  Archived L4 rows purge the gzip
+artifact.  L3 rows are marked ``deleted`` and removed from the vector
+index.
+
+Parameters
+----------
+memory_id:
+    Target memory identifier, or ``None`` for a global scan.
+force:
+    When ``True``, forget eligible memories even if they are still
+    ``active`` (below the layer delete threshold).  When ``False``,
+    only ``deletable`` rows (or a single memory below threshold) are
+    affected.
+
+Returns
+-------
+ForgetResult
+    Structured counts and per-memory actions.
+
+```python
+HMArch.forget(self, memory_id: 'str | None' = None, *, force: 'bool' = False) -> 'ForgetResult'
 ```
 
 ### `HMArch.consolidate`
@@ -131,20 +164,28 @@ HMArch.consolidate(self) -> 'ConsolidationReport'
 
 Return predicted retention samples for L2 or L3 decay curves.
 
+Supports the PRD positional form ``get_retention_curve(memory_id,
+days_ahead=90)`` as well as the layer-based form
+``get_retention_curve(layer=2)``.
+
 Parameters
 ----------
+layer_or_memory_id:
+    When an ``int`` in ``(2, 3)``, selects the layer decay curve.
+    When a ``str``, treated as *memory_id* (PRD positional call).
+days_ahead:
+    Maximum day offset to sample when building the default day list.
+    Ignored when *days* is provided.
 layer:
-    Memory layer index: ``2`` for episodic (biexponential), ``3`` for
-    semantic (power-law).  Ignored when *memory_id* is provided.
+    Keyword-only layer index (overrides *layer_or_memory_id* when set).
 memory_id:
-    When provided, build the curve for that memory's layer and
-    ``initial_strength`` from ``memory_index``.
+    Keyword-only memory identifier (overrides *layer_or_memory_id*).
 days:
-    Optional sorted day offsets to sample; defaults to
-    ``[1, 3, 7, 14, 30, 60, 90]``.
+    Optional sorted day offsets to sample; defaults to PRD checkpoints
+    up to *days_ahead*.
 
 ```python
-HMArch.get_retention_curve(self, layer: 'int' = 2, *, memory_id: 'str | None' = None, days: 'list[int] | None' = None) -> 'RetentionCurve'
+HMArch.get_retention_curve(self, layer_or_memory_id: 'Union[int, str]' = 2, days_ahead: 'int' = 90, *, layer: 'int | None' = None, memory_id: 'str | None' = None, days: 'list[int] | None' = None) -> 'RetentionCurve'
 ```
 
 ### `HMArch.get_stats`
@@ -159,29 +200,40 @@ Counts include in-session L1 items plus persisted L2/L3 rows with
 HMArch.get_stats(self) -> 'MemoryStats'
 ```
 
+### `HMArch.agent_context`
+
+Return a stable :class:`~hm_arch.context.AgentContext` for this store.
+
+```python
+HMArch.agent_context(self) -> 'AgentContext'
+```
+
 ### `HMArch.context`
 
 Save and restore L1 working-memory session state.
 
-On entry, a snapshot of the current L1 store is taken.  On exit (even
-when an exception is raised), L1 is restored to that snapshot so
-ephemeral session additions inside the block do not leak into the
-outer agent turn.  L2/L3 persisted data is unaffected.
+Yields an :class:`~hm_arch.context.AgentContext` so callers can use the
+PRD pattern ``with memory.context() as ctx: ctx.load_session(); ...;
+ctx.save_session()``.  On exit, L1 is rolled back to the pre-block
+snapshot (even when an exception is raised).  L2/L3 persisted data is
+unaffected.
 
-For explicit cross-restart persistence, use
-:meth:`AgentContext.save_session` and :meth:`AgentContext.load_session`.
+Existing integrations may keep using the outer ``memory`` variable for
+``add()`` / ``search()`` inside the block.
 
 Examples
 --------
 ::
 
     memory.add("baseline context")
-    with memory.context():
+    with memory.context() as ctx:
+        ctx.load_session()
         memory.add("temporary task note")
+        ctx.save_session()
     # L1 is back to the pre-block snapshot; L2 still has both adds.
 
 ```python
-HMArch.context(self) -> "Iterator['HMArch']"
+HMArch.context(self) -> 'Iterator[AgentContext]'
 ```
 
 ### `HMArch.close`
