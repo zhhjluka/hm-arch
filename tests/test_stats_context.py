@@ -98,6 +98,13 @@ def test_get_stats_last_consolidation_after_cycle(mem: HMArch) -> None:
     assert isinstance(stats.last_consolidation_at, datetime)
 
 
+def test_get_stats_l6_counts_persisted_policies(mem: HMArch) -> None:
+    assert mem.get_stats().by_layer[6] == 0
+    mem.set_policy("prefer_hot_memories", "true")
+    stats = mem.get_stats()
+    assert stats.by_layer[6] >= 1
+
+
 def test_get_stats_review_queue_after_consolidation(mem: HMArch) -> None:
     mem.add("Important architecture decision", importance=0.95)
     mem._db.execute(

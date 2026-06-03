@@ -279,6 +279,7 @@ class L3SemanticMemory:
 
         # --- Step 2: find conflicting active triples --------------------
         conflicts = self._find_active_conflicts(entity, relation, value)
+        same_key_replacement = bool(conflicts)
         if similarity_threshold is not None:
             conflicts = [
                 c
@@ -288,7 +289,7 @@ class L3SemanticMemory:
 
         if (
             self._max_memories is not None
-            and not conflicts
+            and not same_key_replacement
             and self.count() >= self._max_memories
         ):
             raise ValueError(
