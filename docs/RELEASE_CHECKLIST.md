@@ -20,6 +20,7 @@ Optional but recommended:
 ```bash
 python examples/agent_integration.py
 uv sync && uv run pytest
+uv run pytest tests/prd_benchmarks -m benchmark -v   # PRD scale (see docs/benchmarks.md)
 ```
 
 Confirm:

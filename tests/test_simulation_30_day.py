@@ -8,9 +8,10 @@ Simulates nightly consolidation over 30 synthetic days using back-dated
 * L4 archive growth for eligible stale episodic memories
 * Review queue population for important low-retention memories
 
-Suggested command::
+Suggested commands::
 
-    uv run pytest tests/test_simulation_30_day.py tests/test_consolidation.py tests/test_core.py
+    uv run pytest tests/test_simulation_30_day.py
+    uv run pytest tests/prd_benchmarks -m benchmark -v   # PRD scale (slow; see docs/benchmarks.md)
 """
 
 from __future__ import annotations
