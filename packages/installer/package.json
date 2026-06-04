@@ -1,0 +1,28 @@
+{
+  "name": "@hm-arch/installer",
+  "version": "1.0.0",
+  "description": "npm installer and launcher for HM-Arch agent memory integrations",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "hm-arch-install": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "scripts/postinstall.mjs"
+  ],
+  "scripts": {
+    "prepare": "npm run build",
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --import tsx --test test/**/*.test.ts",
+    "postinstall": "node ./scripts/postinstall.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

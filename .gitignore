@@ -218,3 +218,7 @@ __marimo__/
 .streamlit/secrets.toml
 .agent_memory_data/
 .agent_memory.db
+
+# npm (@hm-arch/installer)
+packages/installer/node_modules/
+packages/installer/dist/
