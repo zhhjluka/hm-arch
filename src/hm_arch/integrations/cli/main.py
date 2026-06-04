@@ -22,6 +22,11 @@ _CODEX_BRIDGE_COMMANDS = {
     "record": "run_codex_record",
     "consolidate": "run_codex_consolidate",
 }
+_CLAUDE_CODE_BRIDGE_COMMANDS = {
+    "recall": "run_claude_recall",
+    "record": "run_claude_record",
+    "consolidate": "run_claude_consolidate",
+}
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -48,6 +53,21 @@ def _build_parser() -> argparse.ArgumentParser:
         ("consolidate", "Codex Stop idle consolidation hook."),
     ):
         codex_subparsers.add_parser(name, help=help_text)
+
+    claude_parser = subparsers.add_parser(
+        "claude-code",
+        help="Run Claude Code lifecycle hook bridges (JSON on stdin).",
+    )
+    claude_subparsers = claude_parser.add_subparsers(
+        dest="claude_code_command",
+        required=True,
+    )
+    for name, help_text in (
+        ("recall", "Claude Code UserPromptSubmit recall hook."),
+        ("record", "Claude Code Stop turn recording hook."),
+        ("consolidate", "Claude Code TeammateIdle consolidation hook."),
+    ):
+        claude_subparsers.add_parser(name, help=help_text)
 
     add_install_parsers(subparsers)
     return parser
@@ -79,6 +99,14 @@ def run_codex_bridge(command: str) -> int:
     return handler()
 
 
+def run_claude_code_bridge(command: str) -> int:
+    from hm_arch.integrations.claude_code import bridge
+
+    handler_name = _CLAUDE_CODE_BRIDGE_COMMANDS[command]
+    handler = getattr(bridge, handler_name)
+    return handler()
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point for ``hm-arch``."""
     parser = _build_parser()
@@ -88,6 +116,8 @@ def main(argv: list[str] | None = None) -> int:
         return run_command(args.command)
     if args.command == "codex":
         return run_codex_bridge(args.codex_command)
+    if args.command == "claude-code":
+        return run_claude_code_bridge(args.claude_code_command)
     if args.command == "install":
         return run_install_command(args)
     if args.command == "uninstall":
