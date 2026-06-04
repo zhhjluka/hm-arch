@@ -42,4 +42,19 @@ describe("parseCliArgs", () => {
     const parsed = parseCliArgs(["doctor", "codex", "extra"]);
     assert.match(parsed.error ?? "", /Unexpected argument/);
   });
+
+  it("rejects unknown flags on status", () => {
+    const parsed = parseCliArgs(["status", "--bogus"]);
+    assert.match(parsed.error ?? "", /Unknown option "--bogus"/);
+  });
+
+  it("rejects unknown flags on install", () => {
+    const parsed = parseCliArgs(["install", "codex", "--bogus"]);
+    assert.match(parsed.error ?? "", /Unknown option "--bogus"/);
+  });
+
+  it("rejects mistyped global flag", () => {
+    const parsed = parseCliArgs(["install", "codex", "--globall"]);
+    assert.match(parsed.error ?? "", /Unknown option "--globall"/);
+  });
 });

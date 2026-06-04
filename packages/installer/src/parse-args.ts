@@ -21,11 +21,26 @@ function isCliCommand(value: string): value is CliCommand {
   return (CLI_COMMANDS as readonly string[]).includes(value);
 }
 
+const SUPPORTED_FLAGS = new Set(["--global", "-g", "--help", "-h"]);
+
+function findUnknownFlag(argv: string[]): string | undefined {
+  return argv.find((arg) => arg.startsWith("-") && !SUPPORTED_FLAGS.has(arg));
+}
+
 /**
  * Parse ``hm-arch-install`` argv (without node executable prefix).
  * Mirrors the Python ``hm-arch`` management subcommands at a high level.
  */
 export function parseCliArgs(argv: string[]): ParsedCliArgs {
+  const unknownFlag = findUnknownFlag(argv);
+  if (unknownFlag !== undefined) {
+    return {
+      global: false,
+      help: false,
+      error: `Unknown option ${JSON.stringify(unknownFlag)}. Supported options: --global (-g), --help (-h).`,
+    };
+  }
+
   const global = argv.includes("--global") || argv.includes("-g");
   const help = argv.includes("--help") || argv.includes("-h");
   const positional = argv.filter((arg) => !arg.startsWith("-"));
