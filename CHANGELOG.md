@@ -14,6 +14,7 @@ publication steps and maintainer approval rules.
 ### Changed
 
 - Release policy docs: README, [docs/VERSIONING.md](docs/VERSIONING.md), and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) now describe planned PyPI (v1.1.0+) and npm (v1.2.0+) publication with explicit maintainer approval; automated agents still must not publish without instruction
+- [docs/spec.md](docs/spec.md), [docs/api.md](docs/api.md), and [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md) aligned with registry policy (v1.0.0 GitHub-only history vs planned PyPI/npm)
 
 ### Added
 
