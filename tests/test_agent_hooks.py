@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from examples.agent_hooks_common import (
+from hm_arch.integrations.common import (
     build_turn_start_context,
     open_memory,
     record_turn_end,
@@ -150,7 +150,7 @@ def test_run_idle_consolidation_on_empty_db(hook_db_path: str) -> None:
 
 def test_resolve_db_path_uses_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HM_ARCH_DB_PATH", "/tmp/hm_arch_test_only.db")
-    from examples.agent_hooks_common import resolve_db_path
+    from hm_arch.integrations.common import resolve_db_path
 
     assert resolve_db_path() == "/tmp/hm_arch_test_only.db"
 

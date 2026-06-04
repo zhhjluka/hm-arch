@@ -11,7 +11,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from examples.agent_hooks_common import (
+from hm_arch.integrations.common import (
     build_turn_start_context,
     extract_agent_message,
     extract_task_from_payload,

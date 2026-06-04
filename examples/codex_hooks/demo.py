@@ -17,7 +17,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 from hm_arch import EventType, HMArch, MemoryConfig
 
-from examples.agent_hooks_common import (
+from hm_arch.integrations.common import (
     build_turn_start_context,
     record_turn_end,
     run_idle_consolidation,
