@@ -8,7 +8,7 @@ Per-agent setup guides: [agents/README.md](agents/README.md).
 **Editable (repository clone):**
 
 ```bash
-cd /path/to/memashuman
+cd /path/to/hm-arch
 python3 -m pip install -e ".[dev]"
 ```
 

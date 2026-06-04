@@ -98,7 +98,7 @@ python3.12 -m venv /tmp/hm-arch-sdist-verify
 - [ ] Release smoke test passes from the **wheel** install (run from a directory outside the repo clone, using the installed package):
 
 ```bash
-cd /tmp && /tmp/hm-arch-wheel-verify/bin/python /path/to/memashuman/examples/release_smoke.py
+cd /tmp && /tmp/hm-arch-wheel-verify/bin/python /path/to/hm-arch/examples/release_smoke.py
 ```
 
 Agents may run **Build** and install verification locally. Do **not** upload to

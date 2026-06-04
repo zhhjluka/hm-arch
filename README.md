@@ -8,10 +8,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ZhangHangjianMA/memashuman/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/release-v1.0.0-111111" alt="GitHub Release v1.0.0"></a>
+  <a href="https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/release-v1.0.0-111111" alt="GitHub Release v1.0.0"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB" alt="Python 3.10+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-4C9A7D" alt="Apache-2.0 License"></a>
-  <a href="https://github.com/ZhangHangjianMA/memashuman/actions"><img src="https://img.shields.io/badge/tests-778%20passing-4C9A7D" alt="778 tests passing"></a>
+  <a href="https://github.com/ZhangHangjianMA/hm-arch/actions"><img src="https://img.shields.io/badge/tests-778%20passing-4C9A7D" alt="778 tests passing"></a>
 </p>
 
 ---
@@ -35,7 +35,7 @@ Most agent memory systems focus on storing and retrieving text. HM-Arch also mod
 
 ### Install
 
-**Today (v1.0.0):** install from the [v1.0.0 GitHub Release](https://github.com/ZhangHangjianMA/memashuman/releases/tag/v1.0.0) wheel or sdist, or from source (below).
+**Today (v1.0.0):** install from the [v1.0.0 GitHub Release](https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v1.0.0) wheel or sdist, or from source (below).
 
 **Planned registries** (see [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md)):
 
@@ -49,7 +49,7 @@ All public channels use the same semver from `src/hm_arch/_version.py`. Automate
 
 #### Install from the GitHub Release (current)
 
-Download `hm_arch-1.0.0-py3-none-any.whl` from the [v1.0.0 release page](https://github.com/ZhangHangjianMA/memashuman/releases/tag/v1.0.0), then install it in a Python 3.10+ environment:
+Download `hm_arch-1.0.0-py3-none-any.whl` from the [v1.0.0 release page](https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v1.0.0), then install it in a Python 3.10+ environment:
 
 ```bash
 python3 -m venv .venv
@@ -60,8 +60,8 @@ python -m pip install /path/to/hm_arch-1.0.0-py3-none-any.whl
 For development from source:
 
 ```bash
-git clone https://github.com/ZhangHangjianMA/memashuman.git
-cd memashuman
+git clone https://github.com/ZhangHangjianMA/hm-arch.git
+cd hm-arch
 python -m pip install -e ".[dev]"
 ```
 

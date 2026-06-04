@@ -59,8 +59,8 @@ hm-arch doctor [agent] [--global]
 
 Setup guides:
 
-- https://github.com/ZhangHangjianMA/memashuman/blob/v1.1.0/docs/agents/codex.md
-- https://github.com/ZhangHangjianMA/memashuman/blob/v1.1.0/docs/agents/claude-code.md
+- https://github.com/ZhangHangjianMA/hm-arch/blob/v1.1.0/docs/agents/codex.md
+- https://github.com/ZhangHangjianMA/hm-arch/blob/v1.1.0/docs/agents/claude-code.md
 
 ### Hermes Agent Memory Provider
 
@@ -72,7 +72,7 @@ Setup guides:
 - Refuses to silently replace another configured external memory provider
 
 Setup guide:
-https://github.com/ZhangHangjianMA/memashuman/blob/v1.1.0/docs/agents/hermes.md
+https://github.com/ZhangHangjianMA/hm-arch/blob/v1.1.0/docs/agents/hermes.md
 
 ### Documentation
 

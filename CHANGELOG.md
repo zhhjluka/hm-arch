@@ -69,6 +69,6 @@ Phase 2 release-ready SDK: L4–L6 layers, full sleep consolidation, agent hook 
 - `examples/release_smoke.py` and `docs/api.md` API reference
 - `docs/RELEASE_CHECKLIST.md`, `docs/VERSIONING.md`, and `scripts/generate_api_docs.py`
 
-[Unreleased]: https://github.com/ZhangHangjianMA/memashuman/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/ZhangHangjianMA/memashuman/releases/tag/v1.0.0
-[0.1.0]: https://github.com/ZhangHangjianMA/memashuman/releases/tag/v0.1.0
+[Unreleased]: https://github.com/ZhangHangjianMA/hm-arch/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v1.0.0
+[0.1.0]: https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v0.1.0

@@ -15,7 +15,7 @@ explicit 3.10+ binary.
 Build artifacts from the release commit:
 
 ```bash
-cd /path/to/memashuman
+cd /path/to/hm-arch
 python3.12 --version   # must be >= 3.10
 python3.12 -m pip install -U pip build
 python3.12 -m build --outdir dist
@@ -40,7 +40,7 @@ Verify import, CLI, and release smoke:
 ```bash
 /tmp/hm-arch-pip-verify/bin/python -c "import hm_arch; assert hm_arch.__version__ == '${HM_ARCH_VERSION}'"
 /tmp/hm-arch-pip-verify/bin/hm-arch --help
-/tmp/hm-arch-pip-verify/bin/python /path/to/memashuman/examples/release_smoke.py
+/tmp/hm-arch-pip-verify/bin/python /path/to/hm-arch/examples/release_smoke.py
 ```
 
 Expected: `hm-arch --help` lists `recall`, `record`, `consolidate`, `codex`,
