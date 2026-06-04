@@ -59,10 +59,16 @@ def test_doctor_codex_reports_not_installed(
     assert "not_installed" in err or "not installed" in err.lower()
 
 
-def test_install_hermes_is_rejected_by_argparse() -> None:
-    with pytest.raises(SystemExit) as exc:
-        main(["install", "hermes"])
-    assert exc.value.code != 0
+def test_install_hermes_reports_unsupported_diagnostic(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert main(["install", "hermes"]) == 2
+    err = capsys.readouterr().err
+    assert "hermes: unsupported" in err
+    assert "hm-arch install hermes is not supported" in err
+    assert "native plugin registration" in err
+    assert "hm-arch status hermes" in err
+    assert "hm-arch doctor hermes" in err
 
 
 def test_status_hermes_reports_provider_conflict(
@@ -101,9 +107,15 @@ def test_status_hermes_configured(
     assert main(["doctor", "hermes"]) == 0
 
 
-def test_uninstall_hermes_is_unsupported() -> None:
-    with pytest.raises(SystemExit):
-        main(["uninstall", "hermes"])
+def test_uninstall_hermes_reports_unsupported_diagnostic(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert main(["uninstall", "hermes"]) == 2
+    err = capsys.readouterr().err
+    assert "hermes: unsupported" in err
+    assert "hm-arch uninstall hermes is not supported" in err
+    assert "config.yaml" in err
+    assert "without changing unrelated memory providers" in err
 
 
 def test_status_all_agents(

@@ -7,7 +7,6 @@ import sys
 
 from hm_arch.integrations.management import (
     ALL_AGENTS,
-    INSTALLABLE_AGENTS,
     get_agent_handler,
     list_agents,
 )
@@ -25,8 +24,8 @@ def add_manage_parsers(subparsers: argparse._SubParsersAction) -> None:
     )
     install_parser.add_argument(
         "agent",
-        choices=INSTALLABLE_AGENTS,
-        help="Agent integration to install.",
+        choices=ALL_AGENTS,
+        help="Agent integration to install (Hermes uses native plugin registration).",
     )
     install_parser.add_argument(
         "--global",
@@ -41,8 +40,8 @@ def add_manage_parsers(subparsers: argparse._SubParsersAction) -> None:
     )
     uninstall_parser.add_argument(
         "agent",
-        choices=INSTALLABLE_AGENTS,
-        help="Agent integration to uninstall.",
+        choices=ALL_AGENTS,
+        help="Agent integration to uninstall (Hermes config is edited manually).",
     )
     uninstall_parser.add_argument(
         "--global",
