@@ -14,6 +14,10 @@ from hm_arch.integrations.protocol import (
 )
 
 
+class InvalidAdapterPayloadError(ValueError):
+    """Raised when stdin contains valid JSON that is not an adapter request object."""
+
+
 def read_adapter_payload() -> dict[str, Any]:
     """Read a JSON adapter request object from stdin.
 
@@ -27,7 +31,7 @@ def read_adapter_payload() -> dict[str, Any]:
         return {}
     data = json.loads(raw)
     if not isinstance(data, dict):
-        raise TypeError("Adapter request must be a JSON object")
+        raise InvalidAdapterPayloadError("adapter request must be a JSON object")
     return data
 
 

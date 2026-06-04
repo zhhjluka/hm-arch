@@ -108,9 +108,12 @@ def test_dispatch_fail_open_on_invalid_recall(cli_env: dict[str, str]) -> None:
     assert response.error
 
 
+_CLI_MODULE = ["-m", "hm_arch.integrations.cli"]
+
+
 def test_invalid_json_on_stdin_emits_fail_open(cli_env: dict[str, str]) -> None:
     proc = subprocess.run(
-        [sys.executable, "-m", "hm_arch.integrations.cli.main", "recall"],
+        [sys.executable, *_CLI_MODULE, "recall"],
         input="{not-json",
         text=True,
         capture_output=True,
@@ -123,11 +126,27 @@ def test_invalid_json_on_stdin_emits_fail_open(cli_env: dict[str, str]) -> None:
     assert "invalid JSON" in payload["error"]
 
 
+def test_non_object_json_on_stdin_emits_fail_open(cli_env: dict[str, str]) -> None:
+    proc = subprocess.run(
+        [sys.executable, *_CLI_MODULE, "recall"],
+        input="[]",
+        text=True,
+        capture_output=True,
+        cwd=_REPO_ROOT,
+        env={**cli_env, "PATH": os.environ.get("PATH", "")},
+    )
+    assert proc.returncode == 0
+    payload = json.loads(proc.stdout)
+    assert payload["ok"] is False
+    assert payload["context"] == ""
+    assert "JSON object" in payload["error"]
+
+
 def test_main_recall_subprocess(cli_db_path: str, cli_env: dict[str, str]) -> None:
     _seed_memory(cli_db_path)
     payload = json.dumps({"task": "offline pytest"})
     proc = subprocess.run(
-        [sys.executable, "-m", "hm_arch.integrations.cli.main", "recall"],
+        [sys.executable, *_CLI_MODULE, "recall"],
         input=payload,
         text=True,
         capture_output=True,

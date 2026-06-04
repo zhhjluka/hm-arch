@@ -8,7 +8,11 @@ import sys
 
 from hm_arch.integrations.protocol import AdapterOperation
 
-from .io import emit_adapter_response, read_adapter_payload
+from .io import (
+    InvalidAdapterPayloadError,
+    emit_adapter_response,
+    read_adapter_payload,
+)
 from .runtime import _fail_open_for_operation, dispatch_adapter_request
 
 _SUPPORTED_COMMANDS = tuple(op.value for op in AdapterOperation)
@@ -34,6 +38,10 @@ def run_command(command: str) -> int:
         payload = read_adapter_payload()
     except json.JSONDecodeError as exc:
         response = _fail_open_for_operation(command, f"invalid JSON on stdin: {exc}")
+        emit_adapter_response(response)
+        return 0
+    except InvalidAdapterPayloadError as exc:
+        response = _fail_open_for_operation(command, str(exc))
         emit_adapter_response(response)
         return 0
 
