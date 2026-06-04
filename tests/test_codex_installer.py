@@ -121,6 +121,32 @@ def test_repeat_install_is_idempotent(project_root: Path, codex_home: Path) -> N
     assert len(_hm_arch_hooks(after)) == 3
 
 
+def test_uninstall_preserves_top_level_fields_when_hooks_empty(
+    project_root: Path,
+    codex_home: Path,
+) -> None:
+    hooks_path = project_root / ".codex" / "hooks.json"
+    hooks_path.parent.mkdir(parents=True)
+    hooks_path.write_text(
+        json.dumps({"version": 1, "notes": "keep me", "hooks": {}}),
+        encoding="utf-8",
+    )
+
+    install_codex(
+        InstallScope.PROJECT,
+        project_root=project_root,
+        home=codex_home,
+    )
+    uninstall_codex(
+        InstallScope.PROJECT,
+        project_root=project_root,
+        home=codex_home,
+    )
+
+    assert hooks_path.exists()
+    assert _load_hooks(hooks_path) == {"version": 1, "notes": "keep me"}
+
+
 def test_uninstall_preserves_user_hooks(project_root: Path, codex_home: Path) -> None:
     hooks_path = project_root / ".codex" / "hooks.json"
     hooks_path.parent.mkdir(parents=True)

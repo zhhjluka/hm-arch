@@ -180,6 +180,14 @@ def remove_hm_arch_hooks(document: dict[str, Any]) -> dict[str, Any]:
     return document
 
 
+def _should_delete_hooks_file(document: dict[str, Any]) -> bool:
+    """Return True when ``hooks.json`` has no user-owned content left."""
+    hooks = document.get("hooks")
+    if isinstance(hooks, dict) and hooks:
+        return False
+    return not document
+
+
 def _write_hooks_json(path: Path, document: dict[str, Any]) -> bool:
     path.parent.mkdir(parents=True, exist_ok=True)
     serialized = json.dumps(document, indent=2, ensure_ascii=False)
@@ -230,11 +238,11 @@ def uninstall_codex(
 
     document = _load_hooks_document(paths.hooks_json)
     remove_hm_arch_hooks(document)
-    if document.get("hooks"):
-        hooks_changed = _write_hooks_json(paths.hooks_json, document)
-    else:
+    if _should_delete_hooks_file(document):
         paths.hooks_json.unlink(missing_ok=True)
         hooks_changed = True
+    else:
+        hooks_changed = _write_hooks_json(paths.hooks_json, document)
 
     return InstallResult(
         scope=scope,
