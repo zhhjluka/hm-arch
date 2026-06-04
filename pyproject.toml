@@ -40,6 +40,9 @@ chroma = [
     "chromadb>=0.5.0",
 ]
 
+[project.scripts]
+hm-arch = "hm_arch.integrations.cli.main:main"
+
 [project.urls]
 Homepage = "https://github.com/ZhangHangjianMA/memashuman"
 Documentation = "https://github.com/ZhangHangjianMA/memashuman#readme"
