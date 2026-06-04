@@ -111,9 +111,11 @@ Usage:
 Agents: ${SUPPORTED_AGENTS.join(", ")}
 
 Environment variables:
-  HM_ARCH_PYTHON   Path to a Python 3.10+ interpreter
+  HM_ARCH_HOME       Directory for the managed venv (default: ~/.hm-arch)
+  HM_ARCH_PYTHON     Path to a Python 3.10+ interpreter used to create the venv
+  HM_ARCH_PIP_SPEC   pip requirement for hm-arch (default: hm-arch==<bundled>)
 
-Note: Python environment setup and agent configuration are not implemented
-in this scaffold. Use explicit install commands; postinstall is a no-op.
+Note: Agent hook configuration is not implemented yet (MEM-51).
+npm postinstall is a no-op; run install explicitly.
 `;
 }
