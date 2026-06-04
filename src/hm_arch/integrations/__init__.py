@@ -1,8 +1,7 @@
 """Agent integration package for HM-Arch.
 
-This package defines the stable adapter protocol and integration configuration
-used by host-specific adapters (Codex, Claude Code, Hermes). Host adapters are
-implemented in later issues; this module only provides the shared contract.
+Defines the stable adapter protocol, shared offline runtime, and host-specific
+adapters for Codex and Claude Code hook integrations.
 """
 
 from .config import IntegrationConfig, StorageScope

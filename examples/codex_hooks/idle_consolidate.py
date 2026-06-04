@@ -1,20 +1,12 @@
 #!/usr/bin/env python3
-"""Codex idle hook: run offline consolidation when the agent is idle.
+"""Codex idle consolidation hook.
 
-Wire to a long-timeout ``Stop`` companion or a scheduled wrapper script.
-Safe to run on an empty memory store.
+Run during idle periods or from a long-timeout ``Stop`` hook in ``.codex/hooks.json``.
 """
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from examples.codex_hooks.hooks import main_idle_consolidation
+from hm_arch.integrations.codex import main_idle_consolidation
 
 if __name__ == "__main__":
     raise SystemExit(main_idle_consolidation())

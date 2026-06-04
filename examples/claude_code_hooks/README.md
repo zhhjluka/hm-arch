@@ -1,6 +1,6 @@
 # Claude Code hook examples (HM-Arch)
 
-Portable, offline examples for [Claude Code hooks](https://code.claude.com/docs/en/hooks). These scripts do **not** edit your global or project settings automatically.
+Portable, offline examples for [Claude Code hooks](https://code.claude.com/docs/en/hooks). Hook logic lives in the installed package at ``hm_arch.integrations.claude_code``; the scripts here are thin entrypoints that call the packaged adapter. These scripts do **not** edit your global or project settings automatically.
 
 ## Scripts
 

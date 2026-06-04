@@ -1,6 +1,6 @@
-"""Thin wrapper around the packaged Codex hook adapter."""
+"""Codex CLI hook adapter for HM-Arch memory."""
 
-from hm_arch.integrations.codex import (
+from .hooks import (
     codex_idle_consolidation_hook,
     codex_turn_end_hook,
     codex_turn_start_hook,

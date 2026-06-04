@@ -1,6 +1,6 @@
-"""Thin wrapper around the packaged Claude Code hook adapter."""
+"""Claude Code hook adapter for HM-Arch memory."""
 
-from hm_arch.integrations.claude_code import (
+from .hooks import (
     claude_idle_consolidation_hook,
     claude_turn_end_hook,
     claude_turn_start_hook,

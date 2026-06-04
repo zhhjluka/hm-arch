@@ -7,6 +7,7 @@ No machine-specific home-directory defaults.
 from __future__ import annotations
 
 from .consolidate import run_idle_consolidation
+from .io import read_hook_payload
 from .paths import open_memory, resolve_db_path
 from .payload import (
     extract_agent_message,
@@ -22,6 +23,7 @@ __all__ = [
     "extract_task_from_payload",
     "extract_user_message",
     "open_memory",
+    "read_hook_payload",
     "record_turn_end",
     "resolve_db_path",
     "run_idle_consolidation",

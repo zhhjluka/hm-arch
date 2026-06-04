@@ -1,6 +1,6 @@
 # Codex hook examples (HM-Arch)
 
-Portable, offline examples for wiring [Codex hooks](https://developers.openai.com/codex/hooks) to HM-Arch memory. These scripts do **not** modify your Codex installation automatically.
+Portable, offline examples for wiring [Codex hooks](https://developers.openai.com/codex/hooks) to HM-Arch memory. Hook logic lives in the installed package at ``hm_arch.integrations.codex``; the scripts here are thin entrypoints that call the packaged adapter. These scripts do **not** modify your Codex installation automatically.
 
 ## Scripts
 
