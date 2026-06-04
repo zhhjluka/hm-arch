@@ -126,9 +126,10 @@ class HMArchHermesMemoryProvider:
         else:
             db_path = self._integration.resolve_db_path()
 
+        if db_path != ":memory:":
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         memory_config = replace(self._integration.to_memory_config(), db_path=db_path)
         self._memory = HMArch(config=memory_config)
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 
     def system_prompt_block(self) -> str:
         if not self._memory:

@@ -239,6 +239,30 @@ def test_is_available_without_network() -> None:
     assert provider.is_available() is True
 
 
+def test_initialize_creates_missing_db_parent_directories() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "missing" / "nested" / "memory.db"
+        assert not db_path.parent.exists()
+
+        provider = HMArchHermesMemoryProvider(
+            IntegrationConfig(db_path=str(db_path)),
+        )
+        try:
+            provider.initialize("session-nested-db")
+            assert db_path.parent.is_dir()
+            assert provider._memory is not None
+
+            stored = json.loads(
+                provider.handle_tool_call(
+                    "hm_arch_remember",
+                    {"content": "Nested db path works"},
+                )
+            )
+            assert stored["memory_id"]
+        finally:
+            provider.shutdown()
+
+
 def test_sync_turn_is_non_blocking(monkeypatch: pytest.MonkeyPatch) -> None:
     provider = HMArchHermesMemoryProvider(IntegrationConfig(db_path=":memory:"))
     provider.initialize("session-6")
