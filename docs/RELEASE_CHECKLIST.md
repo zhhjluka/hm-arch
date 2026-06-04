@@ -146,12 +146,22 @@ Skip this section until the project begins PyPI publication per the integration
 roadmap. **v1.0.0** was GitHub-only; do not retroactively publish older versions
 without a maintainer decision.
 
+Full reproducible **pip** and **pipx** verification (local wheel before upload,
+PyPI after upload): [pypi-clean-install.md](pypi-clean-install.md).
+
+Agent setup guides (must match shipped CLI): [agents/README.md](agents/README.md).
+
 Only after GitHub Release **5** is complete (or in the same approved release window):
 
 - [ ] Maintainer approved PyPI upload for version `X.Y.Z`.
 - [ ] Upload uses artifacts built from the tagged commit; `hm_arch.__version__` matches `X.Y.Z`.
-- [ ] `pip install hm-arch==X.Y.Z` succeeds in a clean venv (Python 3.10+).
-- [ ] `pipx install hm-arch==X.Y.Z` smoke test passes if pipx is a supported install path for this release.
+- [ ] Clean **pip** install from local wheel documented in [pypi-clean-install.md](pypi-clean-install.md) §1 passes (Python 3.10+).
+- [ ] Clean **pipx** install from local wheel documented in [pypi-clean-install.md](pypi-clean-install.md) §2 passes.
+- [ ] After upload: `pip install hm-arch==X.Y.Z` in a fresh venv passes (§1 post-publish).
+- [ ] After upload: `pipx install hm-arch==X.Y.Z` smoke test passes (§2 post-publish).
+- [ ] `hm-arch install codex` / `claude-code` smoke from pip-installed CLI passes ([integration-cli-smoke.md](integration-cli-smoke.md)).
+- [ ] `hm-arch status hermes` / `doctor hermes` documented; install/uninstall hermes remain unsupported by design.
+- [ ] `docs/RELEASE_NOTES_vX.Y.Z.md` prepared (e.g. [RELEASE_NOTES_v1.1.0.md](RELEASE_NOTES_v1.1.0.md) for Python-first integration).
 - [ ] GitHub Release notes mention `pip install hm-arch` when PyPI is live for this version.
 
 Example maintainer commands (requires credentials; agents must not run without approval):
@@ -185,7 +195,7 @@ Automated Cursor/Codex agents: **do not publish to npm** unless explicitly instr
 |------|-------------------|----------------|
 | Test | `uv run pytest`, `examples/release_smoke.py` | Yes |
 | Build | `uv run --with build python -m build --outdir dist` (Python >= 3.10) | Yes (local only) |
-| Verify install | wheel + sdist in throwaway venvs (Python 3.10+) | Yes |
+| Verify install | wheel + sdist in throwaway venvs; pip/pipx per [pypi-clean-install.md](pypi-clean-install.md) | Yes |
 | Docs | `uv run python scripts/generate_api_docs.py` | Yes |
 | Tag | `git tag`, `git push origin vX.Y.Z` | No (unless asked) |
 | GitHub Release | Release notes + `dist/` artifacts | No (unless asked) |

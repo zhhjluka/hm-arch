@@ -11,18 +11,23 @@ publication steps and maintainer approval rules.
 
 ## [Unreleased]
 
+### Added
+
+- PyPI clean-install verification: [docs/pypi-clean-install.md](docs/pypi-clean-install.md) (reproducible `pip` and `pipx` workflows from isolated environments)
+- Agent setup guides: [docs/agents/](docs/agents/) (Codex, Claude Code, Hermes — matches shipped `hm-arch` CLI, including Hermes status/doctor-only management)
+- Draft v1.1.0 release notes: [docs/RELEASE_NOTES_v1.1.0.md](docs/RELEASE_NOTES_v1.1.0.md) for the Python-first three-agent integration
+- Packaged Codex and Claude Code hook adapters under `hm_arch.integrations.codex` and `hm_arch.integrations.claude_code`
+- Shared `read_hook_payload()` helper in `hm_arch.integrations.common`
+- `hm-arch` integration CLI: `install`, `uninstall`, `status`, `doctor` (MEM-47)
+- Hermes native Memory Provider under `hm_arch.integrations.hermes` (MEM-46)
+
 ### Changed
 
 - Release policy docs: README, [docs/VERSIONING.md](docs/VERSIONING.md), and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) now describe planned PyPI (v1.1.0+) and npm (v1.2.0+) publication with explicit maintainer approval; automated agents still must not publish without instruction
+- [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) PyPI section links pip/pipx verification and agent setup guides
 - [docs/spec.md](docs/spec.md), [docs/api.md](docs/api.md), and [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md) aligned with registry policy (v1.0.0 GitHub-only history vs planned PyPI/npm)
-
-### Added
-
-- Packaged Codex and Claude Code hook adapters under `hm_arch.integrations.codex` and `hm_arch.integrations.claude_code`
-- Shared `read_hook_payload()` helper in `hm_arch.integrations.common`
-
-### Changed
-
+- [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md) v1.1.0 UX example no longer implies `hm-arch install hermes`
+- README agent integration section documents packaged CLI and links to `docs/agents/`
 - `examples/codex_hooks/` and `examples/claude_code_hooks/` are thin wrappers around the packaged adapters (no duplicated memory runtime logic)
 
 ## [1.0.0] - 2026-06-03

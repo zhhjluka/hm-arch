@@ -1,12 +1,20 @@
-# HM-Arch integration CLI smoke tests (MEM-47)
+# HM-Arch integration CLI smoke tests
 
 Manual checks for `hm-arch install`, `uninstall`, `status`, and `doctor`.
-Run from a repository clone with the package installed in editable mode:
+Per-agent setup guides: [agents/README.md](agents/README.md).
+
+## Install `hm-arch` for testing
+
+**Editable (repository clone):**
 
 ```bash
 cd /path/to/memashuman
 python3 -m pip install -e ".[dev]"
 ```
+
+**Clean pip install (release wheel):** see [pypi-clean-install.md](pypi-clean-install.md).
+
+**Clean pipx install:** see [pypi-clean-install.md](pypi-clean-install.md) §2.
 
 All commands below are offline and do not require LLM/API keys.
 

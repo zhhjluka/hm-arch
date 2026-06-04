@@ -72,6 +72,8 @@ pip install hm-arch
 # or: pipx install hm-arch
 ```
 
+Maintainer clean-install verification: [docs/pypi-clean-install.md](docs/pypi-clean-install.md).
+
 ### Add and Search Memories
 
 ```python
@@ -128,20 +130,20 @@ See [docs/api.md](docs/api.md) for the full public API and [docs/spec.md](docs/s
 
 ## Agent Integration
 
-HM-Arch includes portable hook examples for coding agents. They run fully offline and can be adapted to your own agent configuration.
+Install and connect supported agents with the packaged CLI (offline, no API keys):
 
-| Workflow | Codex | Claude Code |
-|----------|-------|-------------|
-| Load relevant context before a turn | `examples/codex_hooks/turn_start.py` | `examples/claude_code_hooks/turn_start.py` |
-| Record conversations after a turn | `examples/codex_hooks/turn_end.py` | `examples/claude_code_hooks/turn_end.py` |
-| Consolidate during idle time | `examples/codex_hooks/idle_consolidate.py` | `examples/claude_code_hooks/idle_consolidate.py` |
+| Agent | Install | Inspect |
+|-------|---------|---------|
+| Codex | `hm-arch install codex` | `hm-arch status codex`, `hm-arch doctor codex` |
+| Claude Code | `hm-arch install claude-code` | `hm-arch status claude-code`, `hm-arch doctor claude-code` |
+| Hermes | Manual `config.yaml` (no `install hermes`) | `hm-arch status hermes`, `hm-arch doctor hermes` |
 
-```bash
-uv run python examples/codex_hooks/demo.py
-uv run python examples/claude_code_hooks/demo.py
-```
+Setup guides: [docs/agents/README.md](docs/agents/README.md). Smoke tests:
+[docs/integration-cli-smoke.md](docs/integration-cli-smoke.md).
 
-Set `HM_ARCH_DB_PATH` to choose the agent memory database. See the hook-specific READMEs under `examples/` for configuration fragments.
+Portable example hook scripts (not auto-installed) remain under `examples/codex_hooks/`
+and `examples/claude_code_hooks/`. Set `HM_ARCH_DB_PATH` to choose the SQLite
+database path.
 
 ## Optional Backends
 
@@ -186,6 +188,9 @@ The default test suite runs fully offline. Benchmark tests are marked separately
 | [docs/spec.md](docs/spec.md) | Product and API contract |
 | [docs/benchmarks.md](docs/benchmarks.md) | PRD benchmark results and limitations |
 | [docs/RELEASE_NOTES_v1.0.0.md](docs/RELEASE_NOTES_v1.0.0.md) | v1.0.0 release notes |
+| [docs/RELEASE_NOTES_v1.1.0.md](docs/RELEASE_NOTES_v1.1.0.md) | v1.1.0 Python-first integration (draft) |
+| [docs/agents/README.md](docs/agents/README.md) | Codex, Claude Code, and Hermes setup |
+| [docs/pypi-clean-install.md](docs/pypi-clean-install.md) | pip / pipx clean-install verification |
 | [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Release and registry publication policy |
 | [docs/VERSIONING.md](docs/VERSIONING.md) | Semver and cross-channel version alignment |
 | [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md) | PyPI and npm integration timeline |
