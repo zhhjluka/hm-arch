@@ -33,9 +33,21 @@ Most agent memory systems focus on storing and retrieving text. HM-Arch also mod
 
 ## Quick Start
 
-### Install from the GitHub Release
+### Install
 
-HM-Arch is distributed through GitHub Releases only and is not published to PyPI.
+**Today (v1.0.0):** install from the [v1.0.0 GitHub Release](https://github.com/ZhangHangjianMA/memashuman/releases/tag/v1.0.0) wheel or sdist, or from source (below).
+
+**Planned registries** (see [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md)):
+
+| Channel | Package | Target version | Maintainer approval |
+|---------|---------|----------------|---------------------|
+| GitHub Releases | wheel + sdist | every release | required for tag and release |
+| PyPI | `hm-arch` | v1.1.0+ | required before first publish and each release |
+| npm | `@hm-arch/installer` | v1.2.0+ | required before first publish and each release |
+
+All public channels use the same semver from `src/hm_arch/_version.py`. Automated agents must not create tags, GitHub Releases, or registry uploads without explicit maintainer instruction. See [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) and [docs/VERSIONING.md](docs/VERSIONING.md).
+
+#### Install from the GitHub Release (current)
 
 Download `hm_arch-1.0.0-py3-none-any.whl` from the [v1.0.0 release page](https://github.com/ZhangHangjianMA/memashuman/releases/tag/v1.0.0), then install it in a Python 3.10+ environment:
 
@@ -51,6 +63,13 @@ For development from source:
 git clone https://github.com/ZhangHangjianMA/memashuman.git
 cd memashuman
 python -m pip install -e ".[dev]"
+```
+
+After PyPI publication is approved (planned v1.1.0+):
+
+```bash
+pip install hm-arch
+# or: pipx install hm-arch
 ```
 
 ### Add and Search Memories
@@ -167,6 +186,9 @@ The default test suite runs fully offline. Benchmark tests are marked separately
 | [docs/spec.md](docs/spec.md) | Product and API contract |
 | [docs/benchmarks.md](docs/benchmarks.md) | PRD benchmark results and limitations |
 | [docs/RELEASE_NOTES_v1.0.0.md](docs/RELEASE_NOTES_v1.0.0.md) | v1.0.0 release notes |
+| [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Release and registry publication policy |
+| [docs/VERSIONING.md](docs/VERSIONING.md) | Semver and cross-channel version alignment |
+| [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md) | PyPI and npm integration timeline |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 
 ## Project Layout

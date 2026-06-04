@@ -5,10 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Version bumps follow [docs/VERSIONING.md](docs/VERSIONING.md). Releases are
-published through GitHub Releases only; HM-Arch is not published to PyPI.
+Version bumps follow [docs/VERSIONING.md](docs/VERSIONING.md). See
+[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) for channel-specific
+publication steps and maintainer approval rules.
 
 ## [Unreleased]
+
+### Changed
+
+- Release policy docs: README, [docs/VERSIONING.md](docs/VERSIONING.md), and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) now describe planned PyPI (v1.1.0+) and npm (v1.2.0+) publication with explicit maintainer approval; automated agents still must not publish without instruction
 
 ### Added
 
