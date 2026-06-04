@@ -2,24 +2,25 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const INSTALLER_PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const BUNDLED_VERSION_FILE = join(dirname(fileURLToPath(import.meta.url)), "bundled-version.json");
+
+export type BundledVersionPayload = {
+  version: string;
+};
 
 /**
- * PyPI package version the installer installs into its managed venv.
- * Parsed from the monorepo ``src/hm_arch/_version.py`` at module load time.
+ * Paired hm-arch PyPI version shipped with this installer release.
+ * Loaded from ``bundled-version.json`` next to the compiled module (generated at build).
  */
 export function readBundledHmArchVersion(
-  overrides?: { versionFilePath?: string },
+  overrides?: { bundledVersionPath?: string },
 ): string {
-  const versionFile =
-    overrides?.versionFilePath ??
-    join(INSTALLER_PACKAGE_ROOT, "..", "..", "src", "hm_arch", "_version.py");
-  const text = readFileSync(versionFile, "utf8");
-  const match = /__version__\s*=\s*["']([^"']+)["']/.exec(text);
-  if (!match) {
-    throw new Error(`Could not parse __version__ from ${versionFile}`);
+  const path = overrides?.bundledVersionPath ?? BUNDLED_VERSION_FILE;
+  const payload = JSON.parse(readFileSync(path, "utf8")) as BundledVersionPayload;
+  if (!payload.version || typeof payload.version !== "string") {
+    throw new Error(`Invalid bundled version file: ${path}`);
   }
-  return match[1];
+  return payload.version;
 }
 
 /** Default hm-arch version bundled with this installer release. */

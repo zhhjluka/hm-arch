@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { BUNDLED_HM_ARCH_VERSION } from "./bundled-version.js";
 import type { PythonProbe } from "./platform.js";
-import { probePython } from "./platform.js";
+import { probeSupportedPython } from "./platform.js";
 import {
   managedEnvRoot,
   managedEnvStatePath,
@@ -222,7 +222,7 @@ export function ensureManagedPythonEnv(
   const exists = deps.exists ?? defaultExists;
   const now = (deps.now ?? defaultNow)();
   const home = deps.hmArchHome ?? resolveHmArchHome();
-  const python = (deps.probe ?? probePython)();
+  const python = (deps.probe ?? probeSupportedPython)();
   if (!python) {
     throw new Error("python_missing");
   }

@@ -7,6 +7,7 @@ import {
   formatDiagnostics,
   hasBlockingDiagnostics,
   probePython,
+  probeSupportedPython,
 } from "../src/platform.js";
 
 describe("platform detection", () => {
@@ -70,6 +71,23 @@ describe("platform detection", () => {
       }),
     );
     assert.equal(hasBlockingDiagnostics(diagnostics), false);
+  });
+
+  it("probeSupportedPython rejects interpreters below minimum", () => {
+    const python = probeSupportedPython({
+      executables: ["python3"],
+      run: () => "Python 3.9.6\n",
+    });
+    assert.equal(python, null);
+  });
+
+  it("probeSupportedPython accepts interpreters at minimum", () => {
+    const python = probeSupportedPython({
+      executables: ["python3.10"],
+      run: () => "Python 3.10.0\n",
+    });
+    assert.ok(python);
+    assert.equal(python.version, "3.10.0");
   });
 
   it("flags python below minimum", () => {

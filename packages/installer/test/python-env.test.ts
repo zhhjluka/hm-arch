@@ -14,7 +14,7 @@ import {
   writeManagedEnvState,
 } from "../src/python-env.js";
 import { managedPythonExecutable } from "../src/paths.js";
-import { probePython } from "../src/platform.js";
+import { hasSupportedPython, withSupportedPythonEnv } from "./test-helpers.js";
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..", "..");
 
@@ -24,10 +24,6 @@ function tempHome(): string {
 
 function editablePipSpec(): string {
   return REPO_ROOT;
-}
-
-function hasRealPython(): boolean {
-  return probePython() !== null;
 }
 
 describe("python-env (unit)", () => {
@@ -196,49 +192,51 @@ describe("python-env (unit)", () => {
   });
 });
 
-describe("python-env (integration)", { skip: !hasRealPython() }, () => {
+describe("python-env (integration)", { skip: !hasSupportedPython() }, () => {
   it("installs hm-arch editable without mutating global site-packages", () => {
-    const home = tempHome();
-    const python = probePython();
-    assert.ok(python);
-    const globalSnapshot = execJson(python.executable, [
-      "-m",
-      "pip",
-      "list",
-      "--format=json",
-    ]);
-    try {
-      const result = ensureManagedPythonEnv(
-        {},
-        {
-          hmArchHome: home,
-          pipSpec: editablePipSpec(),
-        },
-      );
-      assert.ok(["created", "upgraded", "reused"].includes(result.action));
-      const second = ensureManagedPythonEnv({}, { hmArchHome: home, pipSpec: editablePipSpec() });
-      assert.equal(second.action, "reused");
-
-      const upgraded = ensureManagedPythonEnv(
-        { upgrade: true },
-        { hmArchHome: home, pipSpec: editablePipSpec() },
-      );
-      assert.ok(["reused", "upgraded"].includes(upgraded.action));
-
-      const status = describeManagedEnv({ hmArchHome: home });
-      assert.equal(status.hmArchImportable, true);
-      assert.equal(status.installedHmArchVersion, BUNDLED_HM_ARCH_VERSION);
-
-      const globalAfter = execJson(python.executable, [
+    withSupportedPythonEnv(() => {
+      const home = tempHome();
+      const pythonExecutable = process.env.HM_ARCH_PYTHON;
+      assert.ok(pythonExecutable);
+      const globalSnapshot = execJson(pythonExecutable, [
         "-m",
         "pip",
         "list",
         "--format=json",
       ]);
-      assert.deepEqual(globalSnapshot, globalAfter);
-    } finally {
-      rmSync(home, { recursive: true, force: true });
-    }
+      try {
+        const result = ensureManagedPythonEnv(
+          {},
+          {
+            hmArchHome: home,
+            pipSpec: editablePipSpec(),
+          },
+        );
+        assert.ok(["created", "upgraded", "reused"].includes(result.action));
+        const second = ensureManagedPythonEnv({}, { hmArchHome: home, pipSpec: editablePipSpec() });
+        assert.equal(second.action, "reused");
+
+        const upgraded = ensureManagedPythonEnv(
+          { upgrade: true },
+          { hmArchHome: home, pipSpec: editablePipSpec() },
+        );
+        assert.ok(["reused", "upgraded"].includes(upgraded.action));
+
+        const status = describeManagedEnv({ hmArchHome: home });
+        assert.equal(status.hmArchImportable, true);
+        assert.equal(status.installedHmArchVersion, BUNDLED_HM_ARCH_VERSION);
+
+        const globalAfter = execJson(pythonExecutable, [
+          "-m",
+          "pip",
+          "list",
+          "--format=json",
+        ]);
+        assert.deepEqual(globalSnapshot, globalAfter);
+      } finally {
+        rmSync(home, { recursive: true, force: true });
+      }
+    });
   });
 });
 
