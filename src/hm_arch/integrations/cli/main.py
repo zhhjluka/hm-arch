@@ -8,7 +8,13 @@ import sys
 
 from hm_arch.integrations.protocol import AdapterOperation
 
-from .install import add_install_parsers, run_install_command, run_uninstall_command
+from .manage import (
+    add_manage_parsers,
+    run_doctor_command,
+    run_install_command,
+    run_status_command,
+    run_uninstall_command,
+)
 from .io import (
     InvalidAdapterPayloadError,
     emit_adapter_response,
@@ -69,7 +75,7 @@ def _build_parser() -> argparse.ArgumentParser:
     ):
         claude_subparsers.add_parser(name, help=help_text)
 
-    add_install_parsers(subparsers)
+    add_manage_parsers(subparsers)
     return parser
 
 
@@ -122,6 +128,10 @@ def main(argv: list[str] | None = None) -> int:
         return run_install_command(args)
     if args.command == "uninstall":
         return run_uninstall_command(args)
+    if args.command == "status":
+        return run_status_command(args)
+    if args.command == "doctor":
+        return run_doctor_command(args)
 
     parser.error(f"unknown command {args.command!r}")
     return 2
