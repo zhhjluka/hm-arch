@@ -8,6 +8,7 @@ import sys
 
 from hm_arch.integrations.protocol import AdapterOperation
 
+from .install import add_install_parsers, run_install_command, run_uninstall_command
 from .io import (
     InvalidAdapterPayloadError,
     emit_adapter_response,
@@ -16,19 +17,39 @@ from .io import (
 from .runtime import _fail_open_for_operation, dispatch_adapter_request
 
 _SUPPORTED_COMMANDS = tuple(op.value for op in AdapterOperation)
+_CODEX_BRIDGE_COMMANDS = {
+    "recall": "run_codex_recall",
+    "record": "run_codex_record",
+    "consolidate": "run_codex_consolidate",
+}
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="hm-arch",
-        description="HM-Arch adapter runtime: recall, record, and consolidate.",
+        description="HM-Arch adapter runtime: recall, record, consolidate, and agent install.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
+
     for command in _SUPPORTED_COMMANDS:
         subparsers.add_parser(
             command,
             help=f"Run the {command} adapter operation (JSON request on stdin).",
         )
+
+    codex_parser = subparsers.add_parser(
+        "codex",
+        help="Run Codex lifecycle hook bridges (JSON on stdin, Codex JSON on stdout).",
+    )
+    codex_subparsers = codex_parser.add_subparsers(dest="codex_command", required=True)
+    for name, help_text in (
+        ("recall", "Codex UserPromptSubmit recall hook."),
+        ("record", "Codex Stop turn recording hook."),
+        ("consolidate", "Codex Stop idle consolidation hook."),
+    ):
+        codex_subparsers.add_parser(name, help=help_text)
+
+    add_install_parsers(subparsers)
     return parser
 
 
@@ -50,11 +71,30 @@ def run_command(command: str) -> int:
     return 0
 
 
+def run_codex_bridge(command: str) -> int:
+    from hm_arch.integrations.codex import bridge
+
+    handler_name = _CODEX_BRIDGE_COMMANDS[command]
+    handler = getattr(bridge, handler_name)
+    return handler()
+
+
 def main(argv: list[str] | None = None) -> int:
-    """CLI entry point for ``hm-arch recall|record|consolidate``."""
+    """CLI entry point for ``hm-arch``."""
     parser = _build_parser()
     args = parser.parse_args(argv)
-    return run_command(args.command)
+
+    if args.command in _SUPPORTED_COMMANDS:
+        return run_command(args.command)
+    if args.command == "codex":
+        return run_codex_bridge(args.codex_command)
+    if args.command == "install":
+        return run_install_command(args)
+    if args.command == "uninstall":
+        return run_uninstall_command(args)
+
+    parser.error(f"unknown command {args.command!r}")
+    return 2
 
 
 if __name__ == "__main__":
