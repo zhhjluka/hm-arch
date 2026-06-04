@@ -75,11 +75,18 @@ and the original PRD's externally visible contract.
   behavior as the default.
 - Validate the PRD's scale and performance targets with reproducible tests.
 
-Release policy:
+Release policy (see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md),
+[VERSIONING.md](VERSIONING.md)):
 
-- HM-Arch is not published to PyPI.
-- Versioned releases are published as GitHub Releases.
+- **v1.0.0 (Phase 3):** distributed via GitHub Releases only; not published to PyPI
+  or npm.
+- **v1.1.0+:** PyPI (`hm-arch`) and **v1.2.0+:** npm (`@hm-arch/installer`) are
+  planned with explicit maintainer approval before each registry publish.
+- Versioned releases are published as GitHub Releases with matching wheel and sdist
+  artifacts.
 - Local wheel and sdist builds remain required release verification artifacts.
+- Automated agents must not create tags, GitHub Releases, or registry uploads without
+  explicit maintainer instruction.
 
 ## Architecture
 

@@ -73,9 +73,11 @@ building blocks before exposing automated installation commands.
    - Maximum injected context size.
    - Consolidation behavior.
 
-5. Update the release policy before registry publication. The current
-   documentation states that HM-Arch is distributed only through GitHub
-   Releases and must not be published to PyPI or another registry.
+5. Release policy for registry publication is documented in
+   [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) and [VERSIONING.md](VERSIONING.md).
+   Earlier release docs (through v1.0.0) stated GitHub Releases only and forbade PyPI
+   or npm; current policy permits planned PyPI (v1.1.0+) and npm (v1.2.0+) with
+   explicit maintainer approval.
 
 ### Acceptance Criteria
 
