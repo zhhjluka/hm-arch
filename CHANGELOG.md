@@ -10,6 +10,15 @@ published through GitHub Releases only; HM-Arch is not published to PyPI.
 
 ## [Unreleased]
 
+### Added
+
+- Packaged Codex and Claude Code hook adapters under `hm_arch.integrations.codex` and `hm_arch.integrations.claude_code`
+- Shared `read_hook_payload()` helper in `hm_arch.integrations.common`
+
+### Changed
+
+- `examples/codex_hooks/` and `examples/claude_code_hooks/` are thin wrappers around the packaged adapters (no duplicated memory runtime logic)
+
 ## [1.0.0] - 2026-06-03
 
 Phase 3 stable release: complete public PRD contract, seven-layer facade integration,

@@ -7,17 +7,11 @@ Run from the repository root::
 
 from __future__ import annotations
 
-import sys
 import tempfile
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
 from hm_arch import EventType, HMArch, MemoryConfig
-
-from examples.claude_code_hooks.hooks import (
+from hm_arch.integrations.claude_code import (
     claude_idle_consolidation_hook,
     claude_turn_end_hook,
     claude_turn_start_hook,

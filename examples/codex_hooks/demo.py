@@ -7,25 +7,19 @@ Run from the repository root::
 
 from __future__ import annotations
 
-import sys
 import tempfile
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
 from hm_arch import EventType, HMArch, MemoryConfig
-
+from hm_arch.integrations.codex import (
+    codex_idle_consolidation_hook,
+    codex_turn_end_hook,
+    codex_turn_start_hook,
+)
 from hm_arch.integrations.common import (
     build_turn_start_context,
     record_turn_end,
     run_idle_consolidation,
-)
-from examples.codex_hooks.hooks import (
-    codex_idle_consolidation_hook,
-    codex_turn_end_hook,
-    codex_turn_start_hook,
 )
 
 

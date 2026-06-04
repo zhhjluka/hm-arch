@@ -19,12 +19,12 @@ from hm_arch.integrations.common import (
     record_turn_end,
     run_idle_consolidation,
 )
-from examples.claude_code_hooks.hooks import (
+from hm_arch.integrations.claude_code import (
     claude_idle_consolidation_hook,
     claude_turn_end_hook,
     claude_turn_start_hook,
 )
-from examples.codex_hooks.hooks import (
+from hm_arch.integrations.codex import (
     codex_idle_consolidation_hook,
     codex_turn_end_hook,
     codex_turn_start_hook,
@@ -146,6 +146,21 @@ def test_run_idle_consolidation_on_empty_db(hook_db_path: str) -> None:
     with open_memory(hook_db_path) as memory:
         report = run_idle_consolidation(memory)
     assert report.extracted_semantics >= 0
+
+
+def test_packaged_adapters_importable() -> None:
+    from hm_arch.integrations import codex, claude_code
+
+    assert callable(codex.codex_turn_start_hook)
+    assert callable(claude_code.claude_turn_start_hook)
+
+
+def test_example_hooks_reexport_packaged_adapters() -> None:
+    from examples.claude_code_hooks import hooks as claude_example
+    from examples.codex_hooks import hooks as codex_example
+
+    assert claude_example.claude_turn_start_hook is claude_turn_start_hook
+    assert codex_example.codex_turn_start_hook is codex_turn_start_hook
 
 
 def test_resolve_db_path_uses_env(monkeypatch: pytest.MonkeyPatch) -> None:
