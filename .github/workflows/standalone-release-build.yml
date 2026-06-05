@@ -1,0 +1,166 @@
+# Cross-platform standalone hm-arch executable release builds (MEM-62).
+# Builds versioned artifacts, checksums, metadata, and smoke validation.
+# Does NOT publish GitHub Releases — publication requires maintainer approval.
+
+name: Standalone release build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/standalone-release-build.yml"
+      - "packaging/**"
+      - "scripts/build_standalone.py"
+      - "scripts/prepare_release_artifacts.py"
+      - "scripts/validate_release_artifacts.py"
+      - "scripts/smoke_standalone_artifact.py"
+      - "scripts/release_artifact_naming.py"
+      - "src/hm_arch/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "tests/test_release_artifacts.py"
+      - "tests/test_standalone_executable.py"
+      - "docs/standalone-executable.md"
+  pull_request:
+    paths:
+      - ".github/workflows/standalone-release-build.yml"
+      - "packaging/**"
+      - "scripts/build_standalone.py"
+      - "scripts/prepare_release_artifacts.py"
+      - "scripts/validate_release_artifacts.py"
+      - "scripts/smoke_standalone_artifact.py"
+      - "scripts/release_artifact_naming.py"
+      - "src/hm_arch/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "tests/test_release_artifacts.py"
+      - "tests/test_standalone_executable.py"
+      - "docs/standalone-executable.md"
+  workflow_dispatch:
+
+concurrency:
+  group: standalone-release-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build (${{ matrix.target_os }}-${{ matrix.target_arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target_os: linux
+            target_arch: x86_64
+          - os: ubuntu-24.04-arm
+            target_os: linux
+            target_arch: aarch64
+          - os: macos-latest
+            target_os: darwin
+            target_arch: arm64
+          - os: windows-latest
+            target_os: windows
+            target_arch: x86_64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync
+
+      - name: Build standalone executable
+        run: uv run python scripts/build_standalone.py --clean
+
+      - name: Prepare versioned release artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run python scripts/prepare_release_artifacts.py \
+            --os-name "${{ matrix.target_os }}" \
+            --arch "${{ matrix.target_arch }}"
+
+      - name: Validate checksums and metadata
+        run: uv run python scripts/validate_release_artifacts.py --artifacts-dir dist/release
+
+      - name: Smoke test release artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(uv run python -c "from hm_arch import __version__; print(__version__)")"
+          if [ "${{ matrix.target_os }}" = "windows" ]; then
+            ARTIFACT="dist/release/hm-arch-${VERSION}-${{ matrix.target_os }}-${{ matrix.target_arch }}.exe"
+          else
+            ARTIFACT="dist/release/hm-arch-${VERSION}-${{ matrix.target_os }}-${{ matrix.target_arch }}"
+          fi
+          uv run python scripts/smoke_standalone_artifact.py "$ARTIFACT"
+
+      - name: Upload platform artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hm-arch-${{ matrix.target_os }}-${{ matrix.target_arch }}
+          path: |
+            dist/release/hm-arch-*
+            dist/release/*.sha256
+          retention-days: 14
+
+  merge-release-metadata:
+    name: merge release metadata
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync
+
+      - name: Download platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifact-downloads
+          pattern: hm-arch-*
+          merge-multiple: true
+
+      - name: Merge artifacts and write release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/release
+          cp artifact-downloads/hm-arch-* dist/release/
+          VERSION="$(uv run python -c "from hm_arch import __version__; print(__version__)")"
+          uv run python scripts/prepare_release_artifacts.py --merge-metadata --version "$VERSION"
+
+      - name: Validate merged release metadata
+        run: uv run python scripts/validate_release_artifacts.py --artifacts-dir dist/release
+
+      - name: Upload merged release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: hm-arch-standalone-release-bundle
+          path: |
+            dist/release/hm-arch-*
+            dist/release/SHA256SUMS
+          retention-days: 30
