@@ -21,6 +21,10 @@ class StorageScope(str, Enum):
     GLOBAL = "global"
 
 
+_DEFAULT_PROJECT_DB = "./.hm_arch_agent_memory.db"
+_DEFAULT_GLOBAL_DB = "~/.hm-arch/global.db"
+
+
 @dataclass
 class IntegrationConfig:
     """Configuration shared by all agent adapter integrations.
@@ -28,9 +32,14 @@ class IntegrationConfig:
     Parameters
     ----------
     db_path:
-        SQLite database path for project-scoped storage. When ``scope`` is
-        ``StorageScope.GLOBAL``, this path should point at the shared global
-        database file.
+        Legacy single-store override. When set, all scopes resolve to this
+        path so existing single-database integrations keep working.
+    global_db_path:
+        SQLite path for user-wide global memory when ``scope`` is
+        ``StorageScope.GLOBAL`` and ``db_path`` is unset.
+    project_db_path:
+        SQLite path for repository-local memory when ``scope`` is
+        ``StorageScope.PROJECT`` and ``db_path`` is unset.
     scope:
         ``project`` keeps memory isolated to the current repository;
         ``global`` uses a user-wide database path.
@@ -48,6 +57,8 @@ class IntegrationConfig:
     """
 
     db_path: str | None = None
+    global_db_path: str | None = None
+    project_db_path: str | None = None
     scope: StorageScope = StorageScope.PROJECT
     recall_top_k: int = 5
     max_context_chars: int = 8000
@@ -66,22 +77,47 @@ class IntegrationConfig:
     def resolve_db_path(
         self,
         expanduser: Callable[[str], str] | None = None,
+        *,
+        scope: StorageScope | None = None,
     ) -> str:
         """Return the effective SQLite path for adapter operations.
 
         Resolution order:
 
-        1. Explicit ``db_path`` on this config (always returned as-is).
-        2. ``HM_ARCH_DB_PATH`` environment variable when ``db_path`` is empty.
-        3. Configured ``db_path`` default.
+        1. Explicit ``db_path`` on this config (legacy single-store mode).
+        2. Scope-specific ``project_db_path`` or ``global_db_path``.
+        3. ``HM_ARCH_PROJECT_DB_PATH`` / ``HM_ARCH_GLOBAL_DB_PATH``, then
+           ``HM_ARCH_DB_PATH`` as a shared fallback.
+        4. Built-in defaults (project: ``./.hm_arch_agent_memory.db``,
+           global: ``~/.hm-arch/global.db``).
 
         An optional *expanduser* callable (for example ``os.path.expanduser``)
         may be supplied to expand ``~`` in global-scope paths during tests.
+
+        Parameters
+        ----------
+        scope:
+            When provided, resolve the path for that scope instead of
+            :attr:`scope`.
         """
         if self.db_path:
             path = self.db_path
         else:
-            path = os.environ.get("HM_ARCH_DB_PATH", "./.hm_arch_agent_memory.db")
+            effective_scope = scope or self.scope
+            if effective_scope is StorageScope.PROJECT:
+                path = (
+                    self.project_db_path
+                    or os.environ.get("HM_ARCH_PROJECT_DB_PATH")
+                    or os.environ.get("HM_ARCH_DB_PATH")
+                    or _DEFAULT_PROJECT_DB
+                )
+            else:
+                path = (
+                    self.global_db_path
+                    or os.environ.get("HM_ARCH_GLOBAL_DB_PATH")
+                    or os.environ.get("HM_ARCH_DB_PATH")
+                    or _DEFAULT_GLOBAL_DB
+                )
         if expanduser is not None:
             return expanduser(path)
         return path

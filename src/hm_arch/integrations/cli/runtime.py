@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from hm_arch.integrations.common import (
     build_turn_start_context,
-    open_memory,
     record_turn_end,
     run_idle_consolidation,
 )
 from hm_arch.integrations.config import IntegrationConfig
+from hm_arch.integrations.storage_router import MemoryStoreRouter
 from hm_arch.integrations.protocol import (
     ConsolidateRequest,
     ConsolidateResponse,
@@ -32,7 +32,7 @@ def execute_recall(request: RecallRequest) -> RecallResponse:
     config = _integration_config()
     top_k = request.top_k or config.recall_top_k
     try:
-        with open_memory(config.resolve_db_path()) as memory:
+        with MemoryStoreRouter(config).open() as memory:
             hits = memory.search(request.task, top_k=top_k)
             context = build_turn_start_context(memory, request.task, top_k=top_k)
             truncated = len(context) > config.max_context_chars
@@ -53,7 +53,7 @@ def execute_record(request: RecordRequest) -> RecordResponse:
     """Run record and return a stable adapter response (fail-open on errors)."""
     config = _integration_config()
     try:
-        with open_memory(config.resolve_db_path()) as memory:
+        with MemoryStoreRouter(config).open_for_write() as memory:
             memory_ids = record_turn_end(
                 memory,
                 request.user_message,
@@ -73,7 +73,7 @@ def execute_consolidate(_request: ConsolidateRequest) -> ConsolidateResponse:
     """Run consolidate and return a stable adapter response (fail-open on errors)."""
     config = _integration_config()
     try:
-        with open_memory(config.resolve_db_path()) as memory:
+        with MemoryStoreRouter(config).open_for_write() as memory:
             report = run_idle_consolidation(memory)
             return ConsolidateResponse(
                 ok=True,
