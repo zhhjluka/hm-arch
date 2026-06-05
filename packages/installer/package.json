@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "prepare": "npm run build",
-    "build": "node ./scripts/sync-bundled-version.mjs && tsc -p tsconfig.json && cp src/bundled-version.json dist/bundled-version.json",
+    "build": "node ./scripts/sync-bundled-version.mjs && tsc -p tsconfig.json && cp src/bundled-version.json dist/bundled-version.json && cp src/installer-version.json dist/installer-version.json",
     "test": "npm run build && node ./scripts/run-tests.mjs",
     "postinstall": "node ./scripts/postinstall.mjs"
   },

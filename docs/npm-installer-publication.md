@@ -24,7 +24,9 @@ Cross-reference: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) section 7,
 ### Local and CI smoke tests
 
 - [ ] `cd packages/installer && npm ci && npm test` passes locally
+- [ ] `python scripts/verify_release_versions.py` passes after `npm run build`
 - [ ] Cross-platform CI ([`.github/workflows/npm-installer-ci.yml`](../.github/workflows/npm-installer-ci.yml)) is green on macOS, Linux, and Windows
+- [ ] Clean-machine CI job (`clean-machine-standalone`) passes: npm tests run without Python on PATH when `HM_ARCH_STANDALONE_FIXTURE` is set
 - [ ] `npm pack` produces a tarball; install in a throwaway directory succeeds
 - [ ] `hm-arch-install --help` works from the packed install
 - [ ] `hm-arch-install doctor` passes with Python 3.10+ on each target OS
@@ -57,8 +59,9 @@ Do **not** add `npm publish` to CI workflows.
 ## Post-publish verification
 
 - [ ] `npm view @hm-arch/installer version` shows `X.Y.Z`
+- [ ] Clean machine (Node only, supported standalone target): `npx @hm-arch/installer@X.Y.Z doctor` succeeds without system Python
 - [ ] Clean machine: `npx @hm-arch/installer@X.Y.Z --help` succeeds
-- [ ] Clean machine with Python 3.10+: `npx @hm-arch/installer@X.Y.Z doctor` succeeds
+- [ ] Clean machine with Python 3.10+ (unsupported standalone targets): `npx @hm-arch/installer@X.Y.Z doctor` succeeds via managed venv
 - [ ] Release notes and [CHANGELOG.md](../CHANGELOG.md) updated
 
 ## Quick reference

@@ -1,7 +1,23 @@
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { delimiter, join } from "node:path";
 
+import { readBundledHmArchVersion } from "../src/bundled-version.js";
+import { readInstallerVersion } from "../src/installer-version.js";
+import { sha256Buffer } from "../src/integrity.js";
+import {
+  managedStandaloneExecutable,
+  standaloneBinaryRoot,
+} from "../src/paths.js";
 import { probeSupportedPython } from "../src/platform.js";
+import { detectReleaseTarget, releaseArtifactFilename } from "../src/release-target.js";
+import {
+  writeStandaloneBinaryState,
+  type StandaloneBinaryState,
+} from "../src/standalone-binary.js";
+
+const REPO_ROOT = join(import.meta.dirname, "..", "..", "..");
 
 /** Invoke npm with a Windows-compatible executable (npm.cmd + shell). */
 export function execNpmSync(
@@ -64,5 +80,132 @@ export async function withSupportedPythonEnv<T>(fn: () => T | Promise<T>): Promi
     } else {
       process.env.HM_ARCH_PYTHON = previous;
     }
+  }
+}
+
+/** Remove Python executables from PATH for clean-machine verification. */
+export function stripPythonFromPath(): { restore: () => void } {
+  const previousPath = process.env.PATH;
+  const previousHmArchPython = process.env.HM_ARCH_PYTHON;
+  const filtered = (previousPath ?? "")
+    .split(delimiter)
+    .filter((entry) => !/(^|[\\/])python(\d+(\.\d+)?)?(\.exe)?$/i.test(entry.trim()))
+    .join(delimiter);
+  process.env.PATH = filtered;
+  delete process.env.HM_ARCH_PYTHON;
+  return {
+    restore: () => {
+      if (previousPath === undefined) {
+        delete process.env.PATH;
+      } else {
+        process.env.PATH = previousPath;
+      }
+      if (previousHmArchPython === undefined) {
+        delete process.env.HM_ARCH_PYTHON;
+      } else {
+        process.env.HM_ARCH_PYTHON = previousHmArchPython;
+      }
+    },
+  };
+}
+
+/** Resolve a built standalone hm-arch executable for integration tests. */
+export function resolveStandaloneFixtureBinary(): string | null {
+  const fromEnv = process.env.HM_ARCH_STANDALONE_FIXTURE;
+  if (fromEnv && existsSync(fromEnv)) {
+    return fromEnv;
+  }
+  const defaultName = process.platform === "win32" ? "hm-arch.exe" : "hm-arch";
+  const defaultPath = join(REPO_ROOT, "dist", "standalone", defaultName);
+  if (existsSync(defaultPath)) {
+    return defaultPath;
+  }
+  return null;
+}
+
+/** True when a real standalone hm-arch binary is available for E2E tests. */
+export function hasStandaloneFixture(): boolean {
+  return resolveStandaloneFixtureBinary() !== null;
+}
+
+/** Install a fixture standalone binary directly under HM_ARCH_HOME (no network). */
+export function installStandaloneFixtureBinary(
+  hmArchHome: string,
+  fixturePath: string = resolveStandaloneFixtureBinary() ?? "",
+): StandaloneBinaryState {
+  if (!fixturePath || !existsSync(fixturePath)) {
+    throw new Error("standalone fixture binary not found");
+  }
+  const target = detectReleaseTarget();
+  if (!target) {
+    throw new Error("unsupported release target for standalone fixture install");
+  }
+  const version = readBundledHmArchVersion();
+  const filename = releaseArtifactFilename(version, target);
+  const bytes = readFileSync(fixturePath);
+  const root = standaloneBinaryRoot(hmArchHome);
+  mkdirSync(root, { recursive: true });
+  const executable = managedStandaloneExecutable(hmArchHome);
+  copyFileSync(fixturePath, executable);
+  if (process.platform !== "win32") {
+    chmodSync(executable, 0o755);
+  }
+  const now = new Date().toISOString();
+  const state: StandaloneBinaryState = {
+    hmArchVersion: version,
+    targetOs: target.os,
+    targetArch: target.arch,
+    filename,
+    sha256: sha256Buffer(bytes),
+    sizeBytes: bytes.length,
+    installerVersion: readInstallerVersion(),
+    createdAt: now,
+    updatedAt: now,
+  };
+  writeStandaloneBinaryState(hmArchHome, state);
+  return state;
+}
+
+/** Run a callback with HM_ARCH_HOME and standalone runtime, optionally without Python on PATH. */
+export async function withStandaloneRuntimeEnv<T>(
+  options: {
+    stripPython?: boolean;
+    installFixture?: boolean;
+  },
+  fn: (ctx: { home: string; workdir: string }) => T | Promise<T>,
+): Promise<T> {
+  const home = mkdtempSync(join(tmpdir(), "hm-arch-clean-"));
+  const workdir = mkdtempSync(join(tmpdir(), "hm-arch-project-"));
+  mkdirSync(workdir, { recursive: true });
+
+  const previousHome = process.env.HM_ARCH_HOME;
+  const previousRuntime = process.env.HM_ARCH_RUNTIME;
+  const previousCwd = process.cwd();
+  const pathGuard = options.stripPython ? stripPythonFromPath() : null;
+
+  process.env.HM_ARCH_HOME = home;
+  process.env.HM_ARCH_RUNTIME = "standalone";
+  process.chdir(workdir);
+
+  try {
+    if (options.installFixture !== false) {
+      installStandaloneFixtureBinary(home);
+    }
+    return await fn({ home, workdir });
+  } finally {
+    process.chdir(previousCwd);
+    if (previousHome === undefined) {
+      delete process.env.HM_ARCH_HOME;
+    } else {
+      process.env.HM_ARCH_HOME = previousHome;
+    }
+    if (previousRuntime === undefined) {
+      delete process.env.HM_ARCH_RUNTIME;
+    } else {
+      process.env.HM_ARCH_RUNTIME = previousRuntime;
+    }
+    pathGuard?.restore();
+    rmSync(home, { recursive: true, force: true });
+    rmSync(workdir, { recursive: true, force: true });
   }
 }

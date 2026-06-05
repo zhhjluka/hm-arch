@@ -70,13 +70,30 @@ generation, and install verification in isolated environments. They must **not**
 create tags, publish GitHub Releases, or upload to PyPI or npm unless a maintainer
 explicitly instructs them to do so for a specific version.
 
+## Automated version coordination check
+
+Before tagging or publishing, verify all channels align:
+
+```bash
+cd packages/installer && npm run build
+python scripts/verify_release_versions.py
+```
+
+The npm test suite includes `version-coordination.test.ts`. CI runs the Python
+script in the npm installer workflow (`clean-machine-standalone` job).
+
+Intentional skew between npm and Python versions must be recorded in release
+notes; the checker fails when they differ.
+
 ## Release bump checklist
 
 1. Decide the next version from the table above.
-2. Edit `src/hm_arch/_version.py` (`__version__`).
-3. Add a dated section to `CHANGELOG.md` (move items out of `[Unreleased]`).
-4. Regenerate API docs: `python scripts/generate_api_docs.py`
-5. Run release verification (see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)).
-6. Commit with message like `chore: release v0.1.1`.
-7. After maintainer approval: tag, GitHub Release, and any approved registry
+2. Edit `src/hm_arch/_version.py` (`__version__`) and `packages/installer/package.json` together for coordinated releases.
+3. Run `cd packages/installer && npm run build` to refresh `bundled-version.json` and `installer-version.json`.
+4. Run `python scripts/verify_release_versions.py`.
+5. Add a dated section to `CHANGELOG.md` (move items out of `[Unreleased]`).
+6. Regenerate API docs: `python scripts/generate_api_docs.py`
+7. Run release verification (see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)).
+8. Commit with message like `chore: release v0.1.1`.
+9. After maintainer approval: tag, GitHub Release, and any approved registry
    uploads for that version.

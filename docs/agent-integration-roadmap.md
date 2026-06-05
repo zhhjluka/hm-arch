@@ -362,6 +362,15 @@ current platform.
 6. Coordinate npm, PyPI, and GitHub Release versions.
 7. Add clean-machine installation tests without Python.
 
+Implementation (MEM-64):
+
+- `packages/installer/test/clean-machine-standalone.test.ts` — npm installer E2E
+  without Python on PATH when `HM_ARCH_STANDALONE_FIXTURE` is set
+- `packages/installer/test/version-coordination.test.ts` and
+  `scripts/verify_release_versions.py` — cross-channel semver alignment
+- [v2-migration-guide.md](v2-migration-guide.md) — major-release compatibility notes
+- CI job `clean-machine-standalone` in `.github/workflows/npm-installer-ci.yml`
+
 ### Acceptance Criteria
 
 - A machine with Node.js but without Python can install HM-Arch through npm.
