@@ -1,4 +1,24 @@
+import { execFileSync } from "node:child_process";
+import { join } from "node:path";
+
 import { probeSupportedPython } from "../src/platform.js";
+
+/** Invoke npm with a Windows-compatible executable (npm.cmd + shell). */
+export function execNpmSync(
+  args: string[],
+  options?: Parameters<typeof execFileSync>[2],
+): Buffer | string {
+  if (process.platform === "win32") {
+    return execFileSync("npm.cmd", args, { ...options, shell: true });
+  }
+  return execFileSync("npm", args, options);
+}
+
+/** Path to a package binary under node_modules/.bin (includes .cmd on Windows). */
+export function localPackageBin(projectDir: string, name: string): string {
+  const binDir = join(projectDir, "node_modules", ".bin");
+  return process.platform === "win32" ? join(binDir, `${name}.cmd`) : join(binDir, name);
+}
 
 /** True when a Python >= MIN_PYTHON interpreter is available for integration tests. */
 export function hasSupportedPython(): boolean {

@@ -179,13 +179,17 @@ Skip until `@hm-arch/installer` exists and the integration roadmap targets npm
 for this release.
 
 Only after the matching `hm-arch` Python version is available (PyPI or documented
-GitHub wheel URL) and a maintainer approves npm publication:
+GitHub wheel URL) and a maintainer approves npm publication, follow the full
+checklist in [npm-installer-publication.md](npm-installer-publication.md).
+
+Summary gates:
 
 - [ ] Maintainer approved npm publish for `@hm-arch/installer@X.Y.Z` (or documented pairing version).
 - [ ] Package metadata documents which `hm-arch` Python version it installs.
-- [ ] `npm pack` / dry-run install smoke test passes on supported platforms.
+- [ ] `cd packages/installer && npm test` passes locally; cross-platform CI (`.github/workflows/npm-installer-ci.yml`) is green.
+- [ ] `npm pack` / dry-run install smoke test passes on supported platforms (macOS, Linux, Windows).
 - [ ] `postinstall` does not modify agent configuration (installer uses explicit install commands).
-- [ ] GitHub Release notes document npm install commands and Python version pairing.
+- [ ] [npm-installer.md](npm-installer.md) matches shipped commands; GitHub Release notes document npm install and Python version pairing.
 
 Automated Cursor/Codex agents: **do not publish to npm** unless explicitly instructed.
 
@@ -194,6 +198,7 @@ Automated Cursor/Codex agents: **do not publish to npm** unless explicitly instr
 | Step | Command / artifact | Agent allowed? |
 |------|-------------------|----------------|
 | Test | `uv run pytest`, `examples/release_smoke.py` | Yes |
+| npm installer test | `cd packages/installer && npm ci && npm test` | Yes |
 | Build | `uv run --with build python -m build --outdir dist` (Python >= 3.10) | Yes (local only) |
 | Verify install | wheel + sdist in throwaway venvs; pip/pipx per [pypi-clean-install.md](pypi-clean-install.md) | Yes |
 | Docs | `uv run python scripts/generate_api_docs.py` | Yes |
