@@ -1,6 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { BUNDLED_HM_ARCH_VERSION } from "./bundled-version.js";
+import { INSTALLER_VERSION } from "./installer-version.js";
 import {
   DEFAULT_GITHUB_REPO,
   ENV_HM_ARCH_RELEASE_BASE_URL,
@@ -75,8 +76,6 @@ export type StandaloneBinaryDeps = {
   readFile?: (path: string) => Buffer;
   writeFile?: (path: string, data: Buffer) => void;
 };
-
-const INSTALLER_VERSION = "1.0.0";
 
 function defaultNow(): string {
   return new Date().toISOString();

@@ -80,6 +80,48 @@ jobs:
           npm install --prefix "$SMOKE_DIR" "$TARBALL" --silent
           "$SMOKE_DIR/node_modules/.bin/hm-arch-install" --help | grep -q hm-arch-install
 
+  clean-machine-standalone:
+    name: clean-machine npm (no Python at test time)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: packages/installer/package-lock.json
+
+      - name: Setup Python (build standalone fixture only)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Build standalone hm-arch fixture
+        run: uv run python scripts/build_standalone.py --clean
+
+      - name: Export standalone fixture path
+        run: echo "HM_ARCH_STANDALONE_FIXTURE=$GITHUB_WORKSPACE/dist/standalone/hm-arch" >> "$GITHUB_ENV"
+
+      - name: npm ci
+        working-directory: packages/installer
+        run: npm ci
+
+      - name: Clean-machine npm tests (no Python on PATH)
+        working-directory: packages/installer
+        run: node ./scripts/run-clean-machine-tests.mjs
+
+      - name: Verify release version coordination
+        run: uv run python scripts/verify_release_versions.py
+
   python-installer-smoke:
     name: Python installer CLI smoke (ubuntu)
     runs-on: ubuntu-latest

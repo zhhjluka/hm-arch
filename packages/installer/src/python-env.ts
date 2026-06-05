@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { BUNDLED_HM_ARCH_VERSION } from "./bundled-version.js";
+import { INSTALLER_VERSION } from "./installer-version.js";
 import type { PythonProbe } from "./platform.js";
 import { probeSupportedPython } from "./platform.js";
 import {
@@ -53,8 +54,6 @@ export type PythonEnvDeps = {
   runCommand?: (file: string, args: string[], options?: { cwd?: string }) => string;
   readInstalledVersion?: (python: string) => string | null;
 };
-
-const INSTALLER_VERSION = "1.0.0";
 
 function defaultNow(): string {
   return new Date().toISOString();

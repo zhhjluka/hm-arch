@@ -11,7 +11,8 @@ must **not** run `npm publish`.
 
 See also:
 
-- [agent-integration-roadmap.md](agent-integration-roadmap.md) — v1.2.0 npm milestone
+- [agent-integration-roadmap.md](agent-integration-roadmap.md) — v1.2.0 npm milestone and v2.0.0 Python-free path
+- [v2-migration-guide.md](v2-migration-guide.md) — v2.0.0 migration and compatibility
 - [npm-installer-publication.md](npm-installer-publication.md) — maintainer publication checklist
 - [VERSIONING.md](VERSIONING.md) — cross-channel semver alignment
 - [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) — release and registry policy

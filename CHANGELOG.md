@@ -13,6 +13,8 @@ publication steps and maintainer approval rules.
 
 ### Added
 
+- Python-free npm verification (MEM-64): clean-machine standalone tests in `packages/installer/test/clean-machine-standalone.test.ts`, version coordination via `scripts/verify_release_versions.py` and `version-coordination.test.ts`, CI `clean-machine-standalone` job, and [docs/v2-migration-guide.md](docs/v2-migration-guide.md)
+- Standalone executable tests for Claude Code and Hermes management (`tests/test_standalone_executable.py`)
 - PyPI clean-install verification: [docs/pypi-clean-install.md](docs/pypi-clean-install.md) (reproducible `pip` and `pipx` workflows from isolated environments)
 - Agent setup guides: [docs/agents/](docs/agents/) (Codex, Claude Code, Hermes — matches shipped `hm-arch` CLI, including Hermes status/doctor-only management)
 - Draft v1.1.0 release notes: [docs/RELEASE_NOTES_v1.1.0.md](docs/RELEASE_NOTES_v1.1.0.md) for the Python-first three-agent integration

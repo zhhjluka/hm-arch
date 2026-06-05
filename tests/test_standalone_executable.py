@@ -178,6 +178,101 @@ def test_standalone_integration_management_lifecycle(
     assert not hooks_path.exists()
 
 
+def test_standalone_claude_code_integration_lifecycle(
+    standalone_executable: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root = tmp_path / "claude_project"
+    project_root.mkdir()
+    monkeypatch.chdir(project_root)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+
+    assert (
+        _run_executable(
+            standalone_executable,
+            ["install", "claude-code"],
+            env={},
+            cwd=project_root,
+        ).returncode
+        == 0
+    )
+    settings_path = project_root / ".claude" / "settings.json"
+    assert settings_path.is_file()
+
+    status = _run_executable(
+        standalone_executable,
+        ["status", "claude-code"],
+        env={},
+        cwd=project_root,
+    )
+    assert status.returncode == 0
+
+    doctor = _run_executable(
+        standalone_executable,
+        ["doctor", "claude-code"],
+        env={},
+        cwd=project_root,
+    )
+    assert doctor.returncode == 0
+
+    uninstall = _run_executable(
+        standalone_executable,
+        ["uninstall", "claude-code"],
+        env={},
+        cwd=project_root,
+    )
+    assert uninstall.returncode == 0
+    assert not settings_path.exists()
+
+
+def test_standalone_hermes_management_without_python_on_path(
+    standalone_executable: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    hermes_home = tmp_path / "hermes"
+    hermes_home.mkdir()
+    (hermes_home / "config.yaml").write_text(
+        "memory:\n  provider: hm-arch\nplugins:\n  hm-arch:\n    db_path: test.db\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("HM_ARCH_HOME", str(home / ".hm-arch"))
+    (home / ".hm-arch").mkdir()
+
+    install = _run_executable(
+        standalone_executable,
+        ["install", "hermes"],
+        env={},
+    )
+    assert install.returncode == 2
+
+    status = _run_executable(
+        standalone_executable,
+        ["status", "hermes"],
+        env={},
+    )
+    assert status.returncode == 0
+
+    doctor = _run_executable(
+        standalone_executable,
+        ["doctor", "hermes"],
+        env={},
+    )
+    assert doctor.returncode == 0
+
+    uninstall = _run_executable(
+        standalone_executable,
+        ["uninstall", "hermes"],
+        env={},
+    )
+    assert uninstall.returncode == 2
+
+
 def test_standalone_executable_runs_without_python_on_path(
     standalone_executable: Path,
     cli_env: dict[str, str],
