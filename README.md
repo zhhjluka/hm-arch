@@ -191,6 +191,8 @@ The default test suite runs fully offline. Benchmark tests are marked separately
 | [docs/RELEASE_NOTES_v1.1.0.md](docs/RELEASE_NOTES_v1.1.0.md) | v1.1.0 Python-first integration (draft) |
 | [docs/agents/README.md](docs/agents/README.md) | Codex, Claude Code, and Hermes setup |
 | [docs/pypi-clean-install.md](docs/pypi-clean-install.md) | pip / pipx clean-install verification |
+| [docs/npm-installer.md](docs/npm-installer.md) | npm installer requirements, usage, and version pairing |
+| [docs/npm-installer-publication.md](docs/npm-installer-publication.md) | npm publication checklist (maintainer approval required) |
 | [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Release and registry publication policy |
 | [docs/VERSIONING.md](docs/VERSIONING.md) | Semver and cross-channel version alignment |
 | [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md) | PyPI and npm integration timeline |

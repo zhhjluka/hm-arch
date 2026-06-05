@@ -230,8 +230,8 @@ hm-arch-install doctor
 5. Delegate agent configuration to the stable Python CLI.
 6. Support install, status, doctor, upgrade, and uninstall commands.
 7. Avoid modifying any agent configuration during npm `postinstall`.
-8. Add macOS, Linux, and Windows CI coverage.
-9. Document how npm and Python package versions are paired.
+8. Add macOS, Linux, and Windows CI coverage (see `.github/workflows/npm-installer-ci.yml`).
+9. Document how npm and Python package versions are paired (see [npm-installer.md](npm-installer.md)).
 
 ### Out of Scope
 
