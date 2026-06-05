@@ -19,7 +19,10 @@ _REDACTION_DEFAULT = "[REDACTED]"
 _BUILTIN_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "openai_api_key",
-        re.compile(r"sk-[A-Za-z0-9]{20,}(?:T3BlbkFJ[A-Za-z0-9]{20,})?"),
+        re.compile(
+            r"sk-(?:(?:[A-Za-z0-9]+-)+[A-Za-z0-9_-]{20,}|"
+            r"[A-Za-z0-9]{20,}(?:T3BlbkFJ[A-Za-z0-9]{20,})?)"
+        ),
     ),
     (
         "aws_access_key",

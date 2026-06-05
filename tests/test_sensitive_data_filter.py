@@ -30,6 +30,8 @@ from hm_arch.safety.sensitive_data import filter_sensitive_content
 
 
 _OPENAI_KEY = "sk-" + "A" * 48
+_OPENAI_PROJECT_KEY = "sk-proj-" + "B" * 48
+_OPENAI_SVCACCT_KEY = "sk-svcacct-" + "C" * 48
 _AWS_KEY = "AKIA" + "B" * 16
 _GITHUB_TOKEN = "ghp_" + "c" * 36
 _JWT = (
@@ -73,6 +75,8 @@ def _stored_content(memory: HMArch, memory_id: str) -> str:
     ("label", "secret_fragment", "category"),
     [
         ("openai", _OPENAI_KEY, "openai_api_key"),
+        ("openai_project", _OPENAI_PROJECT_KEY, "openai_api_key"),
+        ("openai_svcacct", _OPENAI_SVCACCT_KEY, "openai_api_key"),
         ("aws", _AWS_KEY, "aws_access_key"),
         ("github", _GITHUB_TOKEN, "github_token"),
         ("jwt", _JWT, "jwt"),
@@ -191,6 +195,29 @@ def test_large_tool_output_truncated(filter_config: MemoryConfig) -> None:
     assert len(result.content) <= 200
     assert result.diagnostics.truncated is True
     assert "truncated" in result.content
+
+
+def test_openai_project_key_redacted_in_content_and_metadata(memory: HMArch) -> None:
+    receipt = memory.add(
+        f"bare project key {_OPENAI_PROJECT_KEY}",
+        metadata={"nested": {"openai": _OPENAI_PROJECT_KEY}},
+    )
+    stored = _stored_content(memory, receipt.memory_id)
+    assert _OPENAI_PROJECT_KEY not in stored
+    assert "[REDACTED]" in stored
+
+    rows = memory._db.query(
+        "SELECT metadata FROM memory_index WHERE id = ?",
+        (receipt.memory_id,),
+    )
+    meta = json.loads(rows[0]["metadata"])
+    assert _OPENAI_PROJECT_KEY not in json.dumps(meta)
+    assert "[REDACTED]" in meta["nested"]["openai"]
+
+    assert receipt.sensitive_filter is not None
+    assert receipt.sensitive_filter["redactions_by_category"]["openai_api_key"] >= 2
+    serialized = json.dumps(receipt.sensitive_filter)
+    assert _OPENAI_PROJECT_KEY not in serialized
 
 
 def test_metadata_string_values_are_filtered(memory: HMArch) -> None:
