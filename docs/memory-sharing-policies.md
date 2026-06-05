@@ -84,6 +84,11 @@ provenance columns. When sharing:
 - Rely on project isolation in cross-store search so unrelated repositories do
   not see private memories (see `search_cross_stores`).
 
+Concurrent access to the same SQLite file from multiple agent processes on one
+machine is supported via WAL mode, busy timeouts, and bounded lock retries.
+See [storage-concurrency.md](./storage-concurrency.md) for configuration and
+limitations.
+
 ## Out of scope
 
 These commands operate on local SQLite files only. There is **no** cloud sync,

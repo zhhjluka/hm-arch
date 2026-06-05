@@ -15,11 +15,20 @@ No external dependencies are required beyond the Python standard library.
 from __future__ import annotations
 
 import sqlite3
+import time
+import warnings
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Mapping, Sequence, Union
+from typing import Callable, Iterator, Mapping, Sequence, TypeVar, Union
 
 from .migrations import apply_migrations
+
+# Defaults tuned for multi-process agent hooks sharing one database file.
+DEFAULT_BUSY_TIMEOUT_MS = 30_000
+DEFAULT_LOCK_RETRIES = 5
+DEFAULT_LOCK_RETRY_BASE_DELAY_S = 0.05
+
+_T = TypeVar("_T")
 
 # Type alias accepted by both execute() and query()
 _Params = Union[Sequence, Mapping]
@@ -164,8 +173,18 @@ class SQLiteStore:
             rows = store.query("SELECT name FROM sqlite_master WHERE type='table'")
     """
 
-    def __init__(self, path: Union[str, Path]) -> None:
+    def __init__(
+        self,
+        path: Union[str, Path],
+        *,
+        busy_timeout_ms: int = DEFAULT_BUSY_TIMEOUT_MS,
+        lock_retries: int = DEFAULT_LOCK_RETRIES,
+        lock_retry_base_delay_s: float = DEFAULT_LOCK_RETRY_BASE_DELAY_S,
+    ) -> None:
         self._path = str(path)
+        self._busy_timeout_ms = busy_timeout_ms
+        self._lock_retries = lock_retries
+        self._lock_retry_base_delay_s = lock_retry_base_delay_s
         self._conn: sqlite3.Connection | None = None
 
     # ------------------------------------------------------------------
@@ -182,10 +201,19 @@ class SQLiteStore:
         """
         if self._conn is not None:
             return self
-        self._conn = sqlite3.connect(self._path)
+        timeout_s = max(self._busy_timeout_ms / 1000.0, 0.001)
+        self._conn = sqlite3.connect(self._path, timeout=timeout_s)
         self._conn.row_factory = sqlite3.Row
-        # WAL mode is safe for concurrent readers and single writer.
-        self._conn.execute("PRAGMA journal_mode=WAL;")
+        # WAL mode allows concurrent readers while one writer holds the lock.
+        journal_row = self._conn.execute("PRAGMA journal_mode=WAL;").fetchone()
+        journal_mode = (journal_row[0] if journal_row else "").lower()
+        if self._path != ":memory:" and journal_mode != "wal":
+            warnings.warn(
+                f"SQLite journal_mode is {journal_mode!r}, expected 'wal' "
+                f"for concurrent access at {self._path!r}",
+                stacklevel=2,
+            )
+        self._conn.execute(f"PRAGMA busy_timeout={self._busy_timeout_ms};")
         # Enforce FK constraints so referential integrity is checked at write time.
         self._conn.execute("PRAGMA foreign_keys=ON;")
         return self
@@ -230,8 +258,12 @@ class SQLiteStore:
             If the store has not been connected yet.
         """
         self._require_connection()
-        self._conn.executescript(_SCHEMA_SQL)  # type: ignore[union-attr]
-        self._conn.commit()  # type: ignore[union-attr]
+
+        def _init() -> None:
+            self._conn.executescript(_SCHEMA_SQL)  # type: ignore[union-attr]
+            self._conn.commit()  # type: ignore[union-attr]
+
+        self._run_with_lock_retry(_init)
         apply_migrations(self)
 
     # ------------------------------------------------------------------
@@ -256,14 +288,20 @@ class SQLiteStore:
             or ``cursor.rowcount`` if needed.
         """
         self._require_connection()
-        cursor = self._conn.execute(sql, params)  # type: ignore[union-attr]
-        self._conn.commit()  # type: ignore[union-attr]
-        return cursor
+
+        def _execute() -> sqlite3.Cursor:
+            cursor = self._conn.execute(sql, params)  # type: ignore[union-attr]
+            self._conn.commit()  # type: ignore[union-attr]
+            return cursor
+
+        return self._run_with_lock_retry(_execute)
 
     def execute_no_commit(self, sql: str, params: _Params = ()) -> sqlite3.Cursor:
         """Execute SQL without committing (for use inside :meth:`transaction`)."""
         self._require_connection()
-        return self._conn.execute(sql, params)  # type: ignore[union-attr]
+        return self._run_with_lock_retry(
+            lambda: self._conn.execute(sql, params)  # type: ignore[union-attr]
+        )
 
     @contextmanager
     def transaction(self) -> Iterator[None]:
@@ -271,7 +309,7 @@ class SQLiteStore:
         self._require_connection()
         conn = self._conn
         assert conn is not None
-        conn.execute("BEGIN IMMEDIATE")
+        self._run_with_lock_retry(lambda: conn.execute("BEGIN IMMEDIATE"))
         try:
             yield
             conn.commit()
@@ -296,12 +334,40 @@ class SQLiteStore:
             column name (e.g. ``row["id"]``) or by index.
         """
         self._require_connection()
-        cursor = self._conn.execute(sql, params)  # type: ignore[union-attr]
-        return cursor.fetchall()
+
+        def _query() -> list[sqlite3.Row]:
+            cursor = self._conn.execute(sql, params)  # type: ignore[union-attr]
+            return cursor.fetchall()
+
+        return self._run_with_lock_retry(_query)
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_database_locked_error(exc: BaseException) -> bool:
+        if not isinstance(exc, sqlite3.OperationalError):
+            return False
+        message = str(exc).lower()
+        return "database is locked" in message or "database table is locked" in message
+
+    def _run_with_lock_retry(self, operation: Callable[[], _T]) -> _T:
+        """Run *operation*, retrying transient SQLite lock errors."""
+        attempts = max(self._lock_retries, 0) + 1
+        delay = self._lock_retry_base_delay_s
+        last_error: sqlite3.OperationalError | None = None
+        for attempt in range(attempts):
+            try:
+                return operation()
+            except sqlite3.OperationalError as exc:
+                if not self._is_database_locked_error(exc) or attempt == attempts - 1:
+                    raise
+                last_error = exc
+                time.sleep(delay)
+                delay = min(delay * 2, 1.0)
+        assert last_error is not None
+        raise last_error
 
     def _require_connection(self) -> None:
         if self._conn is None:

@@ -390,6 +390,9 @@ Time constants are expressed in hours, matching the PRD formulas.
 |-------|------|-------------|
 | `db_path` | `'str'` | (default: `'./.agent_memory.db'`)|
 | `archive_root` | `'Optional[str]'` ||
+| `sqlite_busy_timeout_ms` | `'int'` | (default: `30000`)|
+| `sqlite_lock_retries` | `'int'` | (default: `5`)|
+| `sqlite_lock_retry_base_delay_s` | `'float'` | (default: `0.05`)|
 | `l2_fast_tau` | `'float'` | (default: `24.0`)|
 | `l2_slow_tau` | `'float'` | (default: `720.0`)|
 | `l2_fast_weight` | `'float'` | (default: `0.3`)|

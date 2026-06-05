@@ -57,6 +57,58 @@ def _col_info(store: SQLiteStore, table: str) -> dict[str, dict]:
 
 
 # ---------------------------------------------------------------------------
+# SQLite concurrency (MEM-57)
+# ---------------------------------------------------------------------------
+
+
+class TestConcurrencyConfiguration:
+    def test_wal_journal_mode_on_file_db(self, tmp_path: Path) -> None:
+        db = tmp_path / "wal_check.db"
+        with SQLiteStore(db) as store:
+            row = store.query("PRAGMA journal_mode")
+        assert row[0]["journal_mode"].lower() == "wal"
+
+    def test_foreign_keys_enabled(self, tmp_path: Path) -> None:
+        with SQLiteStore(tmp_path / "fk_pragma.db") as store:
+            row = store.query("PRAGMA foreign_keys")
+        assert int(row[0]["foreign_keys"]) == 1
+
+    def test_transaction_commits(self, tmp_path: Path) -> None:
+        ts = "2024-06-01T00:00:00Z"
+        db = tmp_path / "txn_commit.db"
+        with SQLiteStore(db) as store:
+            store.initialize_schema()
+            with store.transaction():
+                store.execute_no_commit(
+                    "INSERT INTO meta_memory (key, value, updated_at) VALUES (?, ?, ?)",
+                    ("txn_key", "txn_val", ts),
+                )
+        with SQLiteStore(db) as store:
+            rows = store.query(
+                "SELECT value FROM meta_memory WHERE key = ?", ("txn_key",)
+            )
+        assert rows[0]["value"] == "txn_val"
+
+    def test_transaction_rolls_back_on_error(self, tmp_path: Path) -> None:
+        ts = "2024-06-01T00:00:00Z"
+        db = tmp_path / "txn_rollback.db"
+        with SQLiteStore(db) as store:
+            store.initialize_schema()
+            with pytest.raises(ValueError):
+                with store.transaction():
+                    store.execute_no_commit(
+                        "INSERT INTO meta_memory (key, value, updated_at) VALUES (?, ?, ?)",
+                        ("rollback_key", "gone", ts),
+                    )
+                    raise ValueError("abort")
+        with SQLiteStore(db) as store:
+            rows = store.query(
+                "SELECT key FROM meta_memory WHERE key = ?", ("rollback_key",)
+            )
+        assert rows == []
+
+
+# ---------------------------------------------------------------------------
 # Connection lifecycle
 # ---------------------------------------------------------------------------
 
