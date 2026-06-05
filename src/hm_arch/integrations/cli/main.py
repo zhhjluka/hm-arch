@@ -15,6 +15,7 @@ from .manage import (
     run_status_command,
     run_uninstall_command,
 )
+from .memory import add_memory_parsers, run_memory_command
 from .io import (
     InvalidAdapterPayloadError,
     emit_adapter_response,
@@ -76,6 +77,7 @@ def _build_parser() -> argparse.ArgumentParser:
         claude_subparsers.add_parser(name, help=help_text)
 
     add_manage_parsers(subparsers)
+    add_memory_parsers(subparsers)
     return parser
 
 
@@ -132,6 +134,8 @@ def main(argv: list[str] | None = None) -> int:
         return run_status_command(args)
     if args.command == "doctor":
         return run_doctor_command(args)
+    if args.command == "memory":
+        return run_memory_command(args)
 
     parser.error(f"unknown command {args.command!r}")
     return 2

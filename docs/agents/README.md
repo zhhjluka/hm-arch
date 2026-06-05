@@ -24,3 +24,6 @@ Manual smoke tests for all three agents:
 
 Release notes for the Python-first integration:
 [RELEASE_NOTES_v1.1.0.md](../RELEASE_NOTES_v1.1.0.md).
+
+Memory export, import, migration, and sharing policies:
+[memory-sharing-policies.md](../memory-sharing-policies.md).
