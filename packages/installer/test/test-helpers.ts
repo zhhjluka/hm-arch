@@ -1,4 +1,4 @@
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
@@ -41,26 +41,46 @@ export function hasSupportedPython(): boolean {
   return probeSupportedPython() !== null;
 }
 
-/**
- * Serialize editable ``pip install`` runs against the repo checkout.
- * Node's test runner executes files in parallel; concurrent wheel builds in the
- * same source tree race and flake on CI (macOS/Windows).
- */
-let editablePipInstallChain: Promise<unknown> = Promise.resolve();
+const EDITABLE_PIP_LOCK_DIR = join(
+  tmpdir(),
+  `hm-arch-editable-pip-${Buffer.from(REPO_ROOT).toString("hex")}.lock`,
+);
+const EDITABLE_PIP_LOCK_STALE_MS = 5 * 60 * 1000;
+const EDITABLE_PIP_LOCK_POLL_MS = 100;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function withExclusiveEditablePipInstall<T>(
   fn: () => T | Promise<T>,
 ): Promise<T> {
-  const waitFor = editablePipInstallChain;
-  let release!: () => void;
-  editablePipInstallChain = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  await waitFor;
+  while (true) {
+    try {
+      mkdirSync(EDITABLE_PIP_LOCK_DIR);
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw error;
+      }
+      try {
+        const lockAge = Date.now() - statSync(EDITABLE_PIP_LOCK_DIR).mtimeMs;
+        if (lockAge > EDITABLE_PIP_LOCK_STALE_MS) {
+          rmSync(EDITABLE_PIP_LOCK_DIR, { recursive: true, force: true });
+          continue;
+        }
+      } catch {
+        // The lock disappeared between mkdir and stat; retry immediately.
+        continue;
+      }
+      await sleep(EDITABLE_PIP_LOCK_POLL_MS);
+    }
+  }
+
   try {
     return await fn();
   } finally {
-    release();
+    rmSync(EDITABLE_PIP_LOCK_DIR, { recursive: true, force: true });
   }
 }
 

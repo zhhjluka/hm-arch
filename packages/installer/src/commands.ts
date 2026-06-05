@@ -8,7 +8,13 @@ import {
 import {
   ensureHmArchRuntime as provisionHmArchRuntime,
   formatEnsureRuntimeResult,
+  type RuntimeKind,
 } from "./runtime.js";
+
+type PrepareRuntimeResult = {
+  code: number;
+  runtimeKind?: RuntimeKind;
+};
 
 export async function runParsedCommand(parsed: ParsedCliArgs): Promise<number> {
   if (parsed.help) {
@@ -48,14 +54,14 @@ export async function runParsedCommand(parsed: ParsedCliArgs): Promise<number> {
 }
 
 async function runUpgrade(parsed: ParsedCliArgs): Promise<number> {
-  const code = await prepareHmArchRuntime({ upgrade: true });
-  if (code !== 0) {
-    return code;
+  const prepared = await prepareHmArchRuntime({ upgrade: true });
+  if (prepared.code !== 0) {
+    return prepared.code;
   }
   if (!parsed.agent) {
     return 0;
   }
-  return delegateParsedCommand(parsed);
+  return delegateParsedCommand(parsed, { runtimeKind: prepared.runtimeKind });
 }
 
 async function runWithManagedCli(
@@ -64,39 +70,39 @@ async function runWithManagedCli(
 ): Promise<number> {
   const needsFreshEnv =
     parsed.command === "install" || parsed.command === "upgrade";
-  const code = await prepareHmArchRuntime({
+  const prepared = await prepareHmArchRuntime({
     upgrade: options.upgrade,
     quiet: !needsFreshEnv,
   });
-  if (code !== 0) {
-    return code;
+  if (prepared.code !== 0) {
+    return prepared.code;
   }
-  return delegateParsedCommand(parsed);
+  return delegateParsedCommand(parsed, { runtimeKind: prepared.runtimeKind });
 }
 
 async function prepareHmArchRuntime(options: {
   upgrade: boolean;
   quiet?: boolean;
-}): Promise<number> {
+}): Promise<PrepareRuntimeResult> {
   try {
     const result = await provisionHmArchRuntime({ upgrade: options.upgrade });
     if (!options.quiet) {
       console.log(formatEnsureRuntimeResult(result));
     }
-    return 0;
+    return { code: 0, runtimeKind: result.kind };
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "python_missing") {
         console.error(formatDiagnostics(environmentDiagnostics()));
-        return 1;
+        return { code: 1 };
       }
       if (error.message.includes("No standalone HM-Arch binary")) {
         console.error(formatDiagnostics(environmentDiagnostics()));
-        return 1;
+        return { code: 1 };
       }
     }
     const message = error instanceof Error ? error.message : String(error);
     console.error(`Failed to prepare HM-Arch runtime: ${message}`);
-    return 1;
+    return { code: 1 };
   }
 }

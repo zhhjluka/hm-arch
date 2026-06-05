@@ -3,17 +3,22 @@ import type { SpawnSyncReturns } from "node:child_process";
 import { existsSync } from "node:fs";
 
 import type { ParsedCliArgs } from "./parse-args.js";
-import type { CliCommand } from "./constants.js";
+import { ENV_HM_ARCH_RUNTIME, type CliCommand } from "./constants.js";
 import {
   managedHmArchExecutable,
   managedStandaloneExecutable,
   resolveHmArchHome,
 } from "./paths.js";
-import { readStandaloneBinaryState } from "./standalone-binary.js";
+import {
+  readStandaloneBinaryState,
+  type StandaloneBinaryState,
+} from "./standalone-binary.js";
 
 export type HmArchCliDeps = {
   hmArchHome?: string;
+  runtimeKind?: "standalone" | "python";
   exists?: (path: string) => boolean;
+  readState?: (home: string) => StandaloneBinaryState | null;
   spawn?: (
     file: string,
     args: string[],
@@ -30,6 +35,19 @@ const DELEGATED_COMMANDS = new Set<CliCommand>([
   "uninstall",
 ]);
 
+function selectedRuntimeKind(
+  explicit: HmArchCliDeps["runtimeKind"],
+): "standalone" | "python" | "auto" {
+  if (explicit) {
+    return explicit;
+  }
+  const mode = (process.env[ENV_HM_ARCH_RUNTIME] ?? "auto").toLowerCase();
+  if (mode === "python" || mode === "standalone") {
+    return mode;
+  }
+  return "auto";
+}
+
 function defaultSpawn(
   file: string,
   args: string[],
@@ -43,13 +61,18 @@ export function resolveHmArchExecutable(
 ): { executable: string; kind: "standalone" | "python" } | { error: string; exitCode: number } {
   const home = deps.hmArchHome ?? resolveHmArchHome();
   const exists = deps.exists ?? existsSync;
+  const runtimeKind = selectedRuntimeKind(deps.runtimeKind);
   const standalone = managedStandaloneExecutable(home);
-  if (exists(standalone) && readStandaloneBinaryState(home, deps)) {
+  if (
+    runtimeKind !== "python" &&
+    exists(standalone) &&
+    readStandaloneBinaryState(home, deps)
+  ) {
     return { executable: standalone, kind: "standalone" };
   }
 
   const pythonManaged = managedHmArchExecutable(home);
-  if (exists(pythonManaged)) {
+  if (runtimeKind !== "standalone" && exists(pythonManaged)) {
     return { executable: pythonManaged, kind: "python" };
   }
 
