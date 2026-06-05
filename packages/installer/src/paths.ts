@@ -4,6 +4,9 @@ import path from "node:path";
 /** Directory name for the npm-managed virtual environment under {@link resolveHmArchHome}. */
 export const MANAGED_ENV_DIR_NAME = "python-env";
 
+/** Directory name for the verified standalone executable under {@link resolveHmArchHome}. */
+export const STANDALONE_BINARY_DIR_NAME = "standalone";
+
 /**
  * Root directory for HM-Arch installer state (managed venv, metadata).
  * Override with ``HM_ARCH_HOME`` for tests or custom layouts.
@@ -55,4 +58,21 @@ export function managedHmArchExecutable(hmArchHome: string): string {
     return path.join(root, "Scripts", "hm-arch.exe");
   }
   return path.join(root, "bin", "hm-arch");
+}
+
+export function standaloneBinaryRoot(hmArchHome: string): string {
+  return path.join(hmArchHome, STANDALONE_BINARY_DIR_NAME);
+}
+
+export function managedStandaloneStatePath(hmArchHome: string): string {
+  return path.join(standaloneBinaryRoot(hmArchHome), "state.json");
+}
+
+/** Verified standalone hm-arch executable downloaded by the npm installer. */
+export function managedStandaloneExecutable(hmArchHome: string): string {
+  const root = standaloneBinaryRoot(hmArchHome);
+  if (process.platform === "win32") {
+    return path.join(root, "hm-arch.exe");
+  }
+  return path.join(root, "hm-arch");
 }

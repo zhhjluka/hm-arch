@@ -40,6 +40,18 @@ describe("platform detection", () => {
     assert.equal(python.minor, 11);
   });
 
+  it("reports unsupported release target for darwin x64", () => {
+    const diagnostics = environmentDiagnostics(
+      detectPlatform({
+        platform: "darwin",
+        arch: "x64",
+        nodeVersion: "v22.0.0",
+        python: null,
+      }),
+    );
+    assert.ok(diagnostics.some((item) => item.code === "unsupported_release_target"));
+  });
+
   it("reports blocking errors for unsupported environments", () => {
     const diagnostics = environmentDiagnostics(
       detectPlatform({

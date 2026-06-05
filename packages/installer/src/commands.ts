@@ -1,13 +1,16 @@
 import type { ParsedCliArgs } from "./parse-args.js";
 import { delegateParsedCommand } from "./hm-arch-cli.js";
-import { ensureManagedPythonEnv, formatEnsureResult } from "./python-env.js";
 import {
   environmentDiagnostics,
   formatDiagnostics,
   hasBlockingDiagnostics,
 } from "./platform.js";
+import {
+  ensureHmArchRuntime as provisionHmArchRuntime,
+  formatEnsureRuntimeResult,
+} from "./runtime.js";
 
-export function runParsedCommand(parsed: ParsedCliArgs): number {
+export async function runParsedCommand(parsed: ParsedCliArgs): Promise<number> {
   if (parsed.help) {
     return 0;
   }
@@ -44,8 +47,8 @@ export function runParsedCommand(parsed: ParsedCliArgs): number {
   }
 }
 
-function runUpgrade(parsed: ParsedCliArgs): number {
-  const code = ensurePythonRuntime({ upgrade: true });
+async function runUpgrade(parsed: ParsedCliArgs): Promise<number> {
+  const code = await prepareHmArchRuntime({ upgrade: true });
   if (code !== 0) {
     return code;
   }
@@ -55,13 +58,13 @@ function runUpgrade(parsed: ParsedCliArgs): number {
   return delegateParsedCommand(parsed);
 }
 
-function runWithManagedCli(
+async function runWithManagedCli(
   parsed: ParsedCliArgs,
   options: { upgrade: boolean },
-): number {
+): Promise<number> {
   const needsFreshEnv =
     parsed.command === "install" || parsed.command === "upgrade";
-  const code = ensurePythonRuntime({
+  const code = await prepareHmArchRuntime({
     upgrade: options.upgrade,
     quiet: !needsFreshEnv,
   });
@@ -71,23 +74,29 @@ function runWithManagedCli(
   return delegateParsedCommand(parsed);
 }
 
-function ensurePythonRuntime(options: {
+async function prepareHmArchRuntime(options: {
   upgrade: boolean;
   quiet?: boolean;
-}): number {
+}): Promise<number> {
   try {
-    const result = ensureManagedPythonEnv({ upgrade: options.upgrade });
+    const result = await provisionHmArchRuntime({ upgrade: options.upgrade });
     if (!options.quiet) {
-      console.log(formatEnsureResult(result));
+      console.log(formatEnsureRuntimeResult(result));
     }
     return 0;
   } catch (error) {
-    if (error instanceof Error && error.message === "python_missing") {
-      console.error(formatDiagnostics(environmentDiagnostics()));
-      return 1;
+    if (error instanceof Error) {
+      if (error.message === "python_missing") {
+        console.error(formatDiagnostics(environmentDiagnostics()));
+        return 1;
+      }
+      if (error.message.includes("No standalone HM-Arch binary")) {
+        console.error(formatDiagnostics(environmentDiagnostics()));
+        return 1;
+      }
     }
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`Failed to prepare managed Python environment: ${message}`);
+    console.error(`Failed to prepare HM-Arch runtime: ${message}`);
     return 1;
   }
 }

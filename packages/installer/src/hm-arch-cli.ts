@@ -4,7 +4,12 @@ import { existsSync } from "node:fs";
 
 import type { ParsedCliArgs } from "./parse-args.js";
 import type { CliCommand } from "./constants.js";
-import { managedHmArchExecutable, resolveHmArchHome } from "./paths.js";
+import {
+  managedHmArchExecutable,
+  managedStandaloneExecutable,
+  resolveHmArchHome,
+} from "./paths.js";
+import { readStandaloneBinaryState } from "./standalone-binary.js";
 
 export type HmArchCliDeps = {
   hmArchHome?: string;
@@ -33,23 +38,42 @@ function defaultSpawn(
   return spawnSync(file, args, { ...options, stdio: ["ignore", "pipe", "pipe"] });
 }
 
+export function resolveHmArchExecutable(
+  deps: HmArchCliDeps = {},
+): { executable: string; kind: "standalone" | "python" } | { error: string; exitCode: number } {
+  const home = deps.hmArchHome ?? resolveHmArchHome();
+  const exists = deps.exists ?? existsSync;
+  const standalone = managedStandaloneExecutable(home);
+  if (exists(standalone) && readStandaloneBinaryState(home, deps)) {
+    return { executable: standalone, kind: "standalone" };
+  }
+
+  const pythonManaged = managedHmArchExecutable(home);
+  if (exists(pythonManaged)) {
+    return { executable: pythonManaged, kind: "python" };
+  }
+
+  return {
+    error: [
+      "hm-arch CLI not found in the npm-managed runtime.",
+      `  standalone: ${standalone}`,
+      `  python venv: ${pythonManaged}`,
+      "Run `hm-arch-install upgrade` to download or create the runtime,",
+      "or set HM_ARCH_HOME if you use a custom layout.",
+    ].join("\n"),
+    exitCode: 1,
+  };
+}
+
+/** @deprecated Use {@link resolveHmArchExecutable}. */
 export function resolveManagedHmArchExecutable(
   deps: HmArchCliDeps = {},
 ): { executable: string } | { error: string; exitCode: number } {
-  const home = deps.hmArchHome ?? resolveHmArchHome();
-  const executable = managedHmArchExecutable(home);
-  const exists = deps.exists ?? existsSync;
-  if (!exists(executable)) {
-    return {
-      error: [
-        `Managed hm-arch CLI not found at ${executable}.`,
-        "Run `hm-arch-install upgrade` to create or refresh the managed Python environment,",
-        "or set HM_ARCH_HOME if you use a custom layout.",
-      ].join("\n"),
-      exitCode: 1,
-    };
+  const resolved = resolveHmArchExecutable(deps);
+  if ("error" in resolved) {
+    return resolved;
   }
-  return { executable };
+  return { executable: resolved.executable };
 }
 
 /** Map npm installer argv to ``hm-arch`` management subcommand argv. */
@@ -103,7 +127,7 @@ export function runManagedHmArch(
   argv: string[],
   deps: HmArchCliDeps = {},
 ): { exitCode: number; spawnError?: string } {
-  const resolved = resolveManagedHmArchExecutable(deps);
+  const resolved = resolveHmArchExecutable(deps);
   if ("error" in resolved) {
     return { exitCode: resolved.exitCode, spawnError: resolved.error };
   }
@@ -114,7 +138,7 @@ export function runManagedHmArch(
   if (result.error) {
     return {
       exitCode: 1,
-      spawnError: `Failed to run managed hm-arch: ${result.error.message}`,
+      spawnError: `Failed to run hm-arch: ${result.error.message}`,
     };
   }
 

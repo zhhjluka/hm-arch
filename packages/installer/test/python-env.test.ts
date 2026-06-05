@@ -14,7 +14,11 @@ import {
   writeManagedEnvState,
 } from "../src/python-env.js";
 import { managedPythonExecutable } from "../src/paths.js";
-import { hasSupportedPython, withSupportedPythonEnv } from "./test-helpers.js";
+import {
+  hasSupportedPython,
+  withExclusiveEditablePipInstall,
+  withSupportedPythonEnv,
+} from "./test-helpers.js";
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..", "..");
 
@@ -193,8 +197,9 @@ describe("python-env (unit)", () => {
 });
 
 describe("python-env (integration)", { skip: !hasSupportedPython() }, () => {
-  it("installs hm-arch editable without mutating global site-packages", () => {
-    withSupportedPythonEnv(() => {
+  it("installs hm-arch editable without mutating global site-packages", async () => {
+    await withExclusiveEditablePipInstall(() =>
+      withSupportedPythonEnv(() => {
       const home = tempHome();
       const pythonExecutable = process.env.HM_ARCH_PYTHON;
       assert.ok(pythonExecutable);
@@ -236,7 +241,8 @@ describe("python-env (integration)", { skip: !hasSupportedPython() }, () => {
       } finally {
         rmSync(home, { recursive: true, force: true });
       }
-    });
+      }),
+    );
   });
 });
 

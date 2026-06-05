@@ -21,8 +21,23 @@ See also:
 | Component | Minimum | Notes |
 |-----------|---------|-------|
 | Node.js | **18.x+** | Declared in `packages/installer/package.json` `engines.node` |
-| Python | **3.10+** | Same as the `hm-arch` Python package (`requires-python >=3.10`) |
+| Python | **3.10+** (optional on supported standalone targets) | Required when `HM_ARCH_RUNTIME=python` or standalone artifacts are unavailable |
 | OS | **macOS, Linux, Windows** | `darwin`, `linux`, `win32`; other platforms are unsupported |
+
+### Standalone binary targets (MEM-62 / MEM-63)
+
+When `HM_ARCH_RUNTIME` is `auto` (default) or `standalone`, the installer downloads a
+verified PyInstaller executable from GitHub Releases:
+
+| OS | Architectures |
+|----|----------------|
+| linux | `x86_64`, `aarch64` |
+| darwin | `arm64` only (not Intel/x64) |
+| windows | `x86_64` only (not ARM64) |
+
+Artifacts are named `hm-arch-{version}-{os}-{arch}[.exe]` and verified against
+`hm-arch-{version}-standalone-release-metadata.json` and per-file `.sha256` checksums
+before installation under `<HM_ARCH_HOME>/standalone/`.
 
 ### Supported Python discovery
 
@@ -59,6 +74,8 @@ Managed venv path: `<HM_ARCH_HOME>/python-env/`
 | `HM_ARCH_HOME` | Override the managed-runtime root directory |
 | `HM_ARCH_PYTHON` | Path to a Python 3.10+ interpreter used to create the venv |
 | `HM_ARCH_PIP_SPEC` | pip requirement for `hm-arch` (default: `hm-arch==<bundled>`) |
+| `HM_ARCH_RUNTIME` | `auto` (default), `standalone`, or `python` |
+| `HM_ARCH_RELEASE_BASE_URL` | Override GitHub release download base URL (tests/mirrors) |
 
 The bundled Python package version is synced from `src/hm_arch/_version.py` at build
 time into `dist/bundled-version.json`. At runtime the default pip spec is

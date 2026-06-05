@@ -85,4 +85,5 @@ Offline tests:
 uv run pytest tests/test_release_artifacts.py tests/test_standalone_executable.py -q
 ```
 
-npm binary download integration is handled separately in MEM-63.
+The npm installer (`@hm-arch/installer`) downloads and verifies release artifacts
+for supported platforms. See [npm-installer.md](npm-installer.md).

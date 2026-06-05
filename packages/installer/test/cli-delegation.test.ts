@@ -14,17 +14,21 @@ import {
   runManagedHmArch,
 } from "../src/hm-arch-cli.js";
 import { managedHmArchExecutable } from "../src/paths.js";
-import { hasSupportedPython, withSupportedPythonEnv } from "./test-helpers.js";
+import {
+  hasSupportedPython,
+  withExclusiveEditablePipInstall,
+  withSupportedPythonEnv,
+} from "./test-helpers.js";
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..", "..");
 
-function runWithManagedEnvHome(home: string, fn: () => void): void {
+async function runWithManagedEnvHome(home: string, fn: () => void | Promise<void>): Promise<void> {
   const previousHome = process.env.HM_ARCH_HOME;
   const previousSpec = process.env.HM_ARCH_PIP_SPEC;
   process.env.HM_ARCH_HOME = home;
   process.env.HM_ARCH_PIP_SPEC = REPO_ROOT;
   try {
-    withSupportedPythonEnv(fn);
+    await withExclusiveEditablePipInstall(() => withSupportedPythonEnv(fn));
   } finally {
     if (previousHome === undefined) {
       delete process.env.HM_ARCH_HOME;
@@ -135,7 +139,7 @@ describe("hm-arch CLI delegation", () => {
         exists: () => false,
       });
       assert.ok("error" in resolved);
-      assert.match(resolved.error, /Managed hm-arch CLI not found/);
+      assert.match(resolved.error, /hm-arch CLI not found/);
       assert.equal(resolved.exitCode, 1);
     } finally {
       rmSync(home, { recursive: true, force: true });
@@ -155,24 +159,26 @@ describe("hm-arch CLI delegation", () => {
         { hmArchHome: home, exists: () => false },
       );
       assert.equal(code, 1);
-      assert.match(errors.join("\n"), /Managed hm-arch CLI not found/);
+      assert.match(errors.join("\n"), /hm-arch CLI not found/);
     } finally {
       console.error = originalError;
       rmSync(home, { recursive: true, force: true });
     }
   });
 
-  it("main rejects unsupported agent before delegation", () => {
-    assert.equal(main(["install", "vscode"]), 2);
+  it("main rejects unsupported agent before delegation", async () => {
+    assert.equal(await main(["install", "vscode"]), 2);
   });
 
   it("runParsedCommand delegates status to managed hm-arch executable", {
     skip: !hasSupportedPython(),
-  }, () => {
+  }, async () => {
     const home = mkdtempSync(join(tmpdir(), "hm-arch-delegate-smoke-"));
+    const previousRuntime = process.env.HM_ARCH_RUNTIME;
+    process.env.HM_ARCH_RUNTIME = "python";
     try {
-      runWithManagedEnvHome(home, () => {
-        const code = runParsedCommand({
+      await runWithManagedEnvHome(home, async () => {
+        const code = await runParsedCommand({
           command: "status",
           global: false,
           help: false,
@@ -180,6 +186,11 @@ describe("hm-arch CLI delegation", () => {
         assert.ok(code === 0 || code === 1);
       });
     } finally {
+      if (previousRuntime === undefined) {
+        delete process.env.HM_ARCH_RUNTIME;
+      } else {
+        process.env.HM_ARCH_RUNTIME = previousRuntime;
+      }
       rmSync(home, { recursive: true, force: true });
     }
   });
