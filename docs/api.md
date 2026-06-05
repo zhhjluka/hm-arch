@@ -431,6 +431,10 @@ Time constants are expressed in hours, matching the PRD formulas.
 | `vector_backend` | `'str'` | (default: `'local'`)|
 | `chroma_persist_directory` | `'Optional[str]'` ||
 | `chroma_collection_prefix` | `'str'` | (default: `'hm_arch'`)|
+| `enable_sensitive_data_filter` | `'bool'` | (default: `True`)|
+| `sensitive_data_patterns` | `'list[str]'` | (factory)|
+| `max_stored_content_chars` | `'int'` | (default: `16384`)|
+| `sensitive_data_redaction_token` | `'str'` | (default: `'[REDACTED]'`)|
 | `layer_priorities` | `'dict[str, float]'` | (factory)|
 
 ### Presets
@@ -535,6 +539,9 @@ consolidation_scheduled:
     When the memory is next scheduled for consolidation review.
 provenance:
     Optional origin metadata captured at insertion time.
+sensitive_filter:
+    Safe diagnostics when sensitive-data filtering modified the stored
+    content (category counts only, never secret values).
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -545,6 +552,7 @@ provenance:
 | `decay_estimate` | `'dict'` ||
 | `consolidation_scheduled` | `'datetime'` ||
 | `provenance` | `'MemoryProvenance | None'` ||
+| `sensitive_filter` | `'dict | None'` ||
 
 ---
 
@@ -704,6 +712,8 @@ last_consolidation_at:
     consolidation has not yet run.
 archive_storage_mb:
     On-disk size of L4 gzip archives under the archive root, in megabytes.
+sensitive_data_diagnostics:
+    Cumulative safe filtering statistics (category counts only).
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -714,6 +724,7 @@ archive_storage_mb:
 | `review_queue_length` | `'int'` ||
 | `last_consolidation_at` | `'datetime | None'` ||
 | `archive_storage_mb` | `'float'` | (default: `0.0`)|
+| `sensitive_data_diagnostics` | `'dict'` | (factory)|
 
 ---
 

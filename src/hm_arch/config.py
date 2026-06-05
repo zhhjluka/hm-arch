@@ -151,6 +151,18 @@ class MemoryConfig:
     """Prefix for Chroma collection names (episodic/semantic suffixes are appended)."""
 
     # -------------------------------------------------------------------
+    # Sensitive-data filtering (MEM-58)
+    # -------------------------------------------------------------------
+    enable_sensitive_data_filter: bool = True
+    """When ``True``, redact common secrets and truncate large content before storage."""
+    sensitive_data_patterns: list[str] = field(default_factory=list)
+    """Additional regex patterns (applied after built-in detectors)."""
+    max_stored_content_chars: int = 16_384
+    """Maximum characters stored per memory; ``0`` disables truncation."""
+    sensitive_data_redaction_token: str = "[REDACTED]"
+    """Replacement text for redacted secret values."""
+
+    # -------------------------------------------------------------------
     # Retrieval
     # -------------------------------------------------------------------
     layer_priorities: dict[str, float] = field(
