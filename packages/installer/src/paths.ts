@@ -47,3 +47,12 @@ export function managedPipExecutable(hmArchHome: string): string {
   }
   return path.join(root, "bin", "pip");
 }
+
+/** Console script installed into the managed venv by ``hm-arch`` (pip). */
+export function managedHmArchExecutable(hmArchHome: string): string {
+  const root = managedEnvRoot(hmArchHome);
+  if (process.platform === "win32") {
+    return path.join(root, "Scripts", "hm-arch.exe");
+  }
+  return path.join(root, "bin", "hm-arch");
+}

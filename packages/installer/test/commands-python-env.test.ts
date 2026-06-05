@@ -4,6 +4,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
+function withTempWorkdir<T>(fn: (workdir: string) => void): void {
+  const workdir = mkdtempSync(join(tmpdir(), "hm-arch-cmd-cwd-"));
+  const previous = process.cwd();
+  process.chdir(workdir);
+  try {
+    fn(workdir);
+  } finally {
+    process.chdir(previous);
+    rmSync(workdir, { recursive: true, force: true });
+  }
+}
+
 import { runParsedCommand } from "../src/commands.js";
 import { hasSupportedPython, withSupportedPythonEnv } from "./test-helpers.js";
 
@@ -35,13 +47,15 @@ describe("commands python runtime", () => {
     const home = mkdtempSync(join(tmpdir(), "hm-arch-cmd-"));
     try {
       runWithManagedEnvHome(home, () => {
-        const code = runParsedCommand({
-          command: "install",
-          agent: "codex",
-          global: false,
-          help: false,
+        withTempWorkdir(() => {
+          const code = runParsedCommand({
+            command: "install",
+            agent: "codex",
+            global: false,
+            help: false,
+          });
+          assert.equal(code, 0);
         });
-        assert.equal(code, 0);
       });
     } finally {
       rmSync(home, { recursive: true, force: true });
@@ -52,14 +66,16 @@ describe("commands python runtime", () => {
     const home = mkdtempSync(join(tmpdir(), "hm-arch-cmd-up-"));
     try {
       runWithManagedEnvHome(home, () => {
-        assert.equal(
-          runParsedCommand({ command: "install", agent: "codex", global: false, help: false }),
-          0,
-        );
-        assert.equal(
-          runParsedCommand({ command: "upgrade", global: false, help: false }),
-          0,
-        );
+        withTempWorkdir(() => {
+          assert.equal(
+            runParsedCommand({ command: "install", agent: "codex", global: false, help: false }),
+            0,
+          );
+          assert.equal(
+            runParsedCommand({ command: "upgrade", global: false, help: false }),
+            0,
+          );
+        });
       });
     } finally {
       rmSync(home, { recursive: true, force: true });
