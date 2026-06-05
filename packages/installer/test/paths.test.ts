@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import path from "node:path";
 import { describe, it } from "node:test";
 
 import {
@@ -10,9 +11,10 @@ import {
 
 describe("paths", () => {
   it("resolves HM_ARCH_HOME override", () => {
-    const home = resolveHmArchHome({ envHome: "/tmp/hm-arch-test-home" });
-    assert.equal(home, "/tmp/hm-arch-test-home");
-    assert.equal(managedEnvRoot(home), "/tmp/hm-arch-test-home/python-env");
+    const envHome = path.join(path.parse(process.cwd()).root, "tmp", "hm-arch-test-home");
+    const home = resolveHmArchHome({ envHome });
+    assert.equal(home, path.resolve(envHome));
+    assert.equal(managedEnvRoot(home), path.join(path.resolve(envHome), "python-env"));
   });
 
   it("places managed python under python-env", () => {

@@ -5,11 +5,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
+import { execNpmSync, localPackageBin } from "./test-helpers.js";
+
 const INSTALLER_ROOT = join(import.meta.dirname, "..");
 
 describe("packed installer tarball", () => {
   it("hm-arch-install --help works after npm pack and install", () => {
-    const packJson = execFileSync("npm", ["pack", "--json", "--silent"], {
+    const packJson = execNpmSync(["pack", "--json", "--silent"], {
       cwd: INSTALLER_ROOT,
       encoding: "utf8",
     });
@@ -18,13 +20,12 @@ describe("packed installer tarball", () => {
     const tarballPath = join(INSTALLER_ROOT, tarballName);
     const projectDir = mkdtempSync(join(tmpdir(), "hm-arch-pack-smoke-"));
     try {
-      execFileSync("npm", ["init", "-y"], { cwd: projectDir, stdio: "ignore" });
-      execFileSync("npm", ["install", tarballPath], { cwd: projectDir, stdio: "ignore" });
-      const help = execFileSync(
-        join(projectDir, "node_modules", ".bin", "hm-arch-install"),
-        ["--help"],
-        { encoding: "utf8" },
-      );
+      execNpmSync(["init", "-y"], { cwd: projectDir, stdio: "ignore" });
+      execNpmSync(["install", tarballPath], { cwd: projectDir, stdio: "ignore" });
+      const help = execFileSync(localPackageBin(projectDir, "hm-arch-install"), ["--help"], {
+        encoding: "utf8",
+        shell: process.platform === "win32",
+      });
       assert.match(help, /hm-arch-install/);
       const bundled = JSON.parse(
         readFileSync(
