@@ -59,9 +59,6 @@ jobs:
           - os: macos-latest
             target_os: darwin
             target_arch: arm64
-          - os: macos-13
-            target_os: darwin
-            target_arch: x86_64
           - os: windows-latest
             target_os: windows
             target_arch: x86_64

@@ -38,11 +38,13 @@ from scripts.validate_release_artifacts import (  # noqa: E402
 def test_supported_release_targets_cover_primary_platforms() -> None:
     targets = supported_release_targets()
     suffixes = {target.artifact_suffix() for target in targets}
-    assert "linux-x86_64" in suffixes
-    assert "linux-aarch64" in suffixes
-    assert "darwin-arm64" in suffixes
-    assert "darwin-x86_64" in suffixes
-    assert "windows-x86_64" in suffixes
+    assert suffixes == {
+        "linux-x86_64",
+        "linux-aarch64",
+        "darwin-arm64",
+        "windows-x86_64",
+    }
+    assert "darwin-x86_64" not in suffixes
 
 
 @pytest.mark.parametrize(

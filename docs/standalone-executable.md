@@ -47,7 +47,7 @@ Supported targets:
 | OS | Architectures |
 |----|----------------|
 | linux | `x86_64`, `aarch64` |
-| darwin | `x86_64`, `arm64` |
+| darwin | `arm64` |
 | windows | `x86_64` |
 
 Artifact naming:

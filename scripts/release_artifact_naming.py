@@ -27,7 +27,6 @@ class ReleaseTarget:
 _SUPPORTED_TARGETS: tuple[ReleaseTarget, ...] = (
     ReleaseTarget("linux", "x86_64"),
     ReleaseTarget("linux", "aarch64"),
-    ReleaseTarget("darwin", "x86_64"),
     ReleaseTarget("darwin", "arm64"),
     ReleaseTarget("windows", "x86_64"),
 )
