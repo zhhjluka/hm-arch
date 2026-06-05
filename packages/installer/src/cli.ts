@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+import { realpathSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
 import { runParsedCommand } from "./commands.js";
 import { parseCliArgs, usageText } from "./parse-args.js";
 
@@ -12,6 +15,26 @@ export function main(argv: string[] = process.argv.slice(2)): number {
   return runParsedCommand(parsed);
 }
 
-if (import.meta.main) {
+function isCliEntry(): boolean {
+  if (import.meta.main === true) {
+    return true;
+  }
+  const entry = process.argv[1];
+  if (!entry) {
+    return false;
+  }
+  try {
+    const resolvedEntry = realpathSync(entry);
+    const resolvedModule = realpathSync(fileURLToPath(import.meta.url));
+    if (resolvedEntry === resolvedModule) {
+      return true;
+    }
+    return import.meta.url === pathToFileURL(entry).href;
+  } catch {
+    return /(?:^|[\\/])(?:hm-arch-install|cli\.js)$/.test(entry);
+  }
+}
+
+if (isCliEntry()) {
   process.exit(main());
 }

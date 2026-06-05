@@ -99,7 +99,7 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
 }
 
 export function usageText(): string {
-  return `hm-arch-install — HM-Arch npm installer (scaffold)
+  return `hm-arch-install — HM-Arch npm installer
 
 Usage:
   hm-arch-install install <agent> [--global]
@@ -115,7 +115,8 @@ Environment variables:
   HM_ARCH_PYTHON     Path to a Python 3.10+ interpreter used to create the venv
   HM_ARCH_PIP_SPEC   pip requirement for hm-arch (default: hm-arch==<bundled>)
 
-Note: Agent hook configuration is not implemented yet (MEM-51).
+Agent install/status/doctor/uninstall commands delegate to the managed \`hm-arch\` CLI.
+\`upgrade\` refreshes the managed Python package; with an agent, re-runs \`hm-arch install\`.
 npm postinstall is a no-op; run install explicitly.
 `;
 }
