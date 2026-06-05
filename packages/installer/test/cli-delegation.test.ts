@@ -14,7 +14,11 @@ import {
   runManagedHmArch,
 } from "../src/hm-arch-cli.js";
 import { managedHmArchExecutable } from "../src/paths.js";
-import { hasSupportedPython, withSupportedPythonEnv } from "./test-helpers.js";
+import {
+  hasSupportedPython,
+  withExclusiveEditablePipInstall,
+  withSupportedPythonEnv,
+} from "./test-helpers.js";
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..", "..");
 
@@ -24,7 +28,7 @@ async function runWithManagedEnvHome(home: string, fn: () => void | Promise<void
   process.env.HM_ARCH_HOME = home;
   process.env.HM_ARCH_PIP_SPEC = REPO_ROOT;
   try {
-    await withSupportedPythonEnv(fn);
+    await withExclusiveEditablePipInstall(() => withSupportedPythonEnv(fn));
   } finally {
     if (previousHome === undefined) {
       delete process.env.HM_ARCH_HOME;

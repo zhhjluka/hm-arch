@@ -33,12 +33,11 @@ describe("paths", () => {
     const home = "/tmp/example";
     const root = standaloneBinaryRoot(home);
     const cli = managedStandaloneExecutable(home);
+    assert.equal(root, path.join(home, "standalone"));
     if (process.platform === "win32") {
-      assert.equal(root, "/tmp/example/standalone");
       assert.match(cli, /standalone[\\/]hm-arch\.exe$/);
     } else {
-      assert.equal(root, "/tmp/example/standalone");
-      assert.equal(cli, "/tmp/example/standalone/hm-arch");
+      assert.equal(cli, path.join(home, "standalone", "hm-arch"));
     }
   });
 

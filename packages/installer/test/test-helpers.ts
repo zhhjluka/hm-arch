@@ -25,6 +25,29 @@ export function hasSupportedPython(): boolean {
   return probeSupportedPython() !== null;
 }
 
+/**
+ * Serialize editable ``pip install`` runs against the repo checkout.
+ * Node's test runner executes files in parallel; concurrent wheel builds in the
+ * same source tree race and flake on CI (macOS/Windows).
+ */
+let editablePipInstallChain: Promise<unknown> = Promise.resolve();
+
+export async function withExclusiveEditablePipInstall<T>(
+  fn: () => T | Promise<T>,
+): Promise<T> {
+  const waitFor = editablePipInstallChain;
+  let release!: () => void;
+  editablePipInstallChain = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await waitFor;
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
+}
+
 /** Apply HM_ARCH_PYTHON for tests when a supported interpreter is available. */
 export async function withSupportedPythonEnv<T>(fn: () => T | Promise<T>): Promise<T> {
   const python = probeSupportedPython();

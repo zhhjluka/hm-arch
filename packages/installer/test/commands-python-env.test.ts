@@ -17,7 +17,11 @@ function withTempWorkdir<T>(fn: (workdir: string) => T | Promise<T>): T | Promis
 }
 
 import { runParsedCommand } from "../src/commands.js";
-import { hasSupportedPython, withSupportedPythonEnv } from "./test-helpers.js";
+import {
+  hasSupportedPython,
+  withExclusiveEditablePipInstall,
+  withSupportedPythonEnv,
+} from "./test-helpers.js";
 
 async function runWithManagedEnvHome(home: string, fn: () => void | Promise<void>): Promise<void> {
   const previousHome = process.env.HM_ARCH_HOME;
@@ -27,7 +31,7 @@ async function runWithManagedEnvHome(home: string, fn: () => void | Promise<void
   process.env.HM_ARCH_PIP_SPEC = join(import.meta.dirname, "..", "..", "..");
   process.env.HM_ARCH_RUNTIME = "python";
   try {
-    await withSupportedPythonEnv(fn);
+    await withExclusiveEditablePipInstall(() => withSupportedPythonEnv(fn));
   } finally {
     if (previousHome === undefined) {
       delete process.env.HM_ARCH_HOME;
