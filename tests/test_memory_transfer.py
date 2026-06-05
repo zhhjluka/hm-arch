@@ -12,6 +12,7 @@ from hm_arch.storage.sqlite import SQLiteStore
 from hm_arch.integrations.cli.main import main
 from hm_arch.integrations.config import StorageScope
 from hm_arch.integrations.memory_transfer import (
+    ExportBundle,
     MemoryTransferError,
     export_database,
     import_bundle,
@@ -145,6 +146,71 @@ class TestMemoryExportImport:
         assert first.total_imported > 0
         assert second.total_skipped > 0
         assert second.total_imported == 0
+
+
+def _memory_index_count(db_path: Path) -> int:
+    with SQLiteStore(db_path) as store:
+        row = store.query("SELECT COUNT(*) AS c FROM memory_index")[0]
+    return int(row["c"])
+
+
+class TestImportAtomicity:
+    def test_failed_replace_preserves_existing_rows(self, tmp_path: Path) -> None:
+        target_db = tmp_path / "target-replace.db"
+        _seed_project_memory(target_db, project="/workspace/app")
+        assert _memory_index_count(target_db) == 1
+
+        source_db = tmp_path / "source-replace.db"
+        _seed_project_memory(source_db, project="/workspace/app")
+        bundle = export_database(source_db, storage_scope=StorageScope.PROJECT)
+        bad_row = dict(bundle.tables["memory_index"][0])
+        bad_row["unknown_memory_index_column"] = "bad"
+        bundle = ExportBundle(
+            storage_scope=bundle.storage_scope,
+            schema_version=bundle.schema_version,
+            tables={**bundle.tables, "memory_index": [bad_row]},
+            source_db=bundle.source_db,
+        )
+
+        with pytest.raises(MemoryTransferError, match="unknown columns"):
+            import_bundle(
+                bundle,
+                target_db,
+                target_scope=StorageScope.PROJECT,
+                mode="replace",
+                project_context="/workspace/app",
+            )
+
+        assert _memory_index_count(target_db) == 1
+
+    def test_failed_merge_leaves_no_partial_rows(self, tmp_path: Path) -> None:
+        target_db = tmp_path / "target-merge.db"
+        source_db = tmp_path / "source-merge.db"
+        _seed_project_memory(source_db, project="/workspace/app")
+        bundle = export_database(source_db, storage_scope=StorageScope.PROJECT)
+
+        episode_rows = list(bundle.tables.get("episodes", []))
+        if not episode_rows:
+            pytest.skip("seeded database has no episode rows")
+        bad_episode = dict(episode_rows[0])
+        bad_episode["unknown_episodes_column"] = "bad"
+        bundle = ExportBundle(
+            storage_scope=bundle.storage_scope,
+            schema_version=bundle.schema_version,
+            tables={**bundle.tables, "episodes": [bad_episode]},
+            source_db=bundle.source_db,
+        )
+
+        with pytest.raises(MemoryTransferError, match="unknown columns"):
+            import_bundle(
+                bundle,
+                target_db,
+                target_scope=StorageScope.PROJECT,
+                mode="merge",
+                project_context="/workspace/app",
+            )
+
+        assert _memory_index_count(target_db) == 0
 
 
 class TestLegacyMigration:

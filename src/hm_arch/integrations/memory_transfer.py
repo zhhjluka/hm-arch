@@ -286,16 +286,20 @@ def import_bundle(
     with SQLiteStore(path) as store:
         store.initialize_schema()
         apply_migrations(store)
-        if mode == "replace":
-            _clear_export_tables(store)
+        allowed_columns = _load_table_columns(store)
+        _validate_bundle_columns(bundle, allowed_columns)
 
-        for table in _IMPORT_TABLE_ORDER:
-            for row in bundle.tables.get(table, []):
-                written = _insert_row(store, table, row, mode=mode)
-                if written:
-                    imported[table] += 1
-                else:
-                    skipped[table] += 1
+        with store.transaction():
+            if mode == "replace":
+                _clear_export_tables(store)
+
+            for table in _IMPORT_TABLE_ORDER:
+                for row in bundle.tables.get(table, []):
+                    written = _insert_row(store, table, row, mode=mode)
+                    if written:
+                        imported[table] += 1
+                    else:
+                        skipped[table] += 1
 
     return ImportReport(
         target_scope=target_scope,
@@ -453,9 +457,34 @@ def _validate_referential_integrity(bundle: ExportBundle) -> None:
                 )
 
 
+def _load_table_columns(store: SQLiteStore) -> dict[str, frozenset[str]]:
+    """Return allowed column names per export table from the live schema."""
+    columns: dict[str, frozenset[str]] = {}
+    for table in _EXPORT_TABLES:
+        info = store.query(f"PRAGMA table_info({table})")
+        columns[table] = frozenset(row["name"] for row in info)
+    return columns
+
+
+def _validate_bundle_columns(
+    bundle: ExportBundle,
+    allowed_columns: Mapping[str, frozenset[str]],
+) -> None:
+    """Reject bundle rows whose keys are not in the destination schema."""
+    for table in _EXPORT_TABLES:
+        allowed = allowed_columns[table]
+        for index, row in enumerate(bundle.tables.get(table, [])):
+            unknown = set(row.keys()) - allowed
+            if unknown:
+                raise MemoryTransferError(
+                    f"tables[{table!r}] row {index} has unknown columns: "
+                    f"{sorted(unknown)}"
+                )
+
+
 def _clear_export_tables(store: SQLiteStore) -> None:
     for table in reversed(_IMPORT_TABLE_ORDER):
-        store.execute(f"DELETE FROM {table}")
+        store.execute_no_commit(f"DELETE FROM {table}")
 
 
 def _insert_row(
@@ -475,11 +504,11 @@ def _insert_row(
             f"INSERT OR IGNORE INTO {table} ({col_list}) "
             f"VALUES ({placeholders})"
         )
-        cursor = store.execute(sql, values)
+        cursor = store.execute_no_commit(sql, values)
         return cursor.rowcount > 0
 
     sql = f"INSERT OR REPLACE INTO {table} ({col_list}) VALUES ({placeholders})"
-    store.execute(sql, values)
+    store.execute_no_commit(sql, values)
     return True
 
 

@@ -15,8 +15,9 @@ No external dependencies are required beyond the Python standard library.
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Mapping, Sequence, Union
+from typing import Iterator, Mapping, Sequence, Union
 
 from .migrations import apply_migrations
 
@@ -258,6 +259,25 @@ class SQLiteStore:
         cursor = self._conn.execute(sql, params)  # type: ignore[union-attr]
         self._conn.commit()  # type: ignore[union-attr]
         return cursor
+
+    def execute_no_commit(self, sql: str, params: _Params = ()) -> sqlite3.Cursor:
+        """Execute SQL without committing (for use inside :meth:`transaction`)."""
+        self._require_connection()
+        return self._conn.execute(sql, params)  # type: ignore[union-attr]
+
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        """Run a block of writes atomically; roll back on any exception."""
+        self._require_connection()
+        conn = self._conn
+        assert conn is not None
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            yield
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
     def query(self, sql: str, params: _Params = ()) -> list[sqlite3.Row]:
         """Execute a SELECT statement and return all matching rows.
