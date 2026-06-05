@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -159,6 +160,37 @@ class TestBackupRestoreRepair:
             result = memory.search("Recovery workflow", min_retention=0.0)
 
         assert any(item.memory_id == memory_id for item in result.results)
+
+    def test_failed_restore_preserves_existing_target(self, tmp_path: Path) -> None:
+        source_db = tmp_path / "source.db"
+        target_db = tmp_path / "target.db"
+        backup_dir = tmp_path / "backup"
+
+        with HMArch(config=MemoryConfig(db_path=str(source_db))) as memory:
+            memory.add(
+                "SOURCE MEMORY SHOULD NOT MATTER",
+                event_type=EventType.OBSERVATION,
+            )
+        with HMArch(config=MemoryConfig(db_path=str(target_db))) as memory:
+            memory.add(
+                "TARGET MEMORY MUST SURVIVE FAILED RESTORE",
+                event_type=EventType.OBSERVATION,
+            )
+
+        backup_database(source_db, backup_dir, storage_scope=StorageScope.PROJECT)
+
+        manifest_path = backup_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["files"].append("source.db-wal")
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        with pytest.raises(DatabaseRecoveryError, match="backup file missing"):
+            restore_database(backup_dir, target_db, confirm=True)
+
+        assert target_db.exists()
+        with sqlite3.connect(target_db) as conn:
+            rows = conn.execute("SELECT content FROM episodes").fetchall()
+        assert any("TARGET MEMORY MUST SURVIVE FAILED RESTORE" in row[0] for row in rows)
 
     def test_restore_requires_confirm(self, tmp_path: Path) -> None:
         source_db = tmp_path / "source.db"

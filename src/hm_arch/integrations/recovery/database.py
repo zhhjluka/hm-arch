@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import sqlite3
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -151,35 +152,54 @@ def restore_database(
     if not isinstance(files, list) or not files:
         raise DatabaseRecoveryError("backup manifest contains no files")
 
-    target = Path(target_db)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    replaced = target.exists()
-
     main_name = _main_db_filename(files)
     if main_name is None:
         raise DatabaseRecoveryError("backup manifest does not list a .db file")
 
-    # Remove stale sidecars before restore.
-    for sidecar in _db_sidecar_paths(target):
-        if sidecar.exists():
-            sidecar.unlink()
-
-    restored: list[str] = []
+    backup_sources: list[tuple[str, Path]] = []
     for name in files:
         src = source_dir / str(name)
         if not src.exists():
             raise DatabaseRecoveryError(f"backup file missing: {src}")
-        suffix = str(name)[len(main_name) :]
-        dest = Path(str(target) + suffix)
-        shutil.copy2(src, dest)
-        restored.append(str(name))
+        backup_sources.append((str(name), src))
 
-    with SQLiteStore(target) as store:
-        integrity = _integrity_check(store)
-        if integrity != "ok":
-            raise DatabaseRecoveryError(
-                f"restored database failed integrity check: {integrity}"
-            )
+    target = Path(target_db)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    replaced = target.exists()
+
+    restored: list[str] = []
+    restored_suffixes: set[str] = set()
+    with tempfile.TemporaryDirectory(
+        prefix=".hm-arch-restore-",
+        dir=target.parent,
+    ) as staging_dir_name:
+        staging_dir = Path(staging_dir_name)
+        staged_main = staging_dir / target.name
+
+        for name, src in backup_sources:
+            suffix = name[len(main_name) :]
+            staged_path = staging_dir / (target.name + suffix)
+            shutil.copy2(src, staged_path)
+            restored.append(name)
+            restored_suffixes.add(suffix)
+
+        with SQLiteStore(staged_main) as store:
+            integrity = _integrity_check(store)
+            if integrity != "ok":
+                raise DatabaseRecoveryError(
+                    f"restored database failed integrity check: {integrity}"
+                )
+
+        for name, _src in backup_sources:
+            suffix = name[len(main_name) :]
+            staged_path = staging_dir / (target.name + suffix)
+            final_path = Path(str(target) + suffix)
+            os.replace(staged_path, final_path)
+
+    for sidecar in _db_sidecar_paths(target):
+        suffix = "" if sidecar == target else sidecar.name[len(target.name) :]
+        if suffix not in restored_suffixes and sidecar.exists():
+            sidecar.unlink()
 
     return RestoreReport(
         backup_dir=str(source_dir),
