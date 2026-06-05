@@ -21,6 +21,8 @@ def _field_names(cls: type) -> set[str]:
 
 REQUIRED_FIELDS = {
     "db_path",
+    "global_db_path",
+    "project_db_path",
     "scope",
     "recall_top_k",
     "max_context_chars",
@@ -87,12 +89,21 @@ def test_to_memory_config_preserves_offline_defaults() -> None:
 def test_global_scope_uses_configured_db_path() -> None:
     cfg = IntegrationConfig(
         scope=StorageScope.GLOBAL,
-        db_path="~/.hm-arch/global.db",
+        global_db_path="~/.hm-arch/global.db",
     )
     assert cfg.scope is StorageScope.GLOBAL
-    assert cfg.resolve_db_path(os.path.expanduser) == os.path.expanduser(
-        "~/.hm-arch/global.db"
+    assert cfg.resolve_db_path(
+        os.path.expanduser,
+        scope=StorageScope.GLOBAL,
+    ) == os.path.expanduser("~/.hm-arch/global.db")
+
+
+def test_project_scope_uses_configured_db_path() -> None:
+    cfg = IntegrationConfig(
+        scope=StorageScope.PROJECT,
+        project_db_path="./repo/.hm-arch/memory.db",
     )
+    assert cfg.resolve_db_path(scope=StorageScope.PROJECT) == "./repo/.hm-arch/memory.db"
 
 
 @pytest.mark.parametrize("bad_top_k", [0, -1])
