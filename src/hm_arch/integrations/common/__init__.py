@@ -14,11 +14,19 @@ from .payload import (
     extract_task_from_payload,
     extract_user_message,
 )
-from .recall import build_turn_start_context
+from .recall import (
+    apply_recall_context_limits,
+    build_turn_start_context,
+    deduplicate_recall_hits,
+    truncate_recall_context,
+)
 from .record import record_turn_end
 
 __all__ = [
+    "apply_recall_context_limits",
     "build_turn_start_context",
+    "deduplicate_recall_hits",
+    "truncate_recall_context",
     "extract_agent_message",
     "extract_task_from_payload",
     "extract_user_message",

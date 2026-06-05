@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Mapping, Optional
 
 from hm_arch import EventType, HMArch
 from hm_arch.integrations.common import (
+    apply_recall_context_limits,
     build_turn_start_context,
     record_turn_end,
     run_idle_consolidation,
@@ -399,12 +400,13 @@ class HMArchHermesMemoryProvider:
             return ""
         memory = self._require_memory()
         hits = self._search_hits(query, top_k=self._integration.recall_top_k)
-        context = build_turn_start_context(
-            memory,
-            query,
-            top_k=self._integration.recall_top_k,
-            hits=hits,
+        context, _ = apply_recall_context_limits(
+            build_turn_start_context(
+                memory,
+                query,
+                top_k=self._integration.recall_top_k,
+                hits=hits,
+            ),
+            self._integration.max_context_chars,
         )
-        if len(context) <= self._integration.max_context_chars:
-            return context
-        return context[: self._integration.max_context_chars - 3].rstrip() + "..."
+        return context
