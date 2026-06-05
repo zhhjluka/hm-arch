@@ -57,6 +57,17 @@ function compareVersion(major: number, minor: number, minimum: string): boolean 
  * Probe common Python executables without throwing.
  * ``overrides`` supports tests (inject a fake probe function).
  */
+function defaultPythonExecutables(envPython: string | undefined): string[] {
+  return (envPython ? [envPython] : []).concat([
+    "python3.13",
+    "python3.12",
+    "python3.11",
+    "python3.10",
+    "python3",
+    "python",
+  ]);
+}
+
 export function probePython(
   overrides?: Partial<{
     executables: string[];
@@ -66,8 +77,7 @@ export function probePython(
 ): PythonProbe | null {
   const envPython = overrides?.envPython ?? process.env.HM_ARCH_PYTHON;
   const executables =
-    overrides?.executables ??
-    (envPython ? [envPython] : []).concat(["python3", "python"]);
+    overrides?.executables ?? defaultPythonExecutables(envPython);
   const run =
     overrides?.run ??
     ((executable: string) =>
@@ -81,6 +91,42 @@ export function probePython(
       const output = run(executable);
       const parsed = parsePythonVersion(output);
       if (parsed) {
+        return { executable, ...parsed };
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+  return null;
+}
+
+/**
+ * Find a Python interpreter that satisfies ``MIN_PYTHON``.
+ * Prefers ``HM_ARCH_PYTHON``, then version-suffixed binaries before generic ``python3``.
+ */
+export function probeSupportedPython(
+  overrides?: Partial<{
+    executables: string[];
+    run: (executable: string) => string;
+    envPython: string | undefined;
+  }>,
+): PythonProbe | null {
+  const envPython = overrides?.envPython ?? process.env.HM_ARCH_PYTHON;
+  const executables =
+    overrides?.executables ?? defaultPythonExecutables(envPython);
+  const run =
+    overrides?.run ??
+    ((executable: string) =>
+      execFileSync(executable, ["--version"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      }));
+
+  for (const executable of executables) {
+    try {
+      const output = run(executable);
+      const parsed = parsePythonVersion(output);
+      if (parsed && compareVersion(parsed.major, parsed.minor, MIN_PYTHON)) {
         return { executable, ...parsed };
       }
     } catch {

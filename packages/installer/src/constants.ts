@@ -19,5 +19,11 @@ export const MIN_NODE_MAJOR = 18;
 /** Minimum Python version (major.minor) required by the HM-Arch Python package. */
 export const MIN_PYTHON = "3.10";
 
+/** Environment variable overriding the managed-runtime home directory. */
+export const ENV_HM_ARCH_HOME = "HM_ARCH_HOME";
+
+/** Environment variable overriding the pip requirement for hm-arch. */
+export const ENV_HM_ARCH_PIP_SPEC = "HM_ARCH_PIP_SPEC";
+
 /** OS families the installer is designed to support (v1.2.0). */
 export const SUPPORTED_OS = new Set(["darwin", "linux", "win32"]);
