@@ -5,6 +5,7 @@ adapters for Codex, Claude Code, and Hermes Agent memory provider integrations.
 """
 
 from .config import IntegrationConfig, StorageScope
+from .cross_store_search import MemorySearchFilters, dual_store_enabled, search_cross_stores
 from .storage_router import MemoryStoreRouter
 from .protocol import (
     AdapterOperation,
@@ -27,7 +28,10 @@ __all__ = [
     "ConsolidateRequest",
     "ConsolidateResponse",
     "IntegrationConfig",
+    "MemorySearchFilters",
     "MemoryStoreRouter",
+    "dual_store_enabled",
+    "search_cross_stores",
     "ProtocolValidationError",
     "RecallRequest",
     "RecallResponse",
