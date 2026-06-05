@@ -29,6 +29,16 @@ class MemoryConfig:
     ``":memory:"``)."""
 
     # -------------------------------------------------------------------
+    # SQLite concurrency (multi-agent / multi-process access)
+    # -------------------------------------------------------------------
+    sqlite_busy_timeout_ms: int = 30_000
+    """SQLite ``busy_timeout`` and connection timeout in milliseconds."""
+    sqlite_lock_retries: int = 5
+    """Application-level retries for transient ``database is locked`` errors."""
+    sqlite_lock_retry_base_delay_s: float = 0.05
+    """Initial backoff between lock retries (doubled up to 1s per attempt)."""
+
+    # -------------------------------------------------------------------
     # Decay - L2 bi-exponential, hours
     # -------------------------------------------------------------------
     l2_fast_tau: float = 24.0

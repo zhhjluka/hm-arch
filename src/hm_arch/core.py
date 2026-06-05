@@ -325,7 +325,12 @@ class HMArch:
         self._config = config
         self._time = time_provider or SystemTimeProvider()
 
-        self._db = SQLiteStore(self._config.db_path)
+        self._db = SQLiteStore(
+            self._config.db_path,
+            busy_timeout_ms=self._config.sqlite_busy_timeout_ms,
+            lock_retries=self._config.sqlite_lock_retries,
+            lock_retry_base_delay_s=self._config.sqlite_lock_retry_base_delay_s,
+        )
         self._db.connect()
         self._db.initialize_schema()
 
