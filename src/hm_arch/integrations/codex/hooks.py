@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 from hm_arch.integrations.common import (
+    apply_recall_context_limits,
     build_turn_start_context,
     extract_agent_message,
     extract_task_from_payload,
@@ -15,6 +16,7 @@ from hm_arch.integrations.common import (
     record_turn_end,
     run_idle_consolidation,
 )
+from hm_arch.integrations.config import IntegrationConfig
 
 
 def _emit_additional_context(context: str) -> None:
@@ -38,8 +40,16 @@ def codex_turn_start_hook(
     payload = payload if payload is not None else read_hook_payload()
     task = extract_task_from_payload(payload)
 
-    with open_memory(db_path) as memory:
-        context = build_turn_start_context(memory, task)
+    config = IntegrationConfig(db_path=db_path) if db_path else IntegrationConfig()
+    with open_memory(db_path, config=config) as memory:
+        context, _ = apply_recall_context_limits(
+            build_turn_start_context(
+                memory,
+                task,
+                top_k=config.recall_top_k,
+            ),
+            config.max_context_chars,
+        )
 
     if payload:
         _emit_additional_context(context)

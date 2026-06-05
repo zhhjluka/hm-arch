@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from hm_arch.integrations.common import (
+    apply_recall_context_limits,
     build_turn_start_context,
     record_turn_end,
     run_idle_consolidation,
@@ -35,15 +36,15 @@ def execute_recall(request: RecallRequest) -> RecallResponse:
         router = MemoryStoreRouter(config)
         hits = router.search(request.task, top_k=top_k)
         with router.open() as memory:
-            context = build_turn_start_context(
-                memory,
-                request.task,
-                top_k=top_k,
-                hits=hits,
+            context, truncated = apply_recall_context_limits(
+                build_turn_start_context(
+                    memory,
+                    request.task,
+                    top_k=top_k,
+                    hits=hits,
+                ),
+                config.max_context_chars,
             )
-            truncated = len(context) > config.max_context_chars
-            if truncated:
-                context = context[: config.max_context_chars]
             return RecallResponse(
                 ok=True,
                 context=context,
