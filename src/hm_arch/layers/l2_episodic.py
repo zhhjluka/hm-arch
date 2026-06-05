@@ -37,7 +37,12 @@ from ..forgetting.strength import encode_current_retention
 from ..forgetting.time import SystemTimeProvider, TimeProvider
 from ..storage.sqlite import SQLiteStore
 from ..storage.vector import LocalVectorStore, VectorStoreProtocol
-from ..types import EventType
+from ..provenance import (
+    build_provenance,
+    parse_provenance_row,
+    provenance_column_values,
+)
+from ..types import EventType, MemoryProvenance
 
 
 __all__ = [
@@ -89,6 +94,7 @@ class EpisodicItem:
     relevance: float
     created_at: datetime
     metadata: dict = field(default_factory=dict)
+    provenance: MemoryProvenance | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +181,11 @@ class L2EpisodicBuffer:
         initial_strength: float | None = None,
         strength_max: float | None = None,
         context_window: str | None = None,
+        provenance: MemoryProvenance | None = None,
+        *,
+        agent: str | None = None,
+        project: str | None = None,
+        session: str | None = None,
     ) -> str:
         """Persist a raw event as an L2 episodic memory.
 
@@ -224,7 +235,26 @@ class L2EpisodicBuffer:
         event_type_str = (
             event_type.value if isinstance(event_type, EventType) else str(event_type)
         )
-        meta_str = json.dumps(dict(metadata) if metadata is not None else {})
+        if provenance is None and any(
+            value is not None for value in (agent, project, session)
+        ):
+            provenance = build_provenance(
+                agent=agent,
+                project=project,
+                session=session,
+                memory_type=event_type_str,
+                created_at=self._time.now(),
+            )
+        elif provenance is None:
+            provenance = build_provenance(
+                memory_type=event_type_str,
+                created_at=self._time.now(),
+            )
+        merged_metadata = dict(metadata) if metadata is not None else {}
+        meta_str = json.dumps(merged_metadata)
+        prov_agent, prov_project, prov_session, memory_type = (
+            provenance_column_values(provenance)
+        )
         content_hash = hashlib.sha256(content.encode()).hexdigest()
         retention = encode_current_retention(strength)
 
@@ -234,8 +264,10 @@ class L2EpisodicBuffer:
             INSERT INTO memory_index (
                 id, layer, created_at, updated_at, importance,
                 initial_strength, current_retention, status,
-                tags, metadata, content_hash
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                tags, metadata, content_hash,
+                provenance_agent, provenance_project, provenance_session,
+                memory_type
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 mid,
@@ -249,6 +281,10 @@ class L2EpisodicBuffer:
                 "[]",
                 meta_str,
                 content_hash,
+                prov_agent,
+                prov_project,
+                prov_session,
+                memory_type,
             ),
         )
 
@@ -334,6 +370,10 @@ class L2EpisodicBuffer:
                     relevance=hit.score,
                     created_at=_parse_iso(row["created_at"]),
                     metadata=json.loads(row["metadata"] or "{}"),
+                    provenance=parse_provenance_row(
+                        row,
+                        fallback_memory_type=row["event_type"],
+                    ),
                 )
             )
         return items
@@ -371,6 +411,10 @@ class L2EpisodicBuffer:
                    mi.importance,
                    mi.current_retention,
                    mi.metadata,
+                   mi.provenance_agent,
+                   mi.provenance_project,
+                   mi.provenance_session,
+                   mi.memory_type,
                    e.content,
                    e.event_type
             FROM   memory_index mi
@@ -390,6 +434,10 @@ class L2EpisodicBuffer:
             "importance": r["importance"],
             "current_retention": r["current_retention"],
             "metadata": r["metadata"],
+            "provenance_agent": r["provenance_agent"],
+            "provenance_project": r["provenance_project"],
+            "provenance_session": r["provenance_session"],
+            "memory_type": r["memory_type"],
             "content": r["content"],
             "event_type": r["event_type"],
         }

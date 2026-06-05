@@ -51,7 +51,11 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from ..config import MemoryConfig
+from ..provenance import (
+    build_provenance,
+    parse_provenance_row,
+    provenance_column_values,
+)
 from ..forgetting.strength import (
     StrengthFactors,
     apply_conflict_superseded_penalty,
@@ -70,6 +74,7 @@ from ..storage.vector import (
     _token_overlap_score,
     _tokenize,
 )
+from ..types import MemoryProvenance
 
 
 __all__ = [
@@ -120,6 +125,8 @@ class SemanticFact:
         List of L2 ``memory_id`` strings that provide evidence for this fact.
     metadata:
         Arbitrary caller-supplied key/value pairs stored in ``memory_index``.
+    provenance:
+        Optional origin metadata for the semantic fact.
     """
 
     memory_id: str
@@ -134,6 +141,7 @@ class SemanticFact:
     retention: float = 1.0
     source_episodes: list[str] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
+    provenance: MemoryProvenance | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -350,11 +358,15 @@ class L3SemanticMemory:
             strength_max=s_max,
             retrieval_increment=retrieval_inc,
         )
+        provenance = self._resolve_provenance_for_upsert(source_episodes)
         meta_str = json.dumps(
             merge_metadata_with_strength(
                 dict(metadata) if metadata is not None else {},
                 factors,
             )
+        )
+        prov_agent, prov_project, prov_session, memory_type = (
+            provenance_column_values(provenance)
         )
         current_retention = encode_current_retention(initial_strength)
 
@@ -363,8 +375,10 @@ class L3SemanticMemory:
             INSERT INTO memory_index (
                 id, layer, created_at, updated_at, importance,
                 initial_strength, current_retention, status,
-                tags, metadata, content_hash
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                tags, metadata, content_hash,
+                provenance_agent, provenance_project, provenance_session,
+                memory_type
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 mid,
@@ -378,6 +392,10 @@ class L3SemanticMemory:
                 "[]",
                 meta_str,
                 None,
+                prov_agent,
+                prov_project,
+                prov_session,
+                memory_type,
             ),
         )
 
@@ -526,6 +544,7 @@ class L3SemanticMemory:
                     retention=row["current_retention"],
                     source_episodes=json.loads(row["source_episodes"] or "[]"),
                     metadata=json.loads(row["metadata"] or "{}"),
+                    provenance=parse_provenance_row(row, fallback_memory_type="semantic"),
                 )
             )
             if len(results) >= top_k:
@@ -551,6 +570,10 @@ class L3SemanticMemory:
                    mi.current_retention,
                    mi.status,
                    mi.metadata,
+                   mi.provenance_agent,
+                   mi.provenance_project,
+                   mi.provenance_session,
+                   mi.memory_type,
                    s.entity,
                    s.relation,
                    s.value,
@@ -584,6 +607,7 @@ class L3SemanticMemory:
             retention=r["current_retention"],
             source_episodes=json.loads(r["source_episodes"] or "[]"),
             metadata=json.loads(r["metadata"] or "{}"),
+            provenance=parse_provenance_row(r, fallback_memory_type="semantic"),
         )
 
     def merge_redundant_active_pairs(self, threshold: float) -> int:
@@ -830,6 +854,38 @@ class L3SemanticMemory:
             for r in rows
         ]
 
+    def _resolve_provenance_for_upsert(
+        self,
+        source_episodes: list[str] | None,
+    ) -> MemoryProvenance:
+        """Inherit provenance from source L2 episodes when available."""
+        if source_episodes:
+            rows = self._db.query(
+                """
+                SELECT created_at,
+                       provenance_agent,
+                       provenance_project,
+                       provenance_session,
+                       memory_type,
+                       metadata
+                FROM   memory_index
+                WHERE  id = ?
+                """,
+                (source_episodes[0],),
+            )
+            if rows:
+                inherited = parse_provenance_row(rows[0])
+                if inherited is not None:
+                    return inherited
+                return build_provenance(
+                    memory_type="semantic",
+                    created_at=_parse_iso(rows[0]["created_at"]),
+                )
+        return build_provenance(
+            memory_type="semantic",
+            created_at=self._time.now(),
+        )
+
     def _fetch_semantic_row(self, memory_id: str) -> dict | None:
         """Fetch a joined memory_index + semantics row for *memory_id*.
 
@@ -843,6 +899,10 @@ class L3SemanticMemory:
                    mi.current_retention,
                    mi.status,
                    mi.metadata,
+                   mi.provenance_agent,
+                   mi.provenance_project,
+                   mi.provenance_session,
+                   mi.memory_type,
                    s.entity,
                    s.relation,
                    s.value,
@@ -867,6 +927,10 @@ class L3SemanticMemory:
             "current_retention": r["current_retention"],
             "status": r["status"],
             "metadata": r["metadata"],
+            "provenance_agent": r["provenance_agent"],
+            "provenance_project": r["provenance_project"],
+            "provenance_session": r["provenance_session"],
+            "memory_type": r["memory_type"],
             "entity": r["entity"],
             "relation": r["relation"],
             "value": r["value"],

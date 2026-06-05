@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Iterator, Optional, Union
 
 from .config import MemoryConfig
+from .provenance import build_provenance, parse_provenance_row
 from .consolidation.replay import ConsolidationEngine, SemanticExtractor
 from .providers import create_vector_store, resolve_llm_provider
 from .providers.semantic import ProviderSemanticExtractor
@@ -72,6 +73,7 @@ from .types import (
     EventType,
     ForgetResult,
     MemoryItem,
+    MemoryProvenance,
     MemoryReceipt,
     MemoryStats,
     RetentionCurve,
@@ -226,6 +228,46 @@ def _database_size_mb(db: SQLiteStore) -> float:
     return (pages * page_size) / (1024 * 1024)
 
 
+def _load_provenance(
+    db: SQLiteStore,
+    memory_id: str,
+    *,
+    fallback_memory_type: str | None = None,
+) -> MemoryProvenance | None:
+    rows = db.query(
+        """
+        SELECT created_at,
+               provenance_agent,
+               provenance_project,
+               provenance_session,
+               memory_type,
+               metadata
+        FROM   memory_index
+        WHERE  id = ?
+        """,
+        (memory_id,),
+    )
+    if not rows:
+        return None
+    return parse_provenance_row(rows[0], fallback_memory_type=fallback_memory_type)
+
+
+def _provenance_for_item_metadata(
+    db: SQLiteStore,
+    metadata: dict,
+    *,
+    fallback_memory_type: str | None = None,
+) -> MemoryProvenance | None:
+    source_id = metadata.get("source_l2_memory_id")
+    if isinstance(source_id, str) and source_id:
+        return _load_provenance(
+            db,
+            source_id,
+            fallback_memory_type=fallback_memory_type,
+        )
+    return None
+
+
 class HMArch:
     """Public facade for the HM-Arch memory SDK.
 
@@ -329,6 +371,10 @@ class HMArch:
         event_type: EventType = EventType.CONVERSATION,
         metadata: Optional[dict] = None,
         importance: Optional[float] = None,
+        *,
+        agent: str | None = None,
+        project: str | None = None,
+        session: str | None = None,
     ) -> MemoryReceipt:
         """Store *content* in L0, L1, and the episodic buffer (L2).
 
@@ -348,6 +394,12 @@ class HMArch:
         importance:
             Importance score in ``[0, 1]``.  When omitted the L2 layer
             default (``0.5``) is applied.
+        agent:
+            Optional agent name recorded as provenance.
+        project:
+            Optional project path or identifier recorded as provenance.
+        session:
+            Optional host-agent session identifier recorded as provenance.
 
         Returns
         -------
@@ -391,6 +443,13 @@ class HMArch:
             retrieval_increment=retrieval_inc,
         )
         merged_meta = merge_metadata_with_strength(metadata, factors)
+        provenance = build_provenance(
+            agent=agent,
+            project=project,
+            session=session,
+            memory_type=event_type.value,
+            created_at=self._time.now(),
+        )
 
         # L2 episodic buffer — persisted to SQLite, survives restarts
         l2_mid = self._l2.encode(
@@ -401,6 +460,7 @@ class HMArch:
             emotion_score=emotion,
             initial_strength=strength,
             strength_max=strength_max,
+            provenance=provenance,
         )
 
         l0_meta = dict(metadata) if metadata is not None else {}
@@ -427,6 +487,7 @@ class HMArch:
             initial_strength=strength,
             decay_estimate=decay_estimate,
             consolidation_scheduled=self._time.now(),
+            provenance=provenance,
         )
         self._run_lifecycle_tick()
         return receipt
@@ -518,6 +579,7 @@ class HMArch:
                     relevance=rel,
                     score=score,
                     metadata=item.metadata,
+                    provenance=_provenance_for_item_metadata(self._db, item.metadata),
                 )
             )
 
@@ -546,6 +608,7 @@ class HMArch:
                     relevance=rel,
                     score=score,
                     metadata=item.metadata,
+                    provenance=_load_provenance(self._db, item.memory_id),
                 )
             )
 
@@ -568,6 +631,7 @@ class HMArch:
                     relevance=item.relevance,
                     score=score,
                     metadata=item.metadata,
+                    provenance=item.provenance,
                 )
             )
 
@@ -591,6 +655,7 @@ class HMArch:
                     relevance=item.relevance,
                     score=score,
                     metadata=item.metadata,
+                    provenance=item.provenance,
                 )
             )
 
@@ -626,6 +691,11 @@ class HMArch:
                     relevance=rel,
                     score=score,
                     metadata=metadata,
+                    provenance=_load_provenance(
+                        self._db,
+                        record.memory_id,
+                        fallback_memory_type="archived",
+                    ),
                 )
             )
 
@@ -1050,6 +1120,7 @@ class HMArch:
                         relevance=item.relevance,
                         score=item.score * _HOT_MEMORY_SCORE_BOOST,
                         metadata=item.metadata,
+                        provenance=item.provenance,
                     )
                 )
             else:
