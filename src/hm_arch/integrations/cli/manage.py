@@ -15,6 +15,9 @@ from hm_arch.integrations.management.types import (
     IntegrationReport,
     IntegrationState,
 )
+from hm_arch.integrations.recovery.diagnostics import RecoveryLogger, RecoveryPhase
+from hm_arch.integrations.recovery.doctor_fix import apply_safe_fixes
+from hm_arch.integrations.recovery.database import storage_diagnostics
 
 
 def add_manage_parsers(subparsers: argparse._SubParsersAction) -> None:
@@ -82,6 +85,17 @@ def add_manage_parsers(subparsers: argparse._SubParsersAction) -> None:
         dest="global_install",
         action="store_true",
         help="Diagnose user-global agent configuration (Codex and Claude Code).",
+    )
+    doctor_parser.add_argument(
+        "--fix",
+        action="store_true",
+        help="Apply safe repairs for partial or misconfigured integrations.",
+    )
+    doctor_parser.add_argument(
+        "--json",
+        dest="structured_logs",
+        action="store_true",
+        help="Emit structured JSON diagnostic lines to stderr.",
     )
 
 
@@ -233,12 +247,31 @@ def run_status_command(args: argparse.Namespace) -> int:
 
 
 def run_doctor_command(args: argparse.Namespace) -> int:
+    logger = RecoveryLogger(
+        RecoveryPhase.DOCTOR_FIX if args.fix else RecoveryPhase.DOCTOR,
+        structured=args.structured_logs,
+    )
     exit_code = 0
+
+    if args.fix:
+        fix_report = apply_safe_fixes(
+            agent=args.agent,
+            global_install=args.global_install,
+            logger=logger,
+        )
+        if fix_report.applied_count:
+            print(
+                f"Applied {fix_report.applied_count} safe repair(s).",
+                file=sys.stderr,
+            )
+
     for agent in _agents_for_args(args.agent):
         report = get_agent_handler(agent).doctor(
             global_install=args.global_install,
         )
         _print_report(report)
+        for item in report.diagnostics:
+            logger.log_diagnostic(item, agent=agent)
         if report.has_errors:
             exit_code = 1
         elif report.state in {
@@ -251,4 +284,16 @@ def run_doctor_command(args: argparse.Namespace) -> int:
                 for item in report.diagnostics
             ):
                 exit_code = 1
+
+    storage_scope = "storage"
+    print(f"{storage_scope}: diagnostics", file=sys.stderr)
+    for item in storage_diagnostics():
+        prefix = item.level.value.upper()
+        print(f"  [{prefix}] {item.message}", file=sys.stderr)
+        if item.remedy:
+            print(f"         -> {item.remedy}", file=sys.stderr)
+        logger.log_diagnostic(item, scope=storage_scope)
+        if item.level == DiagnosticLevel.ERROR:
+            exit_code = 1
+
     return exit_code

@@ -7,6 +7,7 @@ import json
 import sys
 
 from hm_arch.integrations.config import IntegrationConfig, StorageScope
+from hm_arch.integrations.management.types import DiagnosticLevel
 from hm_arch.integrations.memory_transfer import (
     MemoryTransferError,
     export_database,
@@ -16,6 +17,13 @@ from hm_arch.integrations.memory_transfer import (
     resolve_transfer_db_path,
     write_export_file,
 )
+from hm_arch.integrations.recovery.database import (
+    DatabaseRecoveryError,
+    backup_database,
+    repair_database,
+    restore_database,
+)
+from hm_arch.integrations.recovery.diagnostics import RecoveryLogger, RecoveryPhase
 
 
 def add_memory_parsers(subparsers: argparse._SubParsersAction) -> None:
@@ -113,6 +121,71 @@ def add_memory_parsers(subparsers: argparse._SubParsersAction) -> None:
         help="Report the split without writing destination databases.",
     )
 
+    backup_parser = memory_sub.add_parser(
+        "backup",
+        help="Create a filesystem backup of a SQLite memory database and WAL sidecars.",
+    )
+    backup_parser.add_argument(
+        "-o",
+        "--output",
+        required=True,
+        help="Destination backup directory.",
+    )
+    backup_parser.add_argument(
+        "--scope",
+        choices=[s.value for s in StorageScope],
+        default=StorageScope.PROJECT.value,
+        help="Storage scope label for the backup manifest (default: project).",
+    )
+    backup_parser.add_argument(
+        "--db",
+        help="SQLite database path (defaults from integration config).",
+    )
+
+    restore_parser = memory_sub.add_parser(
+        "restore",
+        help="Restore a filesystem backup into a SQLite memory database.",
+    )
+    restore_parser.add_argument(
+        "backup_dir",
+        help="Backup directory created by hm-arch memory backup.",
+    )
+    restore_parser.add_argument(
+        "--target-scope",
+        choices=[s.value for s in StorageScope],
+        required=True,
+        help="Scope of the destination store (project or global).",
+    )
+    restore_parser.add_argument(
+        "--db",
+        help="Destination SQLite path (defaults from integration config).",
+    )
+    restore_parser.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Required to overwrite an existing destination database.",
+    )
+
+    repair_parser = memory_sub.add_parser(
+        "repair",
+        help="Run non-destructive integrity checks and schema repair.",
+    )
+    repair_parser.add_argument(
+        "--scope",
+        choices=[s.value for s in StorageScope],
+        default=StorageScope.PROJECT.value,
+        help="Storage scope to repair (default: project).",
+    )
+    repair_parser.add_argument(
+        "--db",
+        help="SQLite database path (defaults from integration config).",
+    )
+    repair_parser.add_argument(
+        "--vacuum",
+        action="store_true",
+        help="Run VACUUM after a successful integrity check.",
+    )
+
 
 def run_memory_command(args: argparse.Namespace) -> int:
     if args.memory_command == "export":
@@ -121,6 +194,12 @@ def run_memory_command(args: argparse.Namespace) -> int:
         return _run_import(args)
     if args.memory_command == "migrate":
         return _run_migrate(args)
+    if args.memory_command == "backup":
+        return _run_backup(args)
+    if args.memory_command == "restore":
+        return _run_restore(args)
+    if args.memory_command == "repair":
+        return _run_repair(args)
     return 2
 
 
@@ -207,6 +286,108 @@ def _run_migrate(args: argparse.Namespace) -> int:
         f"{report.global_rows} global rows -> {report.global_db}, "
         f"{report.project_rows} project rows -> {report.project_db} "
         f"(context={report.project_context})",
+        file=sys.stderr,
+    )
+    return 0
+
+
+def _run_backup(args: argparse.Namespace) -> int:
+    config = _integration_config()
+    scope = StorageScope(args.scope)
+    db_path = resolve_transfer_db_path(config, scope=scope, explicit_db=args.db)
+    logger = RecoveryLogger(RecoveryPhase.BACKUP)
+    try:
+        report = backup_database(db_path, args.output, storage_scope=scope)
+    except (DatabaseRecoveryError, OSError) as exc:
+        logger.log("backup.failed", level=DiagnosticLevel.ERROR, message=str(exc))
+        print(f"memory backup failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger.log(
+        "backup.completed",
+        level=DiagnosticLevel.INFO,
+        message=f"Backed up {report.memory_row_count} memories from {report.source_db}",
+        files=list(report.files_copied),
+        backup_dir=report.backup_dir,
+    )
+    print(
+        f"Backed up {report.memory_row_count} memories from {report.source_db} "
+        f"-> {report.backup_dir} ({', '.join(report.files_copied)})",
+        file=sys.stderr,
+    )
+    return 0
+
+
+def _run_restore(args: argparse.Namespace) -> int:
+    config = _integration_config()
+    target_scope = StorageScope(args.target_scope)
+    db_path = resolve_transfer_db_path(
+        config,
+        scope=target_scope,
+        explicit_db=args.db,
+    )
+    logger = RecoveryLogger(RecoveryPhase.RESTORE)
+    try:
+        report = restore_database(args.backup_dir, db_path, confirm=args.confirm)
+    except (DatabaseRecoveryError, OSError) as exc:
+        logger.log("restore.failed", level=DiagnosticLevel.ERROR, message=str(exc))
+        print(f"memory restore failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger.log(
+        "restore.completed",
+        level=DiagnosticLevel.INFO,
+        message=f"Restored backup into {report.target_db}",
+        files=list(report.files_restored),
+        replaced_existing=report.replaced_existing,
+    )
+    print(
+        f"Restored {len(report.files_restored)} file(s) into {report.target_db}"
+        f"{' (replaced existing database)' if report.replaced_existing else ''}",
+        file=sys.stderr,
+    )
+    return 0
+
+
+def _run_repair(args: argparse.Namespace) -> int:
+    config = _integration_config()
+    scope = StorageScope(args.scope)
+    db_path = resolve_transfer_db_path(config, scope=scope, explicit_db=args.db)
+    logger = RecoveryLogger(RecoveryPhase.REPAIR)
+    try:
+        report = repair_database(db_path, vacuum=args.vacuum)
+    except (DatabaseRecoveryError, OSError) as exc:
+        logger.log("repair.failed", level=DiagnosticLevel.ERROR, message=str(exc))
+        print(f"memory repair failed: {exc}", file=sys.stderr)
+        return 1
+
+    if not report.integrity_ok:
+        for issue in report.issues:
+            logger.log(
+                "repair.integrity_failed",
+                level=DiagnosticLevel.ERROR,
+                message=issue,
+                db_path=report.db_path,
+            )
+        print(
+            f"memory repair failed integrity check for {report.db_path}: "
+            f"{'; '.join(report.issues)}",
+            file=sys.stderr,
+        )
+        return 1
+
+    logger.log(
+        "repair.completed",
+        level=DiagnosticLevel.INFO,
+        message=f"Repaired database at {report.db_path}",
+        schema_version=report.schema_version,
+        vacuumed=report.vacuumed,
+        checkpointed=report.checkpointed,
+    )
+    print(
+        f"Repaired {report.db_path} (schema v{report.schema_version}"
+        f"{', vacuumed' if report.vacuumed else ''}"
+        f"{', checkpointed' if report.checkpointed else ''})",
         file=sys.stderr,
     )
     return 0

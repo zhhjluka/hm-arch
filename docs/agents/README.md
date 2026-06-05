@@ -27,3 +27,6 @@ Release notes for the Python-first integration:
 
 Memory export, import, migration, and sharing policies:
 [memory-sharing-policies.md](../memory-sharing-policies.md).
+
+Agent compatibility matrix (support and limitations):
+[compatibility-matrix.md](compatibility-matrix.md).
