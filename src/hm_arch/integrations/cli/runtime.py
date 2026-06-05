@@ -32,9 +32,15 @@ def execute_recall(request: RecallRequest) -> RecallResponse:
     config = _integration_config()
     top_k = request.top_k or config.recall_top_k
     try:
-        with MemoryStoreRouter(config).open() as memory:
-            hits = memory.search(request.task, top_k=top_k)
-            context = build_turn_start_context(memory, request.task, top_k=top_k)
+        router = MemoryStoreRouter(config)
+        hits = router.search(request.task, top_k=top_k)
+        with router.open() as memory:
+            context = build_turn_start_context(
+                memory,
+                request.task,
+                top_k=top_k,
+                hits=hits,
+            )
             truncated = len(context) > config.max_context_chars
             if truncated:
                 context = context[: config.max_context_chars]

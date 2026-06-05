@@ -16,6 +16,7 @@ from hm_arch.integrations.common import (
     run_idle_consolidation,
 )
 from hm_arch.integrations.config import IntegrationConfig
+from hm_arch.integrations.cross_store_search import dual_store_enabled, search_cross_stores
 
 from .config import HM_ARCH_PROVIDER_NAME, resolve_db_path
 from .messages import iter_turn_pairs, summarize_messages_for_compression
@@ -203,7 +204,7 @@ class HMArchHermesMemoryProvider:
                 if not query:
                     return json.dumps({"error": "query is required"})
                 top_k = int(args.get("top_k", self._integration.recall_top_k))
-                hits = memory.search(query, top_k=max(1, top_k))
+                hits = self._search_hits(query, top_k=max(1, top_k))
                 return json.dumps(
                     {
                         "results": [
@@ -213,6 +214,19 @@ class HMArchHermesMemoryProvider:
                                 "layer": item.layer,
                                 "score": item.score,
                                 "retention": item.retention,
+                                "storage_scope": item.metadata.get(
+                                    "hm_arch_storage_scope"
+                                ),
+                                "provenance": (
+                                    {
+                                        "agent": item.provenance.agent,
+                                        "project": item.provenance.project,
+                                        "session": item.provenance.session,
+                                        "memory_type": item.provenance.memory_type,
+                                    }
+                                    if item.provenance is not None
+                                    else None
+                                ),
                             }
                             for item in hits.results
                         ],
@@ -369,15 +383,27 @@ class HMArchHermesMemoryProvider:
             raise RuntimeError("HM-Arch Hermes provider is not initialized")
         return self._memory
 
+    def _search_hits(self, query: str, *, top_k: int):
+        if dual_store_enabled(self._integration):
+            return search_cross_stores(
+                self._integration,
+                query,
+                top_k=top_k,
+                min_retention=0.0,
+            )
+        return self._require_memory().search(query, top_k=top_k, min_retention=0.0)
+
     def _recall_context(self, query: str) -> str:
         query = query.strip()
         if not query:
             return ""
         memory = self._require_memory()
+        hits = self._search_hits(query, top_k=self._integration.recall_top_k)
         context = build_turn_start_context(
             memory,
             query,
             top_k=self._integration.recall_top_k,
+            hits=hits,
         )
         if len(context) <= self._integration.max_context_chars:
             return context
