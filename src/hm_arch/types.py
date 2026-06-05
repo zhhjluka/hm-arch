@@ -23,6 +23,31 @@ class EventType(str, Enum):
     SYSTEM = "system"
 
 
+@dataclass(frozen=True)
+class MemoryProvenance:
+    """Origin metadata for a stored memory.
+
+    Attributes
+    ----------
+    agent:
+        Name of the agent that recorded the memory.
+    project:
+        Project path or identifier where the memory was captured.
+    session:
+        Host-agent session identifier.
+    created_at:
+        UTC timestamp when the memory was first persisted.
+    memory_type:
+        Memory classification (typically an :class:`EventType` value).
+    """
+
+    agent: str | None
+    project: str | None
+    session: str | None
+    created_at: datetime
+    memory_type: str | None
+
+
 @dataclass
 class MemoryReceipt:
     """Confirmation returned by :py:meth:`HMArch.add`.
@@ -42,6 +67,8 @@ class MemoryReceipt:
         ``{"1d": 0.92, "7d": 0.65, "30d": 0.28}``.
     consolidation_scheduled:
         When the memory is next scheduled for consolidation review.
+    provenance:
+        Optional origin metadata captured at insertion time.
     """
 
     memory_id: str
@@ -50,6 +77,7 @@ class MemoryReceipt:
     initial_strength: float
     decay_estimate: dict
     consolidation_scheduled: datetime
+    provenance: MemoryProvenance | None = None
 
 
 @dataclass
@@ -72,6 +100,8 @@ class MemoryItem:
         Combined ranking score (``retention * relevance * layer_priority``).
     metadata:
         Arbitrary extra fields stored alongside the memory.
+    provenance:
+        Optional origin metadata for cross-agent recall and filtering.
     """
 
     memory_id: str
@@ -81,6 +111,7 @@ class MemoryItem:
     relevance: float
     score: float
     metadata: dict = field(default_factory=dict)
+    provenance: MemoryProvenance | None = None
 
 
 @dataclass

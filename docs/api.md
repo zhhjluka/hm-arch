@@ -29,6 +29,7 @@ use but are not required for the primary agent workflow.
 | `AgentContext` | export |
 | `MemoryConfig` | dataclass |
 | `EventType` | enum |
+| `MemoryProvenance` | export |
 | `MemoryReceipt` | dataclass |
 | `MemoryItem` | dataclass |
 | `SearchResult` | dataclass |
@@ -79,6 +80,12 @@ metadata:
 importance:
     Importance score in ``[0, 1]``.  When omitted the L2 layer
     default (``0.5``) is applied.
+agent:
+    Optional agent name recorded as provenance.
+project:
+    Optional project path or identifier recorded as provenance.
+session:
+    Optional host-agent session identifier recorded as provenance.
 
 Returns
 -------
@@ -87,7 +94,7 @@ MemoryReceipt
     is the durable database-backed identifier for the event.
 
 ```python
-HMArch.add(self, content: 'str', event_type: 'EventType' = <EventType.CONVERSATION: 'conversation'>, metadata: 'Optional[dict]' = None, importance: 'Optional[float]' = None) -> 'MemoryReceipt'
+HMArch.add(self, content: 'str', event_type: 'EventType' = <EventType.CONVERSATION: 'conversation'>, metadata: 'Optional[dict]' = None, importance: 'Optional[float]' = None, *, agent: 'str | None' = None, project: 'str | None' = None, session: 'str | None' = None) -> 'MemoryReceipt'
 ```
 
 ### `HMArch.search`
@@ -523,6 +530,8 @@ decay_estimate:
     ``{"1d": 0.92, "7d": 0.65, "30d": 0.28}``.
 consolidation_scheduled:
     When the memory is next scheduled for consolidation review.
+provenance:
+    Optional origin metadata captured at insertion time.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -532,6 +541,7 @@ consolidation_scheduled:
 | `initial_strength` | `'float'` ||
 | `decay_estimate` | `'dict'` ||
 | `consolidation_scheduled` | `'datetime'` ||
+| `provenance` | `'MemoryProvenance | None'` ||
 
 ---
 
@@ -557,6 +567,8 @@ score:
     Combined ranking score (``retention * relevance * layer_priority``).
 metadata:
     Arbitrary extra fields stored alongside the memory.
+provenance:
+    Optional origin metadata for cross-agent recall and filtering.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -567,6 +579,7 @@ metadata:
 | `relevance` | `'float'` ||
 | `score` | `'float'` ||
 | `metadata` | `'dict'` | (factory)|
+| `provenance` | `'MemoryProvenance | None'` ||
 
 ---
 

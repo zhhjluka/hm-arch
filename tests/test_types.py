@@ -16,6 +16,7 @@ from hm_arch import (
     EventType,
     ForgetResult,
     MemoryItem,
+    MemoryProvenance,
     MemoryReceipt,
     MemoryStats,
     RetentionCurve,
@@ -69,6 +70,32 @@ def test_event_type_all_members_documented() -> None:
 # ---------------------------------------------------------------------------
 
 
+class TestMemoryProvenance:
+    REQUIRED_FIELDS = {
+        "agent",
+        "project",
+        "session",
+        "created_at",
+        "memory_type",
+    }
+
+    def test_fields_present(self) -> None:
+        assert self.REQUIRED_FIELDS <= _field_names(MemoryProvenance)
+
+    def test_construction(self) -> None:
+        prov = MemoryProvenance(
+            agent="codex",
+            project="/tmp/app",
+            session="sess-1",
+            created_at=_now(),
+            memory_type="conversation",
+        )
+        assert prov.agent == "codex"
+        assert prov.project == "/tmp/app"
+        assert prov.session == "sess-1"
+        assert prov.memory_type == "conversation"
+
+
 class TestMemoryReceipt:
     REQUIRED_FIELDS = {
         "memory_id",
@@ -77,6 +104,7 @@ class TestMemoryReceipt:
         "initial_strength",
         "decay_estimate",
         "consolidation_scheduled",
+        "provenance",
     }
 
     def test_fields_present(self) -> None:
@@ -112,6 +140,7 @@ class TestMemoryItem:
         "relevance",
         "score",
         "metadata",
+        "provenance",
     }
 
     def test_fields_present(self) -> None:
@@ -352,6 +381,7 @@ def test_all_types_exported_from_hm_arch() -> None:
 
     expected = {
         "EventType",
+        "MemoryProvenance",
         "MemoryReceipt",
         "MemoryItem",
         "SearchResult",

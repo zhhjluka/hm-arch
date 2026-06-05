@@ -160,6 +160,8 @@ class TestInitializeSchema:
             "importance", "initial_strength", "current_retention",
             "last_accessed_at", "access_count",
             "status", "superseded_by", "tags", "metadata", "content_hash",
+            "provenance_agent", "provenance_project", "provenance_session",
+            "memory_type",
         }
         assert expected.issubset(cols.keys()), f"Missing columns: {expected - cols.keys()}"
 

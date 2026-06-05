@@ -18,6 +18,8 @@ import sqlite3
 from pathlib import Path
 from typing import Mapping, Sequence, Union
 
+from .migrations import apply_migrations
+
 # Type alias accepted by both execute() and query()
 _Params = Union[Sequence, Mapping]
 
@@ -41,7 +43,11 @@ CREATE TABLE IF NOT EXISTS memory_index (
     superseded_by    TEXT,
     tags             TEXT    NOT NULL DEFAULT '[]',
     metadata         TEXT    NOT NULL DEFAULT '{}',
-    content_hash     TEXT
+    content_hash     TEXT,
+    provenance_agent    TEXT,
+    provenance_project  TEXT,
+    provenance_session  TEXT,
+    memory_type         TEXT
 );
 
 -- L2 episodic buffer: one row per episode, linked to memory_index.
@@ -225,6 +231,7 @@ class SQLiteStore:
         self._require_connection()
         self._conn.executescript(_SCHEMA_SQL)  # type: ignore[union-attr]
         self._conn.commit()  # type: ignore[union-attr]
+        apply_migrations(self)
 
     # ------------------------------------------------------------------
     # Low-level helpers
