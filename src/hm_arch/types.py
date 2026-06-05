@@ -69,6 +69,9 @@ class MemoryReceipt:
         When the memory is next scheduled for consolidation review.
     provenance:
         Optional origin metadata captured at insertion time.
+    sensitive_filter:
+        Safe diagnostics when sensitive-data filtering modified the stored
+        content (category counts only, never secret values).
     """
 
     memory_id: str
@@ -78,6 +81,7 @@ class MemoryReceipt:
     decay_estimate: dict
     consolidation_scheduled: datetime
     provenance: MemoryProvenance | None = None
+    sensitive_filter: dict | None = None
 
 
 @dataclass
@@ -218,6 +222,8 @@ class MemoryStats:
         consolidation has not yet run.
     archive_storage_mb:
         On-disk size of L4 gzip archives under the archive root, in megabytes.
+    sensitive_data_diagnostics:
+        Cumulative safe filtering statistics (category counts only).
     """
 
     total_memories: int
@@ -227,6 +233,7 @@ class MemoryStats:
     review_queue_length: int
     last_consolidation_at: datetime | None
     archive_storage_mb: float = 0.0
+    sensitive_data_diagnostics: dict = field(default_factory=dict)
 
 
 @dataclass

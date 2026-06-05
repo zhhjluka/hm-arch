@@ -66,6 +66,11 @@ from .layers.l4_ltm import L4EpisodicLTM
 from .layers.l5_procedural import L5ProceduralMemory, SkillRecord
 from .layers.l6_meta import HotMemoryRecord, L6MetaMemory, StrategyPlan
 from .layers.l6_meta import _parse_hot_access_threshold
+from .safety.sensitive_data import (
+    filter_metadata_values,
+    filter_sensitive_content,
+    merge_diagnostics,
+)
 from .storage.sqlite import SQLiteStore
 from .storage.vector import _token_overlap_score, _tokenize
 from .types import (
@@ -365,6 +370,7 @@ class HMArch:
             consolidate_fn=self.consolidate,
             forget_fn=lambda memory_id: self.forget(memory_id),
         )
+        self._sensitive_filter_stats: dict[str, int] = {"truncations": 0, "filtered_adds": 0}
 
     # ------------------------------------------------------------------
     # Primary public interface
@@ -417,6 +423,24 @@ class HMArch:
                 f"max_memories_l2 limit ({self._config.max_memories_l2}) reached"
             )
 
+        content_result = filter_sensitive_content(content, self._config)
+        filtered_metadata, metadata_diag = filter_metadata_values(
+            metadata, self._config
+        )
+        filter_diag = merge_diagnostics(content_result.diagnostics, metadata_diag)
+        content = content_result.content
+        metadata = filtered_metadata
+
+        if filter_diag.was_modified:
+            self._sensitive_filter_stats["filtered_adds"] += 1
+            if filter_diag.truncated:
+                self._sensitive_filter_stats["truncations"] += 1
+            for category, count in filter_diag.redactions_by_category.items():
+                key = f"redactions.{category}"
+                self._sensitive_filter_stats[key] = (
+                    self._sensitive_filter_stats.get(key, 0) + count
+                )
+
         strength_min, strength_max, retrieval_inc, _ = strength_bounds(self._config)
         if importance is not None:
             imp = importance
@@ -448,6 +472,9 @@ class HMArch:
             retrieval_increment=retrieval_inc,
         )
         merged_meta = merge_metadata_with_strength(metadata, factors)
+        if filter_diag.was_modified:
+            merged_meta = dict(merged_meta)
+            merged_meta["sensitive_filter"] = filter_diag.to_metadata()
         provenance = build_provenance(
             agent=agent,
             project=project,
@@ -493,6 +520,9 @@ class HMArch:
             decay_estimate=decay_estimate,
             consolidation_scheduled=self._time.now(),
             provenance=provenance,
+            sensitive_filter=(
+                filter_diag.to_metadata() if filter_diag.was_modified else None
+            ),
         )
         self._run_lifecycle_tick()
         return receipt
@@ -989,6 +1019,7 @@ class HMArch:
             review_queue_length=review_queue_length,
             last_consolidation_at=last_consolidation_at,
             archive_storage_mb=archive_storage_mb,
+            sensitive_data_diagnostics=dict(self._sensitive_filter_stats),
         )
 
     # ------------------------------------------------------------------

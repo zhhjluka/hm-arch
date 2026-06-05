@@ -65,6 +65,9 @@ class IntegrationConfig:
     auto_consolidate: bool = True
     consolidate_on_idle: bool = True
     replay_sample_ratio: float = 1.0
+    enable_sensitive_data_filter: bool = True
+    sensitive_data_patterns: tuple[str, ...] = ()
+    max_stored_content_chars: int = 16_384
 
     def __post_init__(self) -> None:
         if self.recall_top_k < 1:
@@ -128,4 +131,7 @@ class IntegrationConfig:
             db_path=self.resolve_db_path(),
             auto_consolidate=self.auto_consolidate,
             replay_sample_ratio=self.replay_sample_ratio,
+            enable_sensitive_data_filter=self.enable_sensitive_data_filter,
+            sensitive_data_patterns=list(self.sensitive_data_patterns),
+            max_stored_content_chars=self.max_stored_content_chars,
         )
