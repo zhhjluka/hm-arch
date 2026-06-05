@@ -26,7 +26,7 @@ export function hasSupportedPython(): boolean {
 }
 
 /** Apply HM_ARCH_PYTHON for tests when a supported interpreter is available. */
-export function withSupportedPythonEnv<T>(fn: () => T): T {
+export async function withSupportedPythonEnv<T>(fn: () => T | Promise<T>): Promise<T> {
   const python = probeSupportedPython();
   if (!python) {
     throw new Error("supported Python interpreter required");
@@ -34,7 +34,7 @@ export function withSupportedPythonEnv<T>(fn: () => T): T {
   const previous = process.env.HM_ARCH_PYTHON;
   process.env.HM_ARCH_PYTHON = python.executable;
   try {
-    return fn();
+    return await fn();
   } finally {
     if (previous === undefined) {
       delete process.env.HM_ARCH_PYTHON;

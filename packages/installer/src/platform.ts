@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
 import os from "node:os";
 
-import { MIN_NODE_MAJOR, MIN_PYTHON, SUPPORTED_OS } from "./constants.js";
+import { ENV_HM_ARCH_RUNTIME, MIN_NODE_MAJOR, MIN_PYTHON, SUPPORTED_OS } from "./constants.js";
+import { detectReleaseTarget, releaseTargetSupportDiagnostic } from "./release-target.js";
 
 export type PlatformInfo = {
   os: NodeJS.Platform;
@@ -180,21 +181,56 @@ export function environmentDiagnostics(
     });
   }
 
-  if (!info.python) {
+  const runtimeMode = (process.env[ENV_HM_ARCH_RUNTIME] ?? "auto").toLowerCase();
+  const standaloneAvailable =
+    detectReleaseTarget({ platform: info.os, arch: info.arch }) !== null;
+  const wantsStandalone =
+    runtimeMode === "standalone" || (runtimeMode === "auto" && standaloneAvailable);
+  const wantsPython =
+    runtimeMode === "python" || (runtimeMode === "auto" && !standaloneAvailable);
+
+  const releaseTargetDiagnostic = releaseTargetSupportDiagnostic(info.os, info.arch);
+  if (releaseTargetDiagnostic) {
+    const hasPython =
+      info.python !== null &&
+      compareVersion(info.python.major, info.python.minor, MIN_PYTHON);
+    if (wantsStandalone || runtimeMode === "standalone" || !hasPython) {
+      diagnostics.push({ ...releaseTargetDiagnostic, level: "error" });
+    } else if (runtimeMode === "auto") {
+      diagnostics.push({
+        ...releaseTargetDiagnostic,
+        level: "warning",
+        code: "unsupported_release_target",
+        message: `${releaseTargetDiagnostic.message} Standalone install unavailable; using Python runtime.`,
+      });
+    }
+  }
+
+  if (wantsPython) {
+    if (!info.python) {
+      diagnostics.push({
+        level: "error",
+        code: "python_missing",
+        message: "Python 3 was not found on PATH.",
+        hint:
+          `Install Python ${MIN_PYTHON}+ and ensure python3 is on PATH, ` +
+          "or set HM_ARCH_PYTHON to the interpreter path.",
+      });
+    } else if (!compareVersion(info.python.major, info.python.minor, MIN_PYTHON)) {
+      diagnostics.push({
+        level: "error",
+        code: "unsupported_python",
+        message: `Python ${info.python.version} is below the minimum (${MIN_PYTHON}).`,
+        hint: `Upgrade to Python ${MIN_PYTHON}+ (found via ${info.python.executable}).`,
+      });
+    }
+  } else if (!info.python && wantsStandalone) {
     diagnostics.push({
-      level: "error",
+      level: "warning",
       code: "python_missing",
       message: "Python 3 was not found on PATH.",
       hint:
-        `Install Python ${MIN_PYTHON}+ and ensure python3 is on PATH, ` +
-        "or set HM_ARCH_PYTHON to the interpreter path.",
-    });
-  } else if (!compareVersion(info.python.major, info.python.minor, MIN_PYTHON)) {
-    diagnostics.push({
-      level: "error",
-      code: "unsupported_python",
-      message: `Python ${info.python.version} is below the minimum (${MIN_PYTHON}).`,
-      hint: `Upgrade to Python ${MIN_PYTHON}+ (found via ${info.python.executable}).`,
+        "Standalone binaries are used on this platform; Python is optional unless you set HM_ARCH_RUNTIME=python.",
     });
   }
 

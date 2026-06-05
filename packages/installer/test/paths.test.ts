@@ -6,7 +6,9 @@ import {
   managedEnvRoot,
   managedHmArchExecutable,
   managedPythonExecutable,
+  managedStandaloneExecutable,
   resolveHmArchHome,
+  standaloneBinaryRoot,
 } from "../src/paths.js";
 
 describe("paths", () => {
@@ -24,6 +26,19 @@ describe("paths", () => {
       assert.match(python, /python-env[\\/]Scripts[\\/]python\.exe$/);
     } else {
       assert.equal(python, "/tmp/example/python-env/bin/python");
+    }
+  });
+
+  it("places standalone hm-arch binary under standalone/", () => {
+    const home = "/tmp/example";
+    const root = standaloneBinaryRoot(home);
+    const cli = managedStandaloneExecutable(home);
+    if (process.platform === "win32") {
+      assert.equal(root, "/tmp/example/standalone");
+      assert.match(cli, /standalone[\\/]hm-arch\.exe$/);
+    } else {
+      assert.equal(root, "/tmp/example/standalone");
+      assert.equal(cli, "/tmp/example/standalone/hm-arch");
     }
   });
 

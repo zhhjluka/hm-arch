@@ -4,12 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-function withTempWorkdir<T>(fn: (workdir: string) => void): void {
+function withTempWorkdir<T>(fn: (workdir: string) => T | Promise<T>): T | Promise<T> {
   const workdir = mkdtempSync(join(tmpdir(), "hm-arch-cmd-cwd-"));
   const previous = process.cwd();
   process.chdir(workdir);
   try {
-    fn(workdir);
+    return fn(workdir);
   } finally {
     process.chdir(previous);
     rmSync(workdir, { recursive: true, force: true });
@@ -19,13 +19,15 @@ function withTempWorkdir<T>(fn: (workdir: string) => void): void {
 import { runParsedCommand } from "../src/commands.js";
 import { hasSupportedPython, withSupportedPythonEnv } from "./test-helpers.js";
 
-function runWithManagedEnvHome(home: string, fn: () => void): void {
+async function runWithManagedEnvHome(home: string, fn: () => void | Promise<void>): Promise<void> {
   const previousHome = process.env.HM_ARCH_HOME;
   const previousSpec = process.env.HM_ARCH_PIP_SPEC;
+  const previousRuntime = process.env.HM_ARCH_RUNTIME;
   process.env.HM_ARCH_HOME = home;
   process.env.HM_ARCH_PIP_SPEC = join(import.meta.dirname, "..", "..", "..");
+  process.env.HM_ARCH_RUNTIME = "python";
   try {
-    withSupportedPythonEnv(fn);
+    await withSupportedPythonEnv(fn);
   } finally {
     if (previousHome === undefined) {
       delete process.env.HM_ARCH_HOME;
@@ -37,18 +39,23 @@ function runWithManagedEnvHome(home: string, fn: () => void): void {
     } else {
       process.env.HM_ARCH_PIP_SPEC = previousSpec;
     }
+    if (previousRuntime === undefined) {
+      delete process.env.HM_ARCH_RUNTIME;
+    } else {
+      process.env.HM_ARCH_RUNTIME = previousRuntime;
+    }
   }
 }
 
 describe("commands python runtime", () => {
   it("install exits 0 after preparing managed env when supported python is available", {
     skip: !hasSupportedPython(),
-  }, () => {
+  }, async () => {
     const home = mkdtempSync(join(tmpdir(), "hm-arch-cmd-"));
     try {
-      runWithManagedEnvHome(home, () => {
-        withTempWorkdir(() => {
-          const code = runParsedCommand({
+      await runWithManagedEnvHome(home, async () => {
+        await withTempWorkdir(async () => {
+          const code = await runParsedCommand({
             command: "install",
             agent: "codex",
             global: false,
@@ -62,17 +69,22 @@ describe("commands python runtime", () => {
     }
   });
 
-  it("upgrade exits 0 when supported python is available", { skip: !hasSupportedPython() }, () => {
+  it("upgrade exits 0 when supported python is available", { skip: !hasSupportedPython() }, async () => {
     const home = mkdtempSync(join(tmpdir(), "hm-arch-cmd-up-"));
     try {
-      runWithManagedEnvHome(home, () => {
-        withTempWorkdir(() => {
+      await runWithManagedEnvHome(home, async () => {
+        await withTempWorkdir(async () => {
           assert.equal(
-            runParsedCommand({ command: "install", agent: "codex", global: false, help: false }),
+            await runParsedCommand({
+              command: "install",
+              agent: "codex",
+              global: false,
+              help: false,
+            }),
             0,
           );
           assert.equal(
-            runParsedCommand({ command: "upgrade", global: false, help: false }),
+            await runParsedCommand({ command: "upgrade", global: false, help: false }),
             0,
           );
         });

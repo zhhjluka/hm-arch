@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { runParsedCommand } from "./commands.js";
 import { parseCliArgs, usageText } from "./parse-args.js";
 
-export function main(argv: string[] = process.argv.slice(2)): number {
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const parsed = parseCliArgs(argv);
   if (parsed.help || (!parsed.command && !parsed.error)) {
     console.log(usageText());
@@ -36,5 +36,11 @@ function isCliEntry(): boolean {
 }
 
 if (isCliEntry()) {
-  process.exit(main());
+  main()
+    .then((code) => process.exit(code))
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(message);
+      process.exit(1);
+    });
 }

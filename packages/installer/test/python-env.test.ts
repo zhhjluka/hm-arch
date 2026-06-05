@@ -193,8 +193,8 @@ describe("python-env (unit)", () => {
 });
 
 describe("python-env (integration)", { skip: !hasSupportedPython() }, () => {
-  it("installs hm-arch editable without mutating global site-packages", () => {
-    withSupportedPythonEnv(() => {
+  it("installs hm-arch editable without mutating global site-packages", async () => {
+    await withSupportedPythonEnv(() => {
       const home = tempHome();
       const pythonExecutable = process.env.HM_ARCH_PYTHON;
       assert.ok(pythonExecutable);
