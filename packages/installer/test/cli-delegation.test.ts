@@ -10,10 +10,11 @@ import {
   buildHmArchArgv,
   delegateParsedCommand,
   forwardHmArchOutput,
+  resolveHmArchExecutable,
   resolveManagedHmArchExecutable,
   runManagedHmArch,
 } from "../src/hm-arch-cli.js";
-import { managedHmArchExecutable } from "../src/paths.js";
+import { managedHmArchExecutable, managedStandaloneExecutable } from "../src/paths.js";
 import {
   hasSupportedPython,
   withExclusiveEditablePipInstall,
@@ -141,6 +142,82 @@ describe("hm-arch CLI delegation", () => {
       assert.ok("error" in resolved);
       assert.match(resolved.error, /hm-arch CLI not found/);
       assert.equal(resolved.exitCode, 1);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("resolveHmArchExecutable honors forced Python runtime over existing standalone", () => {
+    const home = mkdtempSync(join(tmpdir(), "hm-arch-delegate-runtime-"));
+    const pythonExecutable = managedHmArchExecutable(home);
+    const standaloneExecutable = managedStandaloneExecutable(home);
+    const previousRuntime = process.env.HM_ARCH_RUNTIME;
+    process.env.HM_ARCH_RUNTIME = "python";
+    try {
+      const resolved = resolveHmArchExecutable({
+        hmArchHome: home,
+        exists: (path) => path === pythonExecutable || path === standaloneExecutable,
+        readState: () => ({
+          hmArchVersion: "1.0.0",
+          targetOs: "linux",
+          targetArch: "x86_64",
+          filename: "hm-arch-1.0.0-linux-x86_64",
+          sha256: "0".repeat(64),
+          sizeBytes: 1,
+          installerVersion: "1.0.0",
+          createdAt: "2026-06-05T00:00:00.000Z",
+          updatedAt: "2026-06-05T00:00:00.000Z",
+        }),
+      });
+      assert.ok(!("error" in resolved));
+      assert.equal(resolved.kind, "python");
+      assert.equal(resolved.executable, pythonExecutable);
+    } finally {
+      if (previousRuntime === undefined) {
+        delete process.env.HM_ARCH_RUNTIME;
+      } else {
+        process.env.HM_ARCH_RUNTIME = previousRuntime;
+      }
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("runManagedHmArch honors provisioned runtimeKind over stale standalone", () => {
+    const home = mkdtempSync(join(tmpdir(), "hm-arch-delegate-kind-"));
+    const pythonExecutable = managedHmArchExecutable(home);
+    const standaloneExecutable = managedStandaloneExecutable(home);
+    let spawnedFile = "";
+    try {
+      const result = runManagedHmArch(["status"], {
+        hmArchHome: home,
+        runtimeKind: "python",
+        exists: (path) => path === pythonExecutable || path === standaloneExecutable,
+        readState: () => ({
+          hmArchVersion: "1.0.0",
+          targetOs: "linux",
+          targetArch: "x86_64",
+          filename: "hm-arch-1.0.0-linux-x86_64",
+          sha256: "0".repeat(64),
+          sizeBytes: 1,
+          installerVersion: "1.0.0",
+          createdAt: "2026-06-05T00:00:00.000Z",
+          updatedAt: "2026-06-05T00:00:00.000Z",
+        }),
+        spawn: (file) => {
+          spawnedFile = file;
+          return {
+            status: 0,
+            signal: null,
+            stdout: "",
+            stderr: "",
+            pid: 1,
+            output: ["", "", ""],
+            error: undefined,
+          };
+        },
+      });
+      assert.equal(result.exitCode, 0);
+      assert.equal(spawnedFile, pythonExecutable);
     } finally {
       rmSync(home, { recursive: true, force: true });
     }

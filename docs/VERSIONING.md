@@ -75,7 +75,7 @@ explicitly instructs them to do so for a specific version.
 Before tagging or publishing, verify all channels align:
 
 ```bash
-cd packages/installer && npm run build
+(cd packages/installer && npm run build)
 python scripts/verify_release_versions.py
 ```
 
@@ -89,7 +89,7 @@ notes; the checker fails when they differ.
 
 1. Decide the next version from the table above.
 2. Edit `src/hm_arch/_version.py` (`__version__`) and `packages/installer/package.json` together for coordinated releases.
-3. Run `cd packages/installer && npm run build` to refresh `bundled-version.json` and `installer-version.json`.
+3. Run `(cd packages/installer && npm run build)` to refresh `bundled-version.json` and `installer-version.json`.
 4. Run `python scripts/verify_release_versions.py`.
 5. Add a dated section to `CHANGELOG.md` (move items out of `[Unreleased]`).
 6. Regenerate API docs: `python scripts/generate_api_docs.py`

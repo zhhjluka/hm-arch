@@ -35,7 +35,7 @@ All public channels share one semver per release:
 Before tagging a release, run:
 
 ```bash
-cd packages/installer && npm run build
+(cd packages/installer && npm run build)
 python scripts/verify_release_versions.py
 ```
 
