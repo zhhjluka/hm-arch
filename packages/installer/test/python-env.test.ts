@@ -45,7 +45,7 @@ describe("python-env (unit)", () => {
         {},
         {
           hmArchHome: home,
-          pipSpec: "hm-arch==1.0.0",
+          pipSpec: `hm-arch==${BUNDLED_HM_ARCH_VERSION}`,
           probe: () => ({
             executable: "python3",
             version: "3.12.0",
@@ -58,7 +58,7 @@ describe("python-env (unit)", () => {
               venvReady = true;
             }
             if (args.some((arg) => arg.includes("import hm_arch"))) {
-              return "1.0.0";
+              return BUNDLED_HM_ARCH_VERSION;
             }
             return "";
           },
@@ -78,7 +78,7 @@ describe("python-env (unit)", () => {
       assert.equal(pipCalls.length, 1);
       assert.deepEqual(pipCalls[0]?.args.slice(0, 2), ["install", "--disable-pip-version-check"]);
       const state = readManagedEnvState(home);
-      assert.equal(state?.hmArchVersion, "1.0.0");
+      assert.equal(state?.hmArchVersion, BUNDLED_HM_ARCH_VERSION);
     } finally {
       rmSync(home, { recursive: true, force: true });
     }
@@ -90,7 +90,7 @@ describe("python-env (unit)", () => {
     let venvReady = false;
     const sharedDeps = {
       hmArchHome: home,
-      pipSpec: "hm-arch==1.0.0",
+      pipSpec: `hm-arch==${BUNDLED_HM_ARCH_VERSION}`,
       probe: () => ({
         executable: "python3",
         version: "3.12.0",
@@ -105,7 +105,7 @@ describe("python-env (unit)", () => {
           installCount += 1;
         }
         if (args.some((arg) => arg.includes("import hm_arch"))) {
-          return "1.0.0";
+          return BUNDLED_HM_ARCH_VERSION;
         }
         return "";
       },

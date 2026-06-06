@@ -43,7 +43,7 @@ export type EnsureManagedEnvResult = {
 export type PythonEnvDeps = {
   hmArchHome?: string;
   targetVersion?: string;
-  /** pip requirement, e.g. ``hm-arch==1.0.0`` or an editable path for tests. */
+  /** pip requirement, e.g. ``hm-arch==2.0.0`` or an editable path for tests. */
   pipSpec?: string;
   probe?: () => PythonProbe | null;
   now?: () => string;

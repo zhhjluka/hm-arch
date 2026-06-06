@@ -5,15 +5,15 @@ are offline and do not require API keys.
 
 ## Install HM-Arch
 
-**From a GitHub Release wheel** (current v1.0.0):
+**From a GitHub Release wheel** (current v2.0.0):
 
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install /path/to/hm_arch-1.0.0-py3-none-any.whl
+python -m pip install /path/to/hm_arch-2.0.0-py3-none-any.whl
 ```
 
-**After maintainer-approved PyPI publish** (planned v1.1.0+):
+**After maintainer-approved PyPI publish**:
 
 ```bash
 pip install hm-arch

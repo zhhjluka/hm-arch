@@ -2,19 +2,19 @@
 
 Use this checklist for each HM-Arch release.
 
-**Distribution today:** GitHub Releases (wheel + sdist) for **v1.0.0** and until
-PyPI/npm milestones in [agent-integration-roadmap.md](agent-integration-roadmap.md).
+**Distribution today:** coordinated GitHub Releases (wheel, sdist, standalone
+binaries, release notes) for **v2.0.0** and later.
 
-**Planned registries:** PyPI (`hm-arch`, v1.1.0+) and npm (`@hm-arch/installer`,
-v1.2.0+). Registry publication is allowed when a maintainer explicitly approves
-it for a given version — it is not forbidden by project policy, but it is never
-automated without approval.
+**Registries:** PyPI (`hm-arch`) and npm (`@hm-arch/installer`) use the same
+semver from v2.0.0 onward. Registry publication is allowed when a maintainer
+explicitly approves it for a given version, but it is never automated without
+approval.
 
 **Approval rule:** Git tags, GitHub Releases, PyPI uploads, and npm publishes all
 require **explicit maintainer approval**. Automated Cursor/Codex agents must not
 perform those steps unless explicitly instructed for a specific version.
 
-Prepared release notes for v1.0.0: [RELEASE_NOTES_v1.0.0.md](RELEASE_NOTES_v1.0.0.md).
+Prepared release notes for v2.0.0: [RELEASE_NOTES_v2.0.0.md](RELEASE_NOTES_v2.0.0.md).
 
 **Python requirement:** use **Python 3.10+** for build, install, and smoke tests. System
 `python3` may be older (e.g. 3.9) and will fail `requires-python` checks — prefer
@@ -74,7 +74,7 @@ python3 -m build --outdir dist
 
 Inspect artifacts under `dist/` (do not commit `dist/` — it is gitignored):
 
-- [ ] Wheel and sdist names include the intended version from `src/hm_arch/_version.py` (e.g. `hm_arch-1.0.0-py3-none-any.whl`).
+- [ ] Wheel and sdist names include the intended version from `src/hm_arch/_version.py` (e.g. `hm_arch-2.0.0-py3-none-any.whl`).
 - [ ] Clean **wheel** install succeeds (isolated venv, Python 3.10+):
 
 ```bash
@@ -82,7 +82,7 @@ rm -rf /tmp/hm-arch-wheel-verify
 python3.12 -m venv /tmp/hm-arch-wheel-verify
 /tmp/hm-arch-wheel-verify/bin/pip install --upgrade pip
 /tmp/hm-arch-wheel-verify/bin/pip install dist/hm_arch-*.whl
-/tmp/hm-arch-wheel-verify/bin/python -c "import hm_arch; assert hm_arch.__version__ == '1.0.0'"
+/tmp/hm-arch-wheel-verify/bin/python -c "import hm_arch; assert hm_arch.__version__ == '2.0.0'"
 ```
 
 - [ ] Clean **sdist** install succeeds (separate isolated venv, Python 3.10+):
@@ -92,7 +92,7 @@ rm -rf /tmp/hm-arch-sdist-verify
 python3.12 -m venv /tmp/hm-arch-sdist-verify
 /tmp/hm-arch-sdist-verify/bin/pip install --upgrade pip build
 /tmp/hm-arch-sdist-verify/bin/pip install dist/hm_arch-*.tar.gz
-/tmp/hm-arch-sdist-verify/bin/python -c "import hm_arch; assert hm_arch.__version__ == '1.0.0'"
+/tmp/hm-arch-sdist-verify/bin/python -c "import hm_arch; assert hm_arch.__version__ == '2.0.0'"
 ```
 
 - [ ] Release smoke test passes from the **wheel** install (run from a directory outside the repo clone, using the installed package):
@@ -140,11 +140,11 @@ After the tag is pushed, create a GitHub Release for the same version:
 
 Automated Cursor/Codex agents: **do not create or edit GitHub Releases** unless explicitly instructed.
 
-## 6. Publish to PyPI (explicit approval required; v1.1.0+)
+## 6. Publish to PyPI (explicit approval required; v2.0.0+)
 
-Skip this section until the project begins PyPI publication per the integration
-roadmap. **v1.0.0** was GitHub-only; do not retroactively publish older versions
-without a maintainer decision.
+**v1.0.0** was GitHub-only; do not retroactively publish older versions without a
+maintainer decision. From **v2.0.0** onward, PyPI publication may be part of the
+approved release window.
 
 Full reproducible **pip** and **pipx** verification (local wheel before upload,
 PyPI after upload): [pypi-clean-install.md](pypi-clean-install.md).
@@ -161,7 +161,7 @@ Only after GitHub Release **5** is complete (or in the same approved release win
 - [ ] After upload: `pipx install hm-arch==X.Y.Z` smoke test passes (§2 post-publish).
 - [ ] `hm-arch install codex` / `claude-code` smoke from pip-installed CLI passes ([integration-cli-smoke.md](integration-cli-smoke.md)).
 - [ ] `hm-arch status hermes` / `doctor hermes` documented; install/uninstall hermes remain unsupported by design.
-- [ ] `docs/RELEASE_NOTES_vX.Y.Z.md` prepared (e.g. [RELEASE_NOTES_v1.1.0.md](RELEASE_NOTES_v1.1.0.md) for Python-first integration).
+- [ ] `docs/RELEASE_NOTES_vX.Y.Z.md` prepared (e.g. [RELEASE_NOTES_v2.0.0.md](RELEASE_NOTES_v2.0.0.md) for the coordinated v2 release).
 - [ ] GitHub Release notes mention `pip install hm-arch` when PyPI is live for this version.
 
 Example maintainer commands (requires credentials; agents must not run without approval):
@@ -173,10 +173,10 @@ python3 -m twine upload dist/hm_arch-X.Y.Z*
 
 Automated Cursor/Codex agents: **do not upload to PyPI or TestPyPI** unless explicitly instructed.
 
-## 7. Publish to npm (explicit approval required; v1.2.0+)
+## 7. Publish to npm (explicit approval required; v2.0.0+)
 
-Skip until `@hm-arch/installer` exists and the integration roadmap targets npm
-for this release.
+From **v2.0.0** onward, `@hm-arch/installer` may be published in the same approved
+release window as the matching Python package and GitHub Release.
 
 Only after the matching `hm-arch` Python version is available (PyPI or documented
 GitHub wheel URL) and a maintainer approves npm publication, follow the full

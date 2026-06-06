@@ -80,8 +80,8 @@ Release policy (see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md),
 
 - **v1.0.0 (Phase 3):** distributed via GitHub Releases only; not published to PyPI
   or npm.
-- **v1.1.0+:** PyPI (`hm-arch`) and **v1.2.0+:** npm (`@hm-arch/installer`) are
-  planned with explicit maintainer approval before each registry publish.
+- **v2.0.0+:** PyPI (`hm-arch`) and npm (`@hm-arch/installer`) are coordinated
+  registry channels with explicit maintainer approval before each publish.
 - Versioned releases are published as GitHub Releases with matching wheel and sdist
   artifacts.
 - Local wheel and sdist builds remain required release verification artifacts.

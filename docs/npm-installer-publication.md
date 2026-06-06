@@ -1,8 +1,8 @@
 # npm installer publication checklist
 
 Use this checklist when preparing `@hm-arch/installer` for registry publication
-(planned v1.2.0+). Automated Cursor/Codex agents must **not** run `npm publish`
-unless a maintainer explicitly instructs them for a specific version.
+(`v2.0.0+`). Automated Cursor/Codex agents must **not** run `npm publish` unless
+a maintainer explicitly instructs them for a specific version.
 
 Cross-reference: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) section 7,
 [VERSIONING.md](VERSIONING.md), [npm-installer.md](npm-installer.md).

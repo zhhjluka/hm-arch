@@ -11,13 +11,17 @@ publication steps and maintainer approval rules.
 
 ## [Unreleased]
 
+No changes yet.
+
+## [2.0.0] - 2026-06-06
+
 ### Added
 
 - Python-free npm verification (MEM-64): clean-machine standalone tests in `packages/installer/test/clean-machine-standalone.test.ts`, version coordination via `scripts/verify_release_versions.py` and `version-coordination.test.ts`, CI `clean-machine-standalone` job, and [docs/v2-migration-guide.md](docs/v2-migration-guide.md)
 - Standalone executable tests for Claude Code and Hermes management (`tests/test_standalone_executable.py`)
 - PyPI clean-install verification: [docs/pypi-clean-install.md](docs/pypi-clean-install.md) (reproducible `pip` and `pipx` workflows from isolated environments)
 - Agent setup guides: [docs/agents/](docs/agents/) (Codex, Claude Code, Hermes — matches shipped `hm-arch` CLI, including Hermes status/doctor-only management)
-- Draft v1.1.0 release notes: [docs/RELEASE_NOTES_v1.1.0.md](docs/RELEASE_NOTES_v1.1.0.md) for the Python-first three-agent integration
+- Release notes: [docs/RELEASE_NOTES_v2.0.0.md](docs/RELEASE_NOTES_v2.0.0.md) for the coordinated Python, npm, and standalone release
 - Packaged Codex and Claude Code hook adapters under `hm_arch.integrations.codex` and `hm_arch.integrations.claude_code`
 - Shared `read_hook_payload()` helper in `hm_arch.integrations.common`
 - `hm-arch` integration CLI: `install`, `uninstall`, `status`, `doctor` (MEM-47)
@@ -25,7 +29,7 @@ publication steps and maintainer approval rules.
 
 ### Changed
 
-- Release policy docs: README, [docs/VERSIONING.md](docs/VERSIONING.md), and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) now describe planned PyPI (v1.1.0+) and npm (v1.2.0+) publication with explicit maintainer approval; automated agents still must not publish without instruction
+- Release policy docs: README, [docs/VERSIONING.md](docs/VERSIONING.md), and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) now describe coordinated v2.0.0+ GitHub, PyPI, npm, and standalone publication with explicit maintainer approval; automated agents still must not publish without instruction
 - [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) PyPI section links pip/pipx verification and agent setup guides
 - [docs/spec.md](docs/spec.md), [docs/api.md](docs/api.md), and [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md) aligned with registry policy (v1.0.0 GitHub-only history vs planned PyPI/npm)
 - [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md) v1.1.0 UX example no longer implies `hm-arch install hermes`
@@ -71,6 +75,7 @@ Phase 2 release-ready SDK: L4–L6 layers, full sleep consolidation, agent hook 
 - `examples/release_smoke.py` and `docs/api.md` API reference
 - `docs/RELEASE_CHECKLIST.md`, `docs/VERSIONING.md`, and `scripts/generate_api_docs.py`
 
-[Unreleased]: https://github.com/ZhangHangjianMA/hm-arch/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/ZhangHangjianMA/hm-arch/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/ZhangHangjianMA/hm-arch/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v1.0.0
 [0.1.0]: https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v0.1.0
