@@ -76,8 +76,8 @@ building blocks before exposing automated installation commands.
 5. Release policy for registry publication is documented in
    [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) and [VERSIONING.md](VERSIONING.md).
    Earlier release docs (through v1.0.0) stated GitHub Releases only and forbade PyPI
-   or npm; current policy permits planned PyPI (v1.1.0+) and npm (v1.2.0+) with
-   explicit maintainer approval.
+   or npm; current policy permits coordinated PyPI and npm publication from
+   v2.0.0 onward with explicit maintainer approval.
 
 ### Acceptance Criteria
 
@@ -402,4 +402,3 @@ Before each public release:
 - Documentation matches the shipped commands and configuration format.
 - Registry, GitHub Release, and package versions are consistent.
 - No release is published without explicit maintainer approval.
-

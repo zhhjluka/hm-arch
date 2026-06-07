@@ -5,13 +5,13 @@ integrations. It does **not** reimplement memory logic in TypeScript; it creates
 managed Python virtual environment, installs a compatible `hm-arch` package, and
 delegates agent commands to the Python `hm-arch` CLI.
 
-**Status:** scaffolded in-repo (MEM-49 through MEM-51). Registry publication is
-planned for v1.2.0+ and requires explicit maintainer approval. Automated agents
-must **not** run `npm publish`.
+**Status:** release-ready for the coordinated v2.0.0 line. Registry publication
+requires explicit maintainer approval. Automated agents must **not** run
+`npm publish`.
 
 See also:
 
-- [agent-integration-roadmap.md](agent-integration-roadmap.md) — v1.2.0 npm milestone and v2.0.0 Python-free path
+- [agent-integration-roadmap.md](agent-integration-roadmap.md) — v2.0.0 Python-free npm path
 - [v2-migration-guide.md](v2-migration-guide.md) — v2.0.0 migration and compatibility
 - [npm-installer-publication.md](npm-installer-publication.md) — maintainer publication checklist
 - [VERSIONING.md](VERSIONING.md) — cross-channel semver alignment
@@ -88,8 +88,8 @@ monorepo installs during development).
 | Channel | Package | Version source | Pairing rule |
 |---------|---------|----------------|--------------|
 | GitHub Releases | wheel + sdist | `src/hm_arch/_version.py` | Primary artifact today |
-| PyPI | `hm-arch` | same semver (v1.1.0+ planned) | Must match GitHub release for `X.Y.Z` |
-| npm | `@hm-arch/installer` | `packages/installer/package.json` (v1.2.0+ planned) | Bundled default installs matching `hm-arch==X.Y.Z` |
+| PyPI | `hm-arch` | same semver (v2.0.0+) | Must match GitHub release for `X.Y.Z` |
+| npm | `@hm-arch/installer` | `packages/installer/package.json` (v2.0.0+) | Bundled default installs matching `hm-arch==X.Y.Z` |
 
 Coordination rules:
 
@@ -101,7 +101,7 @@ Coordination rules:
 
 ## Usage
 
-### End-user commands (planned after npm publish)
+### End-user commands (after npm publish)
 
 ```bash
 # One-shot install for a supported agent

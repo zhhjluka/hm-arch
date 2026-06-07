@@ -29,15 +29,16 @@ HM-Arch may be published through multiple channels. Each channel uses the **same
 semver string derived from `__version__` (Git tag: `vX.Y.Z`; PyPI and npm:
 `X.Y.Z` without the `v` prefix).
 
-| Channel | Artifact / package | First planned use | Notes |
+| Channel | Artifact / package | First coordinated use | Notes |
 |---------|-------------------|-------------------|-------|
-| GitHub Releases | wheel, sdist, release notes | v1.0.0 (current) | Primary distribution today; always attach verified `dist/` artifacts |
-| PyPI | `hm-arch` | v1.1.0+ | `pip install hm-arch`, `pipx install hm-arch` after maintainer-approved publish |
-| npm | `@hm-arch/installer` | v1.2.0+ | Installer/launcher only; pairs with a compatible `hm-arch` PyPI version |
+| GitHub Releases | wheel, sdist, standalone binaries, release notes | v2.0.0 | Always attach verified artifacts |
+| PyPI | `hm-arch` | v2.0.0+ | `pip install hm-arch`, `pipx install hm-arch` after maintainer-approved publish |
+| npm | `@hm-arch/installer` | v2.0.0+ | Installer/launcher only; pairs with matching `hm-arch` version |
 
-Historical note: **v1.0.0** was released on GitHub only. Registry publication is
-planned but not required for every release until the integration roadmap milestone
-for that channel is reached.
+Historical note: **v1.0.0** was released on GitHub only. **v2.0.0** starts the
+coordinated release line for GitHub, PyPI, npm, and standalone artifacts. After
+v2.0.0, use patch releases for fixes (`2.0.x`) and minor releases for backward
+compatible additions (`2.x.0`).
 
 ## Version coordination across channels
 
@@ -49,9 +50,9 @@ When more than one channel is used for a release, keep versions aligned:
 4. If PyPI publication is in scope for this release, upload the **same** wheel/sdist
    built for GitHub (or rebuild from the tagged commit and confirm `__version__`
    matches) so `pip install hm-arch==X.Y.Z` matches the GitHub Release.
-5. If an npm release is in scope, publish `@hm-arch/installer@X.Y.Z` (or the
-   documented pairing version) that installs or references the matching `hm-arch`
-   Python package version documented in the release notes.
+5. If an npm release is in scope, publish `@hm-arch/installer@X.Y.Z` that installs
+   or references the matching `hm-arch` Python package version documented in the
+   release notes.
 
 Do not publish a higher version to one channel and leave another channel on an
 older version without an explicit decision recorded in release notes.

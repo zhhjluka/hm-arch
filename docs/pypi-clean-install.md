@@ -22,13 +22,12 @@ python3.12 -m build --outdir dist
 ls dist/hm_arch-*.whl dist/hm_arch-*.tar.gz
 ```
 
-Record the version in the filenames (e.g. `1.0.0` today; `1.1.0` when the
-Python-first integration release ships).
+Record the version in the filenames (for this release, `2.0.0`).
 
 ## 1. Clean `pip` install (isolated venv)
 
 ```bash
-export HM_ARCH_VERSION=1.0.0   # match dist/ artifact version
+export HM_ARCH_VERSION=2.0.0   # match dist/ artifact version
 rm -rf /tmp/hm-arch-pip-verify
 python3.12 -m venv /tmp/hm-arch-pip-verify
 /tmp/hm-arch-pip-verify/bin/pip install --upgrade pip
@@ -68,7 +67,7 @@ dedicated `PIPX_HOME` and `PIPX_BIN_DIR` so verification does not touch the user
 default.
 
 ```bash
-export HM_ARCH_VERSION=1.0.0
+export HM_ARCH_VERSION=2.0.0
 export PIPX_HOME=/tmp/hm-arch-pipx-home
 export PIPX_BIN_DIR=/tmp/hm-arch-pipx-bin
 rm -rf "$PIPX_HOME" "$PIPX_BIN_DIR"

@@ -48,7 +48,7 @@ version skew between channels must be documented in release notes.
 |-------------------|----------|
 | `auto` (default) | Use standalone on supported targets; fall back to managed Python venv when standalone is unavailable or download fails |
 | `standalone` | Require verified standalone binary; fail if unavailable |
-| `python` | Always use managed Python venv (previous v1.2.x behavior) |
+| `python` | Always use managed Python venv (previous installer behavior) |
 
 Environment variables unchanged: `HM_ARCH_HOME`, `HM_ARCH_RELEASE_BASE_URL`,
 `HM_ARCH_PIP_SPEC`, `HM_ARCH_PYTHON`.

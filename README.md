@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/release-v1.0.0-111111" alt="GitHub Release v1.0.0"></a>
+  <a href="https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v2.0.0"><img src="https://img.shields.io/badge/release-v2.0.0-111111" alt="GitHub Release v2.0.0"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB" alt="Python 3.10+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-4C9A7D" alt="Apache-2.0 License"></a>
   <a href="https://github.com/ZhangHangjianMA/hm-arch/actions"><img src="https://img.shields.io/badge/tests-778%20passing-4C9A7D" alt="778 tests passing"></a>
@@ -35,26 +35,26 @@ Most agent memory systems focus on storing and retrieving text. HM-Arch also mod
 
 ### Install
 
-**Today (v1.0.0):** install from the [v1.0.0 GitHub Release](https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v1.0.0) wheel or sdist, or from source (below).
+**Current release target (v2.0.0):** install from the [v2.0.0 GitHub Release](https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v2.0.0) wheel or sdist after the release is published, from PyPI after maintainer approval, or from source (below).
 
-**Planned registries** (see [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md)):
+**Release channels** (see [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md)):
 
 | Channel | Package | Target version | Maintainer approval |
 |---------|---------|----------------|---------------------|
 | GitHub Releases | wheel + sdist | every release | required for tag and release |
-| PyPI | `hm-arch` | v1.1.0+ | required before first publish and each release |
-| npm | `@hm-arch/installer` | v1.2.0+ | required before first publish and each release |
+| PyPI | `hm-arch` | v2.0.0+ | required before first publish and each release |
+| npm | `@hm-arch/installer` | v2.0.0+ | required before first publish and each release |
 
 All public channels use the same semver from `src/hm_arch/_version.py`. Automated agents must not create tags, GitHub Releases, or registry uploads without explicit maintainer instruction. See [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) and [docs/VERSIONING.md](docs/VERSIONING.md).
 
 #### Install from the GitHub Release (current)
 
-Download `hm_arch-1.0.0-py3-none-any.whl` from the [v1.0.0 release page](https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v1.0.0), then install it in a Python 3.10+ environment:
+Download `hm_arch-2.0.0-py3-none-any.whl` from the [v2.0.0 release page](https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v2.0.0), then install it in a Python 3.10+ environment:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/hm_arch-1.0.0-py3-none-any.whl
+python -m pip install /path/to/hm_arch-2.0.0-py3-none-any.whl
 ```
 
 For development from source:
@@ -65,11 +65,18 @@ cd hm-arch
 python -m pip install -e ".[dev]"
 ```
 
-After PyPI publication is approved (planned v1.1.0+):
+After PyPI publication is approved:
 
 ```bash
 pip install hm-arch
 # or: pipx install hm-arch
+```
+
+After npm publication is approved, Node.js users can install the agent installer:
+
+```bash
+npm install -g @hm-arch/installer
+hm-arch-install doctor
 ```
 
 Maintainer clean-install verification: [docs/pypi-clean-install.md](docs/pypi-clean-install.md).
@@ -188,7 +195,8 @@ The default test suite runs fully offline. Benchmark tests are marked separately
 | [docs/spec.md](docs/spec.md) | Product and API contract |
 | [docs/benchmarks.md](docs/benchmarks.md) | PRD benchmark results and limitations |
 | [docs/RELEASE_NOTES_v1.0.0.md](docs/RELEASE_NOTES_v1.0.0.md) | v1.0.0 release notes |
-| [docs/RELEASE_NOTES_v1.1.0.md](docs/RELEASE_NOTES_v1.1.0.md) | v1.1.0 Python-first integration (draft) |
+| [docs/RELEASE_NOTES_v2.0.0.md](docs/RELEASE_NOTES_v2.0.0.md) | v2.0.0 coordinated release notes |
+| [docs/v2-migration-guide.md](docs/v2-migration-guide.md) | v2.0.0 migration and compatibility |
 | [docs/agents/README.md](docs/agents/README.md) | Codex, Claude Code, and Hermes setup |
 | [docs/pypi-clean-install.md](docs/pypi-clean-install.md) | pip / pipx clean-install verification |
 | [docs/npm-installer.md](docs/npm-installer.md) | npm installer requirements, usage, and version pairing |

@@ -1,7 +1,7 @@
 # Agent installation guides
 
-HM-Arch **v1.1.0** (Python-first three-agent integration) connects to coding agents
-through the packaged `hm-arch` CLI.
+HM-Arch **v2.0.0** connects to coding agents through the packaged `hm-arch` CLI
+and the coordinated Python/npm installer release line.
 
 | Agent | Install hooks via CLI | Status / doctor |
 |-------|----------------------|-----------------|
@@ -13,8 +13,9 @@ through the packaged `hm-arch` CLI.
 
 | Channel | Command | When |
 |---------|---------|------|
-| GitHub Release wheel | `pip install /path/to/hm_arch-X.Y.Z-py3-none-any.whl` | v1.0.0+ (today) |
-| PyPI | `pip install hm-arch` or `pipx install hm-arch` | After maintainer-approved publish (v1.1.0+) |
+| GitHub Release wheel | `pip install /path/to/hm_arch-X.Y.Z-py3-none-any.whl` | v2.0.0+ |
+| PyPI | `pip install hm-arch` or `pipx install hm-arch` | After maintainer-approved publish |
+| npm | `npm install -g @hm-arch/installer` | After maintainer-approved publish |
 
 Clean-install verification for maintainers:
 [pypi-clean-install.md](../pypi-clean-install.md).
@@ -22,8 +23,8 @@ Clean-install verification for maintainers:
 Manual smoke tests for all three agents:
 [integration-cli-smoke.md](../integration-cli-smoke.md).
 
-Release notes for the Python-first integration:
-[RELEASE_NOTES_v1.1.0.md](../RELEASE_NOTES_v1.1.0.md).
+Release notes for the coordinated v2 release:
+[RELEASE_NOTES_v2.0.0.md](../RELEASE_NOTES_v2.0.0.md).
 
 Memory export, import, migration, and sharing policies:
 [memory-sharing-policies.md](../memory-sharing-policies.md).
