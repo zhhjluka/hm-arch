@@ -1,8 +1,11 @@
 # npm installer publication checklist
 
 Use this checklist when preparing `@hm-arch/installer` for registry publication
-(`v2.0.0+`). Automated Cursor/Codex agents must **not** run `npm publish` unless
-a maintainer explicitly instructs them for a specific version.
+(`v2.0.0+`). The normal path is the tag-triggered
+`.github/workflows/publish-npm.yml` workflow, which waits for the matching
+GitHub Release before publishing. Automated Cursor/Codex agents must **not**
+create or push release tags unless a maintainer explicitly instructs them for a
+specific version.
 
 Cross-reference: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) section 7,
 [VERSIONING.md](VERSIONING.md), [npm-installer.md](npm-installer.md).
@@ -40,21 +43,23 @@ Cross-reference: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) section 7,
 
 ## Maintainer approval (required before publish)
 
-- [ ] Maintainer approved npm publish for `@hm-arch/installer@X.Y.Z`
+- [ ] Maintainer approved release tag `vX.Y.Z`
+- [ ] `NPM_TOKEN` is configured for the `npm` environment
 - [ ] Registry credentials are configured only on maintainer-controlled systems (not committed to the repo)
 - [ ] Two-factor authentication and npm org access verified for `@hm-arch` scope
 
-## Publish commands (maintainers only)
+## Publish path
+
+Push the release tag after all checks pass:
 
 ```bash
-cd packages/installer
-npm ci
-npm test
-npm pack   # inspect tarball; optional dry-run install
-npm publish --access public   # ONLY after explicit approval
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
-Do **not** add `npm publish` to CI workflows.
+The release workflow runs `npm publish --access public` after creating the GitHub
+Release. Manual `npm publish` is only for recovery when the workflow is
+unavailable.
 
 ## Post-publish verification
 
@@ -72,4 +77,4 @@ Do **not** add `npm publish` to CI workflows.
 | Test | `cd packages/installer && npm test` | Yes |
 | Pack smoke | `npm pack` + install tarball locally | Yes |
 | CI | `.github/workflows/npm-installer-ci.yml` | Yes (verify only) |
-| Publish | `npm publish` | **No** (unless explicitly instructed) |
+| Publish | tag-triggered release workflow | Automatic after approved tag |

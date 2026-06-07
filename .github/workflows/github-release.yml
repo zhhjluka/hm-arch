@@ -1,0 +1,258 @@
+# Build and publish GitHub Release assets when a version tag is pushed.
+# Maintainers approve a release by creating and pushing a `vX.Y.Z` tag.
+
+name: GitHub Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: github-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    name: validate release version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: packages/installer/package-lock.json
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install npm dependencies
+        working-directory: packages/installer
+        run: npm ci
+
+      - name: Verify coordinated release versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd packages/installer && npm run build)
+          python scripts/verify_release_versions.py
+
+      - name: Check tag matches package version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(sed -nE 's/^__version__[[:space:]]*=[[:space:]]*"([^"]+)"/\1/p' src/hm_arch/_version.py)"
+          if [ -z "$VERSION" ]; then
+            echo "Could not parse src/hm_arch/_version.py" >&2
+            exit 1
+          fi
+          TAG="${GITHUB_REF_NAME}"
+          if [ "$TAG" != "v${VERSION}" ]; then
+            echo "Tag ${TAG} does not match hm_arch.__version__ ${VERSION}" >&2
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Run release smoke tests
+        run: |
+          uv run pytest -q
+          uv run python examples/release_smoke.py
+
+      - name: Run npm installer tests
+        working-directory: packages/installer
+        run: npm test
+
+  python-dist:
+    name: build Python distributions
+    needs: validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Build wheel and sdist
+        run: uv run --with build python -m build --outdir dist
+
+      - name: Check Python distribution metadata
+        run: uv run --with twine python -m twine check dist/*
+
+      - name: Upload Python distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/*
+          retention-days: 30
+
+  standalone-build:
+    name: build standalone (${{ matrix.target_os }}-${{ matrix.target_arch }})
+    needs: validate
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target_os: linux
+            target_arch: x86_64
+          - os: ubuntu-24.04-arm
+            target_os: linux
+            target_arch: aarch64
+          - os: macos-latest
+            target_os: darwin
+            target_arch: arm64
+          - os: windows-latest
+            target_os: windows
+            target_arch: x86_64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync
+
+      - name: Build standalone executable
+        run: uv run python scripts/build_standalone.py --clean
+
+      - name: Prepare versioned release artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run python scripts/prepare_release_artifacts.py \
+            --os-name "${{ matrix.target_os }}" \
+            --arch "${{ matrix.target_arch }}"
+
+      - name: Validate checksums and metadata
+        run: uv run python scripts/validate_release_artifacts.py --artifacts-dir dist/release
+
+      - name: Smoke test release artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.validate.outputs.version }}"
+          if [ "${{ matrix.target_os }}" = "windows" ]; then
+            ARTIFACT="dist/release/hm-arch-${VERSION}-${{ matrix.target_os }}-${{ matrix.target_arch }}.exe"
+          else
+            ARTIFACT="dist/release/hm-arch-${VERSION}-${{ matrix.target_os }}-${{ matrix.target_arch }}"
+          fi
+          uv run python scripts/smoke_standalone_artifact.py "$ARTIFACT"
+
+      - name: Upload standalone artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hm-arch-${{ matrix.target_os }}-${{ matrix.target_arch }}
+          path: |
+            dist/release/hm-arch-*
+            dist/release/*.sha256
+          retention-days: 30
+
+  create-release:
+    name: create GitHub Release
+    needs:
+      - validate
+      - python-dist
+      - standalone-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Download Python distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/python
+
+      - name: Download standalone artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifact-downloads
+          pattern: hm-arch-*
+          merge-multiple: true
+
+      - name: Merge standalone metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/release
+          cp artifact-downloads/hm-arch-* dist/release/
+          uv run python scripts/prepare_release_artifacts.py \
+            --merge-metadata \
+            --version "${{ needs.validate.outputs.version }}"
+          uv run python scripts/validate_release_artifacts.py --artifacts-dir dist/release
+
+      - name: Resolve release notes
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOTES="docs/RELEASE_NOTES_${{ needs.validate.outputs.tag }}.md"
+          if [ ! -f "$NOTES" ]; then
+            NOTES="CHANGELOG.md"
+          fi
+          echo "path=${NOTES}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "${{ needs.validate.outputs.tag }}" \
+            dist/python/* \
+            dist/release/* \
+            --title "HM-Arch ${{ needs.validate.outputs.tag }}" \
+            --notes-file "${{ steps.notes.outputs.path }}" \
+            --verify-tag

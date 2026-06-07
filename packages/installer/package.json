@@ -8,7 +8,7 @@
     "node": ">=18"
   },
   "bin": {
-    "hm-arch-install": "./dist/cli.js"
+    "hm-arch-install": "dist/cli.js"
   },
   "files": [
     "dist",
