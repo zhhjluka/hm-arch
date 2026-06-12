@@ -109,7 +109,10 @@ def resolve_db_path(
         path = raw.strip()
         path = path.replace("$HERMES_HOME", str(home))
         path = path.replace("${HERMES_HOME}", str(home))
-        return str(Path(path).expanduser())
+        candidate = Path(path).expanduser()
+        if not candidate.is_absolute():
+            candidate = home / candidate
+        return str(candidate)
     return str(home / DEFAULT_DB_FILENAME)
 
 
@@ -137,13 +140,13 @@ def _load_minimal_hermes_config(text: str) -> dict[str, Any]:
             continue
 
         if line.startswith("  ") and not line.startswith("    "):
-            key, _, value = stripped.partition(":")
+            key, sep, value = stripped.partition(":")
             value = value.strip().strip('"').strip("'")
             if plugin_section is None and key == "provider":
                 memory["provider"] = value
                 continue
-            if plugin_section is not None and key.endswith(":"):
-                current_plugin = key[:-1]
+            if plugin_section is not None and sep == ":" and not value:
+                current_plugin = key
                 plugin_section[current_plugin] = {}
                 continue
             if plugin_section is not None and current_plugin:
