@@ -94,6 +94,7 @@ def test_status_hermes_reports_provider_conflict(
 def test_status_hermes_configured(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     hermes_home = tmp_path / "hermes_ok"
     hermes_home.mkdir()
@@ -104,6 +105,9 @@ def test_status_hermes_configured(
     monkeypatch.setenv("HERMES_HOME", str(hermes_home))
 
     assert main(["status", "hermes"]) == 0
+    err = capsys.readouterr().err
+    assert "plugins.hm-arch settings found" in err
+    assert str(hermes_home / "test.db") in err
     assert main(["doctor", "hermes"]) == 0
 
 
