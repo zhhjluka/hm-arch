@@ -1,0 +1,73 @@
+# Publish @hm-arch/installer to npm after a version tag is pushed.
+# This workflow waits for the matching GitHub Release to exist first.
+
+name: Publish npm
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: publish-npm-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: publish npm
+    runs-on: ubuntu-latest
+    environment: npm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+          cache-dependency-path: packages/installer/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Wait for GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..60}; do
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              exit 0
+            fi
+            echo "Waiting for GitHub Release ${TAG} (attempt ${attempt}/60)"
+            sleep 30
+          done
+          echo "Timed out waiting for GitHub Release ${TAG}" >&2
+          exit 1
+
+      - name: Install npm dependencies
+        working-directory: packages/installer
+        run: npm ci
+
+      - name: Verify version coordination
+        run: python scripts/verify_release_versions.py
+
+      - name: Run npm installer tests
+        working-directory: packages/installer
+        run: npm test
+
+      - name: Publish npm package
+        working-directory: packages/installer
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public

@@ -6,13 +6,21 @@ Use this checklist for each HM-Arch release.
 binaries, release notes) for **v2.0.0** and later.
 
 **Registries:** PyPI (`hm-arch`) and npm (`@hm-arch/installer`) use the same
-semver from v2.0.0 onward. Registry publication is allowed when a maintainer
-explicitly approves it for a given version, but it is never automated without
-approval.
+semver from v2.0.0 onward. Publication is automated by tag-triggered workflows
+when a maintainer pushes a `vX.Y.Z` tag:
 
-**Approval rule:** Git tags, GitHub Releases, PyPI uploads, and npm publishes all
-require **explicit maintainer approval**. Automated Cursor/Codex agents must not
-perform those steps unless explicitly instructed for a specific version.
+- `.github/workflows/github-release.yml` creates the GitHub Release and assets.
+- `.github/workflows/publish-pypi.yml` publishes `hm-arch` to PyPI.
+- `.github/workflows/publish-npm.yml` publishes `@hm-arch/installer` to npm.
+
+**Approval rule:** creating and pushing the release tag is the maintainer approval
+gate. Automated Cursor/Codex agents must not create or push a release tag unless
+explicitly instructed for a specific version.
+
+**Required repository secrets / environments:**
+
+- `PYPI_API_TOKEN` for the `pypi` environment
+- `NPM_TOKEN` for the `npm` environment
 
 Prepared release notes for v2.0.0: [RELEASE_NOTES_v2.0.0.md](RELEASE_NOTES_v2.0.0.md).
 
@@ -115,9 +123,12 @@ Follow [VERSIONING.md](VERSIONING.md):
 - [ ] `uv run python scripts/generate_api_docs.py` run and `docs/api.md` committed if changed.
 - [ ] Release notes state which channels apply (GitHub only, or GitHub + PyPI, or GitHub + PyPI + npm).
 
-## 4. Tag (explicit approval required)
+## 4. Tag (explicit approval required; triggers publication)
 
-Only after **Test** and **Build** succeed and a maintainer approves the version:
+Only after **Test** and **Build** succeed and a maintainer approves the version.
+Pushing this tag triggers the three release workflows listed above. The GitHub
+Release workflow builds artifacts and creates the release; the PyPI and npm
+workflows wait for the matching GitHub Release before publishing.
 
 ```bash
 git tag -a vX.Y.Z -m "Release vX.Y.Z"
@@ -125,22 +136,25 @@ git push origin vX.Y.Z
 ```
 
 - [ ] Tag name matches `__version__` (with `v` prefix).
-- [ ] GitHub Release notes copied from `docs/RELEASE_NOTES_vX.Y.Z.md` and/or `CHANGELOG.md`.
+- [ ] `docs/RELEASE_NOTES_vX.Y.Z.md` exists or the workflow will fall back to `CHANGELOG.md`.
+- [ ] Repository secrets/environments for PyPI and npm are configured.
 
 Automated Cursor/Codex agents: **do not create tags** unless explicitly instructed.
 
-## 5. Publish GitHub Release (explicit approval required)
+## 5. Publish GitHub Release (automatic on tag)
 
-After the tag is pushed, create a GitHub Release for the same version:
+After the tag is pushed, the release workflow creates a GitHub Release for the
+same version:
 
 - [ ] Release title and tag match `vX.Y.Z`.
 - [ ] Release notes describe supported layers, optional backends, offline defaults, benchmark evidence, and known limitations.
 - [ ] Verified wheel and sdist artifacts from `dist/` are attached.
 - [ ] If registries are also published for this version, notes document install commands and version pairing (see sections 6–7).
 
-Automated Cursor/Codex agents: **do not create or edit GitHub Releases** unless explicitly instructed.
+Automated Cursor/Codex agents: **do not create or edit GitHub Releases manually**
+unless explicitly instructed; prefer the tag-triggered workflow.
 
-## 6. Publish to PyPI (explicit approval required; v2.0.0+)
+## 6. Publish to PyPI (automatic on tag; v2.0.0+)
 
 **v1.0.0** was GitHub-only; do not retroactively publish older versions without a
 maintainer decision. From **v2.0.0** onward, PyPI publication may be part of the
@@ -151,7 +165,8 @@ PyPI after upload): [pypi-clean-install.md](pypi-clean-install.md).
 
 Agent setup guides (must match shipped CLI): [agents/README.md](agents/README.md).
 
-Only after GitHub Release **5** is complete (or in the same approved release window):
+`.github/workflows/publish-pypi.yml` publishes after GitHub Release **5**
+completes:
 
 - [ ] Maintainer approved PyPI upload for version `X.Y.Z`.
 - [ ] Upload uses artifacts built from the tagged commit; `hm_arch.__version__` matches `X.Y.Z`.
@@ -164,23 +179,17 @@ Only after GitHub Release **5** is complete (or in the same approved release win
 - [ ] `docs/RELEASE_NOTES_vX.Y.Z.md` prepared (e.g. [RELEASE_NOTES_v2.0.0.md](RELEASE_NOTES_v2.0.0.md) for the coordinated v2 release).
 - [ ] GitHub Release notes mention `pip install hm-arch` when PyPI is live for this version.
 
-Example maintainer commands (requires credentials; agents must not run without approval):
+Manual `twine upload` is only for recovery when the workflow is unavailable.
 
-```bash
-python3 -m pip install -U twine
-python3 -m twine upload dist/hm_arch-X.Y.Z*
-```
-
-Automated Cursor/Codex agents: **do not upload to PyPI or TestPyPI** unless explicitly instructed.
-
-## 7. Publish to npm (explicit approval required; v2.0.0+)
+## 7. Publish to npm (automatic on tag; v2.0.0+)
 
 From **v2.0.0** onward, `@hm-arch/installer` may be published in the same approved
 release window as the matching Python package and GitHub Release.
 
-Only after the matching `hm-arch` Python version is available (PyPI or documented
-GitHub wheel URL) and a maintainer approves npm publication, follow the full
-checklist in [npm-installer-publication.md](npm-installer-publication.md).
+`.github/workflows/publish-npm.yml` publishes after GitHub Release **5**
+completes. Follow the full checklist in
+[npm-installer-publication.md](npm-installer-publication.md) before pushing the
+tag.
 
 Summary gates:
 
@@ -191,7 +200,7 @@ Summary gates:
 - [ ] `postinstall` does not modify agent configuration (installer uses explicit install commands).
 - [ ] [npm-installer.md](npm-installer.md) matches shipped commands; GitHub Release notes document npm install and Python version pairing.
 
-Automated Cursor/Codex agents: **do not publish to npm** unless explicitly instructed.
+Manual `npm publish` is only for recovery when the workflow is unavailable.
 
 ## Quick reference
 
@@ -202,7 +211,7 @@ Automated Cursor/Codex agents: **do not publish to npm** unless explicitly instr
 | Build | `uv run --with build python -m build --outdir dist` (Python >= 3.10) | Yes (local only) |
 | Verify install | wheel + sdist in throwaway venvs; pip/pipx per [pypi-clean-install.md](pypi-clean-install.md) | Yes |
 | Docs | `uv run python scripts/generate_api_docs.py` | Yes |
-| Tag | `git tag`, `git push origin vX.Y.Z` | No (unless asked) |
-| GitHub Release | Release notes + `dist/` artifacts | No (unless asked) |
-| PyPI | `twine upload` / registry upload | No (unless asked) |
-| npm | `npm publish` for `@hm-arch/installer` | No (unless asked) |
+| Tag | `git tag`, `git push origin vX.Y.Z` | No (unless asked); triggers release workflow |
+| GitHub Release | `.github/workflows/github-release.yml` | Automatic after tag |
+| PyPI | `.github/workflows/publish-pypi.yml` | Automatic after tag |
+| npm | `.github/workflows/publish-npm.yml` | Automatic after tag |

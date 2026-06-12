@@ -57,19 +57,27 @@ When more than one channel is used for a release, keep versions aligned:
 Do not publish a higher version to one channel and leave another channel on an
 older version without an explicit decision recorded in release notes.
 
-## Maintainer approval and automated agents
+## Maintainer approval and automated publication
 
-These actions require **explicit maintainer approval** before execution:
+Creating and pushing a `vX.Y.Z` release tag is the maintainer approval gate. The
+tag-triggered release workflows then automatically:
 
-- Creating or pushing a Git release tag
-- Creating or editing a GitHub Release (including attaching artifacts)
-- Uploading to PyPI or TestPyPI
-- Publishing to the npm registry
+- `.github/workflows/github-release.yml` verifies version coordination, builds
+  wheel/sdist and standalone artifacts, and creates the GitHub Release.
+- `.github/workflows/publish-pypi.yml` waits for the GitHub Release assets and
+  publishes `hm-arch` to PyPI.
+- `.github/workflows/publish-npm.yml` waits for the GitHub Release and publishes
+  `@hm-arch/installer` to npm.
 
 Automated agents (Cursor, Codex, CI bots) may run tests, local builds, doc
 generation, and install verification in isolated environments. They must **not**
-create tags, publish GitHub Releases, or upload to PyPI or npm unless a maintainer
-explicitly instructs them to do so for a specific version.
+create or push release tags unless a maintainer explicitly instructs them to do
+so for a specific version.
+
+The workflow requires repository secrets/environments:
+
+- `PYPI_API_TOKEN` in the `pypi` environment
+- `NPM_TOKEN` in the `npm` environment
 
 ## Automated version coordination check
 
@@ -96,5 +104,5 @@ notes; the checker fails when they differ.
 6. Regenerate API docs: `python scripts/generate_api_docs.py`
 7. Run release verification (see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)).
 8. Commit with message like `chore: release v0.1.1`.
-9. After maintainer approval: tag, GitHub Release, and any approved registry
-   uploads for that version.
+9. After maintainer approval: push `vX.Y.Z`; the release workflow handles GitHub
+   Release, PyPI, and npm publication.
