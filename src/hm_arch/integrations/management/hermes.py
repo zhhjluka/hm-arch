@@ -14,6 +14,7 @@ from hm_arch.integrations.hermes.config import (
     read_plugin_settings,
     resolve_db_path,
 )
+from hm_arch.storage.sqlite import SQLiteStore
 
 from .types import Diagnostic, DiagnosticLevel, IntegrationReport, IntegrationState
 
@@ -229,6 +230,13 @@ class HermesAgentHandler:
                     remedy=_HERMES_INSTALL_REMEDY,
                 )
             )
+        else:
+            init_diagnostics = _ensure_database_initialized(report.config_root)
+            if any(item.code == "hermes.db.created" for item in init_diagnostics):
+                diagnostics = [
+                    item for item in diagnostics if item.code != "hermes.db.missing"
+                ]
+            diagnostics.extend(init_diagnostics)
         return IntegrationReport(
             agent=report.agent,
             scope=report.scope,
@@ -268,3 +276,53 @@ def _base_diagnostics(home: Path, config_path: Path) -> list[Diagnostic]:
         )
     )
     return diagnostics
+
+
+def _ensure_database_initialized(home: Path | None) -> list[Diagnostic]:
+    """Create the configured Hermes HM-Arch database schema when missing."""
+    if home is None:
+        return []
+    config_path = home / "config.yaml"
+    try:
+        config = load_hermes_config(config_path)
+    except ValueError as exc:
+        return [
+            Diagnostic(
+                code="hermes.config.invalid",
+                level=DiagnosticLevel.ERROR,
+                message=str(exc),
+                remedy=f"Fix YAML syntax in {config_path}.",
+            )
+        ]
+
+    db_path = resolve_db_path(home, read_plugin_settings(config))
+    db_file = Path(db_path)
+    existed = db_file.exists()
+    try:
+        if db_path != ":memory:":
+            db_file.parent.mkdir(parents=True, exist_ok=True)
+        with SQLiteStore(db_path) as store:
+            store.initialize_schema()
+    except Exception as exc:
+        return [
+            Diagnostic(
+                code="hermes.db.init_failed",
+                level=DiagnosticLevel.ERROR,
+                message=f"Could not initialize HM-Arch database at {db_path}: {exc}",
+                remedy=f"Check permissions for {db_file.parent}.",
+            )
+        ]
+
+    if existed:
+        message = f"HM-Arch database schema is initialized at {db_path}."
+        code = "hermes.db.initialized"
+    else:
+        message = f"Created HM-Arch database at {db_path}."
+        code = "hermes.db.created"
+    return [
+        Diagnostic(
+            code=code,
+            level=DiagnosticLevel.INFO,
+            message=message,
+        )
+    ]

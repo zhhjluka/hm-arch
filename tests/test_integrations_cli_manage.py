@@ -108,7 +108,18 @@ def test_status_hermes_configured(
     err = capsys.readouterr().err
     assert "plugins.hm-arch settings found" in err
     assert str(hermes_home / "test.db") in err
+    assert not (hermes_home / "test.db").exists()
+
     assert main(["doctor", "hermes"]) == 0
+    err = capsys.readouterr().err
+    assert "Created HM-Arch database" in err
+    assert "HM-Arch database not created yet" not in err
+    assert "storage: diagnostics" not in err
+    assert (hermes_home / "test.db").exists()
+
+    assert main(["doctor", "hermes"]) == 0
+    err = capsys.readouterr().err
+    assert "HM-Arch database schema is initialized" in err
 
 
 def test_uninstall_hermes_reports_unsupported_diagnostic(

@@ -285,15 +285,16 @@ def run_doctor_command(args: argparse.Namespace) -> int:
             ):
                 exit_code = 1
 
-    storage_scope = "storage"
-    print(f"{storage_scope}: diagnostics", file=sys.stderr)
-    for item in storage_diagnostics():
-        prefix = item.level.value.upper()
-        print(f"  [{prefix}] {item.message}", file=sys.stderr)
-        if item.remedy:
-            print(f"         -> {item.remedy}", file=sys.stderr)
-        logger.log_diagnostic(item, scope=storage_scope)
-        if item.level == DiagnosticLevel.ERROR:
-            exit_code = 1
+    if args.agent is None:
+        storage_scope = "storage"
+        print(f"{storage_scope}: diagnostics", file=sys.stderr)
+        for item in storage_diagnostics():
+            prefix = item.level.value.upper()
+            print(f"  [{prefix}] {item.message}", file=sys.stderr)
+            if item.remedy:
+                print(f"         -> {item.remedy}", file=sys.stderr)
+            logger.log_diagnostic(item, scope=storage_scope)
+            if item.level == DiagnosticLevel.ERROR:
+                exit_code = 1
 
     return exit_code
