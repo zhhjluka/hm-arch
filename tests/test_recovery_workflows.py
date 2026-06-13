@@ -133,7 +133,7 @@ class TestStorageDiagnostics:
         monkeypatch.chdir(project_root)
         monkeypatch.setenv("HOME", str(codex_home))
 
-        main(["doctor", "codex"])
+        main(["doctor"])
         err = capsys.readouterr().err
         assert "storage: diagnostics" in err
 

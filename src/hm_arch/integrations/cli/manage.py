@@ -205,7 +205,9 @@ def run_install_command(args: argparse.Namespace) -> int:
     handler = get_agent_handler(args.agent)
     report = handler.install(global_install=args.global_install)
     _print_report(report)
-    return 2
+    if report.has_errors or report.state == IntegrationState.UNSUPPORTED:
+        return 2
+    return 0
 
 
 def run_uninstall_command(args: argparse.Namespace) -> int:
@@ -231,7 +233,9 @@ def run_uninstall_command(args: argparse.Namespace) -> int:
     handler = get_agent_handler(args.agent)
     report = handler.uninstall(global_install=args.global_install)
     _print_report(report)
-    return 2
+    if report.has_errors or report.state == IntegrationState.UNSUPPORTED:
+        return 2
+    return 0
 
 
 def run_status_command(args: argparse.Namespace) -> int:

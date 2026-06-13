@@ -258,6 +258,40 @@ def test_provider_tools_search_and_remember(
     provider.shutdown()
 
 
+def test_provider_tools_search_uses_hermes_config_db_path(hermes_home: str) -> None:
+    config_path = Path(hermes_home) / "config.yaml"
+    config_path.write_text(
+        "memory:\n"
+        "  provider: hm-arch\n"
+        "plugins:\n"
+        "  hm-arch:\n"
+        "    db_path: hm_arch_memory.db\n",
+        encoding="utf-8",
+    )
+    provider = HMArchHermesMemoryProvider()
+    try:
+        provider.initialize("session-hermes-config", hermes_home=hermes_home)
+
+        stored = json.loads(
+            provider.handle_tool_call(
+                "hm_arch_remember",
+                {"content": "Hermes provider search uses configured db marker"},
+            )
+        )
+        searched = json.loads(
+            provider.handle_tool_call(
+                "hm_arch_search",
+                {"query": "configured db marker", "top_k": 2},
+            )
+        )
+
+        assert stored["memory_id"]
+        assert searched.get("error") is None
+        assert searched["count"] >= 1
+    finally:
+        provider.shutdown()
+
+
 def test_is_available_without_network() -> None:
     provider = HMArchHermesMemoryProvider()
     assert provider.is_available() is True

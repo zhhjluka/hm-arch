@@ -59,16 +59,27 @@ def test_doctor_codex_reports_not_installed(
     assert "not_installed" in err or "not installed" in err.lower()
 
 
-def test_install_hermes_reports_unsupported_diagnostic(
+def test_install_hermes_configures_provider_and_plugin_bridge(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    assert main(["install", "hermes"]) == 2
+    hermes_home = tmp_path / "hermes_install"
+    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+
+    assert main(["install", "hermes"]) == 0
     err = capsys.readouterr().err
-    assert "hermes: unsupported" in err
-    assert "hm-arch install hermes is not supported" in err
-    assert "native plugin registration" in err
-    assert "hm-arch status hermes" in err
-    assert "hm-arch doctor hermes" in err
+    assert "hermes: installed" in err
+    assert "Configured Hermes memory.provider" in err
+    assert "Installed HM-Arch Hermes plugin bridge" in err
+    assert (hermes_home / "config.yaml").exists()
+    assert (hermes_home / "plugins" / "hm-arch" / "__init__.py").exists()
+    assert (hermes_home / "plugins" / "hm-arch" / "plugin.yaml").exists()
+    assert (hermes_home / "hm_arch_memory.db").exists()
+
+    assert main(["status", "hermes"]) == 0
+    err = capsys.readouterr().err
+    assert "Hermes HM-Arch plugin bridge exists" in err
 
 
 def test_status_hermes_reports_provider_conflict(
@@ -98,6 +109,14 @@ def test_status_hermes_configured(
 ) -> None:
     hermes_home = tmp_path / "hermes_ok"
     hermes_home.mkdir()
+    plugin_dir = hermes_home / "plugins" / "hm-arch"
+    plugin_dir.mkdir(parents=True)
+    (plugin_dir / "__init__.py").write_text(
+        "from hm_arch.integrations.hermes import HMArchHermesMemoryProvider\n"
+        "def register(ctx):\n"
+        "    ctx.register_memory_provider(HMArchHermesMemoryProvider())\n",
+        encoding="utf-8",
+    )
     (hermes_home / "config.yaml").write_text(
         "memory:\n  provider: hm-arch\nplugins:\n  hm-arch:\n    db_path: test.db\n",
         encoding="utf-8",
@@ -107,6 +126,7 @@ def test_status_hermes_configured(
     assert main(["status", "hermes"]) == 0
     err = capsys.readouterr().err
     assert "plugins.hm-arch settings found" in err
+    assert "Hermes HM-Arch plugin bridge exists" in err
     assert str(hermes_home / "test.db") in err
     assert not (hermes_home / "test.db").exists()
 

@@ -249,7 +249,9 @@ def test_standalone_hermes_management_without_python_on_path(
         ["install", "hermes"],
         env={},
     )
-    assert install.returncode == 2
+    assert install.returncode == 0
+    assert (hermes_home / "plugins" / "hm-arch" / "__init__.py").exists()
+    assert (hermes_home / "test.db").exists()
 
     status = _run_executable(
         standalone_executable,
