@@ -123,6 +123,7 @@ def _load_minimal_hermes_config(text: str) -> dict[str, Any]:
     plugins: dict[str, Any] = {}
     plugin_section: dict[str, Any] | None = None
     current_plugin: str | None = None
+    current_top: str | None = None
 
     for raw_line in text.splitlines():
         line = raw_line.rstrip()
@@ -131,31 +132,48 @@ def _load_minimal_hermes_config(text: str) -> dict[str, Any]:
             continue
 
         if stripped == "memory:":
+            current_top = "memory"
             plugin_section = None
             current_plugin = None
             continue
         if stripped == "plugins:":
+            current_top = "plugins"
             plugin_section = plugins
+            current_plugin = None
+            continue
+        if not line.startswith(" "):
+            current_top = None
+            plugin_section = None
             current_plugin = None
             continue
 
         if line.startswith("  ") and not line.startswith("    "):
             key, sep, value = stripped.partition(":")
             value = value.strip().strip('"').strip("'")
-            if plugin_section is None and key == "provider":
+            if current_top == "memory" and key == "provider":
                 memory["provider"] = value
                 continue
-            if plugin_section is not None and sep == ":" and not value:
+            if (
+                current_top == "plugins"
+                and plugin_section is not None
+                and sep == ":"
+                and not value
+            ):
                 current_plugin = key
                 plugin_section[current_plugin] = {}
                 continue
-            if plugin_section is not None and current_plugin:
+            if current_top == "plugins" and plugin_section is not None and current_plugin:
                 section = plugin_section.setdefault(current_plugin, {})
                 if isinstance(section, dict):
                     section[key] = value
             continue
 
-        if line.startswith("    ") and plugin_section is not None and current_plugin:
+        if (
+            line.startswith("    ")
+            and current_top == "plugins"
+            and plugin_section is not None
+            and current_plugin
+        ):
             key, _, value = stripped.partition(":")
             value = value.strip().strip('"').strip("'")
             section = plugin_section.setdefault(current_plugin, {})

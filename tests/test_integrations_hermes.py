@@ -23,6 +23,7 @@ from hm_arch.integrations.hermes import (
     register,
     resolve_db_path,
 )
+from hm_arch.integrations.hermes.config import _load_minimal_hermes_config
 
 
 class _RecordingContext:
@@ -54,6 +55,29 @@ def test_read_memory_provider_nested_and_flat_keys() -> None:
     assert read_memory_provider({"memory": {"provider": "mem0"}}) == "mem0"
     assert read_memory_provider({"memory.provider": "hm-arch"}) == "hm-arch"
     assert read_memory_provider({}) is None
+
+
+def test_minimal_config_parser_scopes_memory_provider() -> None:
+    parsed = _load_minimal_hermes_config(
+        """
+model:
+  provider: deepseek
+tts:
+  provider: edge
+memory:
+  memory_enabled: true
+  provider: hm-arch
+delegation:
+  provider: ''
+plugins:
+  enabled: []
+  hm-arch:
+    db_path: hm_arch_memory.db
+"""
+    )
+
+    assert read_memory_provider(parsed) == HM_ARCH_PROVIDER_NAME
+    assert parsed["plugins"]["hm-arch"]["db_path"] == "hm_arch_memory.db"
 
 
 def test_detect_external_provider_conflict_blocks_other_providers() -> None:
