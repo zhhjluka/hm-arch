@@ -14,8 +14,15 @@ and the coordinated Python/npm installer release line.
 | Channel | Command | When |
 |---------|---------|------|
 | GitHub Release wheel | `pip install /path/to/hm_arch-X.Y.Z-py3-none-any.whl` | v2.0.0+ |
-| PyPI | `pip install hm-arch` or `pipx install hm-arch` | After maintainer-approved publish |
-| npm | `npm install -g @hm-arch/installer` | After maintainer-approved publish |
+| PyPI | `pip install hm-arch==2.0.0` or `pipx install hm-arch==2.0.0` | Published v2.0.0 |
+| npm | `npm install -g @hm-arch/installer@2.0.0` | Published v2.0.0 |
+
+The npm CLI is `hm-arch-install`. It installs Codex and Claude Code hooks, and it
+checks Hermes configuration with `hm-arch-install status hermes` and
+`hm-arch-install doctor hermes`. Hermes does not support `install hermes`;
+configure `$HERMES_HOME/config.yaml` manually. While this repository is private,
+use `HM_ARCH_RUNTIME=python` for npm-based Hermes checks so the installer uses
+PyPI instead of private GitHub Release assets.
 
 Clean-install verification for maintainers:
 [pypi-clean-install.md](../pypi-clean-install.md).

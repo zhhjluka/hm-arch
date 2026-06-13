@@ -35,7 +35,7 @@ export const ENV_HM_ARCH_RUNTIME = "HM_ARCH_RUNTIME";
 export const ENV_HM_ARCH_RELEASE_BASE_URL = "HM_ARCH_RELEASE_BASE_URL";
 
 /** Default GitHub repository for standalone release assets. */
-export const DEFAULT_GITHUB_REPO = "ZhangHangjianMA/hm-arch";
+export const DEFAULT_GITHUB_REPO = "zhhjluka/hm-arch";
 
 /** OS families the installer is designed to support (v1.2.0). */
 export const SUPPORTED_OS = new Set(["darwin", "linux", "win32"]);

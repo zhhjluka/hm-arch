@@ -9,6 +9,7 @@ import { parseReleaseMetadata } from "../src/release-metadata.js";
 import {
   downloadVerifiedStandaloneArtifact,
   ensureStandaloneBinary,
+  resolveReleaseBaseUrl,
   verifyDownloadedArtifact,
   verifyReleaseMetadataSignature,
 } from "../src/standalone-binary.js";
@@ -78,6 +79,13 @@ function mockReleaseHandlers(
 }
 
 describe("standalone binary downloader", () => {
+  it("uses the current GitHub repository for release downloads by default", () => {
+    assert.equal(
+      resolveReleaseBaseUrl(),
+      "https://github.com/zhhjluka/hm-arch/releases/download",
+    );
+  });
+
   it("downloads and verifies artifact against metadata and checksum sidecar", async () => {
     const handlers = mockReleaseHandlers();
     const result = await downloadVerifiedStandaloneArtifact(

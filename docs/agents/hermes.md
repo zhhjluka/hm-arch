@@ -15,13 +15,31 @@ python -m pip install --upgrade pip
 python -m pip install /path/to/hm_arch-2.0.0-py3-none-any.whl
 ```
 
-**After maintainer-approved PyPI publish**:
+**From PyPI**:
 
 ```bash
-pip install hm-arch
+pip install hm-arch==2.0.0
 # or:
-pipx install hm-arch
+pipx install hm-arch==2.0.0
 ```
+
+**From npm**:
+
+```bash
+npm install -g @hm-arch/installer@2.0.0
+```
+
+The npm package can run Hermes diagnostics through its managed runtime:
+
+```bash
+export HM_ARCH_RUNTIME=python
+hm-arch-install status hermes
+hm-arch-install doctor hermes
+```
+
+Use `HM_ARCH_RUNTIME=python` while the GitHub repository is private. The
+standalone runtime downloads release assets from GitHub Releases, and private
+release assets return 404 to unauthenticated npm installs.
 
 ## Hermes home
 
@@ -68,6 +86,14 @@ hm-arch status hermes
 hm-arch doctor hermes
 ```
 
+With npm:
+
+```bash
+export HM_ARCH_RUNTIME=python
+hm-arch-install status hermes
+hm-arch-install doctor hermes
+```
+
 Expected when fully configured:
 
 - `status` reports `installed` with role `memory-provider`
@@ -85,6 +111,8 @@ hm-arch doctor
 ```bash
 hm-arch install hermes    # exits 2 — use Hermes config + plugin registration
 hm-arch uninstall hermes  # exits 2 — edit config.yaml manually
+hm-arch-install install hermes    # exits 2 — same behavior through npm
+hm-arch-install uninstall hermes  # exits 2 — same behavior through npm
 ```
 
 Diagnostics include remediation text pointing to `status` and `doctor`.
@@ -112,5 +140,6 @@ Default: `$HERMES_HOME/hm_arch_memory.db`. Override with `plugins.hm-arch.db_pat
 
 - [Codex setup](codex.md)
 - [Claude Code setup](claude-code.md)
+- [npm installer](../npm-installer.md)
 - [Integration CLI smoke tests](../integration-cli-smoke.md)
 - [PyPI clean-install verification](../pypi-clean-install.md)

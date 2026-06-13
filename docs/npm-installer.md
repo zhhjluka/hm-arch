@@ -5,9 +5,9 @@ integrations. It does **not** reimplement memory logic in TypeScript; it creates
 managed Python virtual environment, installs a compatible `hm-arch` package, and
 delegates agent commands to the Python `hm-arch` CLI.
 
-**Status:** release-ready for the coordinated v2.0.0 line. Registry publication
-requires explicit maintainer approval. Automated agents must **not** run
-`npm publish`.
+**Status:** published for the coordinated v2.0.0 line. Install with
+`npm install -g @hm-arch/installer@2.0.0` or use `npx @hm-arch/installer@2.0.0`.
+Automated agents must **not** run `npm publish` without maintainer approval.
 
 See also:
 
@@ -39,6 +39,10 @@ verified PyInstaller executable from GitHub Releases:
 Artifacts are named `hm-arch-{version}-{os}-{arch}[.exe]` and verified against
 `hm-arch-{version}-standalone-release-metadata.json` and per-file `.sha256` checksums
 before installation under `<HM_ARCH_HOME>/standalone/`.
+
+If the GitHub repository is private, unauthenticated npm installs cannot download
+standalone release assets and GitHub returns 404. Set `HM_ARCH_RUNTIME=python`
+to use the PyPI-backed managed Python runtime instead.
 
 ### Supported Python discovery
 
@@ -101,18 +105,23 @@ Coordination rules:
 
 ## Usage
 
-### End-user commands (after npm publish)
+### End-user commands
 
 ```bash
 # One-shot install for a supported agent
-npx @hm-arch/installer install codex
-npx @hm-arch/installer install claude-code
-npx @hm-arch/installer install hermes
+npx @hm-arch/installer@2.0.0 install codex
+npx @hm-arch/installer@2.0.0 install claude-code
+
+# Hermes is configuration-driven: inspect with status/doctor after editing config.yaml
+export HM_ARCH_RUNTIME=python
+npx @hm-arch/installer@2.0.0 status hermes
+npx @hm-arch/installer@2.0.0 doctor hermes
 
 # Global CLI after npm install -g
-npm install -g @hm-arch/installer
+npm install -g @hm-arch/installer@2.0.0
 hm-arch-install doctor
 hm-arch-install status codex
+HM_ARCH_RUNTIME=python hm-arch-install status hermes
 hm-arch-install upgrade
 hm-arch-install uninstall codex
 ```
@@ -120,6 +129,9 @@ hm-arch-install uninstall codex
 Supported agents: `codex`, `claude-code`, `hermes`.
 
 Supported subcommands: `install`, `status`, `doctor`, `upgrade`, `uninstall`.
+For Hermes, `install hermes` and `uninstall hermes` intentionally exit 2 because
+Hermes activation is done in `$HERMES_HOME/config.yaml`; use `status hermes` and
+`doctor hermes` from the npm CLI to validate the configuration.
 
 Flags: `--global` / `-g`, `--help` / `-h`.
 
@@ -144,6 +156,8 @@ node dist/cli.js doctor
 
 `npm install` does **not** modify Codex, Claude Code, or Hermes configuration.
 Run `hm-arch-install install <agent>` explicitly after environment checks pass.
+For Hermes, edit `config.yaml` manually and run `hm-arch-install status hermes`
+or `hm-arch-install doctor hermes` instead of `install hermes`.
 
 ## CI verification
 

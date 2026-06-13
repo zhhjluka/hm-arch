@@ -13,18 +13,27 @@ python -m pip install --upgrade pip
 python -m pip install /path/to/hm_arch-2.0.0-py3-none-any.whl
 ```
 
-**After maintainer-approved PyPI publish**:
+**From PyPI**:
 
 ```bash
-pip install hm-arch
+pip install hm-arch==2.0.0
 # or:
-pipx install hm-arch
+pipx install hm-arch==2.0.0
+```
+
+**From npm**:
+
+```bash
+npm install -g @hm-arch/installer@2.0.0
+hm-arch-install install claude-code
 ```
 
 Confirm the CLI:
 
 ```bash
 hm-arch --help
+# or, after npm install:
+hm-arch-install --help
 ```
 
 ## Connect Claude Code (project scope)
