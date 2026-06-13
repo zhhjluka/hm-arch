@@ -8,10 +8,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v2.0.0"><img src="https://img.shields.io/badge/release-v2.0.0-111111" alt="GitHub Release v2.0.0"></a>
+  <a href="https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.0"><img src="https://img.shields.io/badge/release-v2.0.0-111111" alt="GitHub Release v2.0.0"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB" alt="Python 3.10+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-4C9A7D" alt="Apache-2.0 License"></a>
-  <a href="https://github.com/ZhangHangjianMA/hm-arch/actions"><img src="https://img.shields.io/badge/tests-778%20passing-4C9A7D" alt="778 tests passing"></a>
+  <a href="https://github.com/zhhjluka/hm-arch/actions"><img src="https://img.shields.io/badge/CI-passing-4C9A7D" alt="CI passing"></a>
 </p>
 
 ---
@@ -28,28 +28,28 @@ Most agent memory systems focus on storing and retrieving text. HM-Arch also mod
 - **Retention-aware retrieval**: rank results using relevance, retention, and layer priority.
 - **Human-like forgetting**: decay, review scheduling, safe deletion windows, and explicit `forget()`.
 - **Automatic consolidation**: extract semantics, merge duplicates, resolve conflicts, archive old memories, and schedule reviews.
-- **Agent-ready integration**: context APIs plus portable Codex and Claude Code hook examples.
+- **Agent-ready integration**: packaged Codex and Claude Code hook installers, Hermes diagnostics, and portable hook examples.
 - **Offline-first by default**: SQLite and local deterministic behavior, with optional OpenAI, DeepSeek, and ChromaDB backends.
 
 ## Quick Start
 
 ### Install
 
-**Current release target (v2.0.0):** install from the [v2.0.0 GitHub Release](https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v2.0.0) wheel or sdist after the release is published, from PyPI after maintainer approval, or from source (below).
+**Current release (v2.0.0):** install from [PyPI](https://pypi.org/project/hm-arch/2.0.0/), [npm](https://www.npmjs.com/package/@hm-arch/installer/v/2.0.0), the [v2.0.0 GitHub Release](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.0), or from source (below).
 
 **Release channels** (see [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md)):
 
-| Channel | Package | Target version | Maintainer approval |
-|---------|---------|----------------|---------------------|
-| GitHub Releases | wheel + sdist | every release | required for tag and release |
-| PyPI | `hm-arch` | v2.0.0+ | required before first publish and each release |
-| npm | `@hm-arch/installer` | v2.0.0+ | required before first publish and each release |
+| Channel | Package | Current version | Install |
+|---------|---------|-----------------|---------|
+| GitHub Releases | wheel + sdist + standalone binaries | v2.0.0 | [Download assets](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.0) |
+| PyPI | `hm-arch` | v2.0.0 | `pip install hm-arch==2.0.0` |
+| npm | `@hm-arch/installer` | v2.0.0 | `npm install -g @hm-arch/installer@2.0.0` |
 
 All public channels use the same semver from `src/hm_arch/_version.py`. Automated agents must not create tags, GitHub Releases, or registry uploads without explicit maintainer instruction. See [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) and [docs/VERSIONING.md](docs/VERSIONING.md).
 
 #### Install from the GitHub Release (current)
 
-Download `hm_arch-2.0.0-py3-none-any.whl` from the [v2.0.0 release page](https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v2.0.0), then install it in a Python 3.10+ environment:
+Download `hm_arch-2.0.0-py3-none-any.whl` from the [v2.0.0 release page](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.0), then install it in a Python 3.10+ environment:
 
 ```bash
 python3 -m venv .venv
@@ -60,22 +60,22 @@ python -m pip install /path/to/hm_arch-2.0.0-py3-none-any.whl
 For development from source:
 
 ```bash
-git clone https://github.com/ZhangHangjianMA/hm-arch.git
+git clone https://github.com/zhhjluka/hm-arch.git
 cd hm-arch
 python -m pip install -e ".[dev]"
 ```
 
-After PyPI publication is approved:
+Install from PyPI:
 
 ```bash
-pip install hm-arch
-# or: pipx install hm-arch
+pip install hm-arch==2.0.0
+# or: pipx install hm-arch==2.0.0
 ```
 
-After npm publication is approved, Node.js users can install the agent installer:
+Node.js users can install the agent installer from npm:
 
 ```bash
-npm install -g @hm-arch/installer
+npm install -g @hm-arch/installer@2.0.0
 hm-arch-install doctor
 ```
 
