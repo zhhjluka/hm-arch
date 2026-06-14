@@ -22,7 +22,7 @@ _DEFAULT_EXECUTABLE = _REPO_ROOT / "dist" / "standalone" / (
 
 def _build_standalone_executable() -> Path:
     subprocess.run(
-        [sys.executable, str(_BUILD_SCRIPT)],
+        [sys.executable, str(_BUILD_SCRIPT), "--clean"],
         check=True,
         cwd=_REPO_ROOT,
     )
@@ -34,8 +34,6 @@ def _build_standalone_executable() -> Path:
 @pytest.fixture(scope="session")
 def standalone_executable() -> Path:
     """Build (or reuse) the standalone executable once per test session."""
-    if _DEFAULT_EXECUTABLE.is_file():
-        return _DEFAULT_EXECUTABLE
     return _build_standalone_executable()
 
 
@@ -272,7 +270,12 @@ def test_standalone_hermes_management_without_python_on_path(
         ["uninstall", "hermes"],
         env={},
     )
-    assert uninstall.returncode == 2
+    assert uninstall.returncode == 0, uninstall.stderr
+    assert "hermes: not_installed" in uninstall.stderr
+    assert "Removed HM-Arch Hermes config" in uninstall.stderr
+    assert "Preserved HM-Arch database" in uninstall.stderr
+    assert not (hermes_home / "plugins" / "hm-arch").exists()
+    assert (hermes_home / "test.db").exists()
 
 
 def test_standalone_executable_runs_without_python_on_path(
