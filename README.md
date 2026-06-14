@@ -193,6 +193,46 @@ hm-arch-install doctor hermes
 sqlite3 ~/.hermes/hm_arch_memory.db '.tables'
 ```
 
+### Uninstall Agents With npm
+
+Use the same npm installer to remove HM-Arch-managed agent configuration:
+
+```bash
+# Codex: run from the same project root used during install.
+npx @hm-arch/installer@2.0.1 uninstall codex
+
+# Claude Code: run from the same project root used during install.
+npx @hm-arch/installer@2.0.1 uninstall claude-code
+
+# Hermes: removes the provider bridge/config entries, then restart Hermes.
+npx @hm-arch/installer@2.0.1 uninstall hermes
+```
+
+For global Codex or Claude Code hooks:
+
+```bash
+npx @hm-arch/installer@2.0.1 uninstall codex --global
+npx @hm-arch/installer@2.0.1 uninstall claude-code --global
+```
+
+If you installed the npm launcher globally, use `hm-arch-install` directly:
+
+```bash
+hm-arch-install uninstall codex
+hm-arch-install uninstall claude-code
+hm-arch-install uninstall hermes
+```
+
+Uninstalling agent integration removes HM-Arch-managed hooks or Hermes provider
+configuration, but it does not delete existing memory databases. Remove database
+files manually only after you no longer need the stored memories. Common paths:
+
+```bash
+.hm_arch_agent_memory.db
+~/.hm-arch/global.db
+~/.hermes/hm_arch_memory.db
+```
+
 ### Install Agents With Python
 
 | Agent | Install | Inspect |
@@ -200,6 +240,14 @@ sqlite3 ~/.hermes/hm_arch_memory.db '.tables'
 | Codex | `hm-arch install codex` | `hm-arch status codex`, `hm-arch doctor codex` |
 | Claude Code | `hm-arch install claude-code` | `hm-arch status claude-code`, `hm-arch doctor claude-code` |
 | Hermes | `hm-arch install hermes` | `hm-arch status hermes`, `hm-arch doctor hermes` |
+
+Python uninstall commands mirror npm:
+
+```bash
+hm-arch uninstall codex
+hm-arch uninstall claude-code
+hm-arch uninstall hermes
+```
 
 Setup guides: [docs/agents/README.md](docs/agents/README.md). Smoke tests:
 [docs/integration-cli-smoke.md](docs/integration-cli-smoke.md).
