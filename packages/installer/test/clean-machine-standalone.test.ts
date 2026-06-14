@@ -167,7 +167,7 @@ describe("clean-machine integration management via standalone executable (MEM-64
     });
   });
 
-  it("reports Hermes install as unsupported and still runs status/doctor", {
+  it("manages Hermes provider setup and still runs status/doctor", {
     skip: !hasStandaloneFixture() || detectReleaseTarget() === null,
   }, async () => {
     await withStandaloneRuntimeEnv({ stripPython: true }, async () => {
@@ -178,7 +178,7 @@ describe("clean-machine integration management via standalone executable (MEM-64
           global: false,
           help: false,
         }),
-        2,
+        0,
       );
 
       const statusCode = await runParsedCommand({
