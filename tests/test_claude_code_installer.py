@@ -22,6 +22,7 @@ from hm_arch.integrations.claude_code.manifest import (
     HM_ARCH_OWNER,
     IDLE_EVENT,
     is_hm_arch_hook,
+    resolve_hm_arch_claude_code_command,
 )
 
 
@@ -250,6 +251,22 @@ def test_consolidate_hook_targets_teammate_idle(
     consolidate = [hook for hook in idle_hooks if is_hm_arch_hook(hook)]
     assert len(consolidate) == 1
     assert consolidate[0][HM_ARCH_META_KEY]["role"] == "consolidate"
+
+
+def test_hook_command_uses_standalone_executable_without_python_module_args(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "hm_arch.integrations.executable.shutil.which",
+        lambda name: None,
+    )
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", "/tmp/hm-arch")
+
+    assert (
+        resolve_hm_arch_claude_code_command("recall")
+        == "/tmp/hm-arch claude-code recall"
+    )
 
 
 def test_merge_uses_default_matcher_group_for_new_events() -> None:

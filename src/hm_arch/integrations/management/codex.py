@@ -12,6 +12,7 @@ from hm_arch.integrations.codex.installer import (
     resolve_codex_paths,
     uninstall_codex,
 )
+from hm_arch.integrations.executable import is_running_as_standalone
 
 from .hooks import expected_codex_roles, inspect_codex_hooks
 from .types import Diagnostic, DiagnosticLevel, IntegrationReport, IntegrationState
@@ -130,6 +131,14 @@ def _base_diagnostics(config_root: Path) -> list[Diagnostic]:
                 code="hm_arch.executable.found",
                 level=DiagnosticLevel.INFO,
                 message=f"hm-arch is on PATH at {hm_arch}.",
+            )
+        )
+    elif is_running_as_standalone():
+        diagnostics.append(
+            Diagnostic(
+                code="hm_arch.executable.standalone",
+                level=DiagnosticLevel.INFO,
+                message="HM-Arch standalone executable is available for Codex hooks.",
             )
         )
     else:

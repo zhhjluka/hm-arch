@@ -1,6 +1,6 @@
 {
   "name": "@hm-arch/installer",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "npm installer and launcher for HM-Arch agent memory integrations",
   "license": "Apache-2.0",
   "type": "module",

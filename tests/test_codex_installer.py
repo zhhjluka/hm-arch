@@ -21,6 +21,7 @@ from hm_arch.integrations.codex.manifest import (
     HM_ARCH_META_KEY,
     HM_ARCH_OWNER,
     is_hm_arch_hook,
+    resolve_hm_arch_codex_command,
 )
 
 
@@ -269,6 +270,19 @@ def test_installed_hooks_carry_owner_metadata(
         meta = hook[HM_ARCH_META_KEY]
         assert meta["owner"] == HM_ARCH_OWNER
         assert meta["role"] in {"recall", "record", "consolidate"}
+
+
+def test_hook_command_uses_standalone_executable_without_python_module_args(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "hm_arch.integrations.executable.shutil.which",
+        lambda name: None,
+    )
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", "/tmp/hm-arch")
+
+    assert resolve_hm_arch_codex_command("recall") == "/tmp/hm-arch codex recall"
 
 
 def test_cli_install_and_uninstall_subcommands(

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import shutil
-import sys
 from typing import Any
+
+from hm_arch.integrations.executable import resolve_hm_arch_command_prefix
 
 HM_ARCH_OWNER = "hm-arch"
 HM_ARCH_META_KEY = "hmArch"
@@ -23,10 +23,7 @@ _ROLE_BY_EVENT: dict[str, tuple[str, ...]] = {
 def resolve_hm_arch_codex_command(role: str) -> str:
     """Return a shell command that runs the packaged Codex hook bridge."""
     subcommand = ("codex", role)
-    executable = shutil.which("hm-arch")
-    if executable:
-        return " ".join((executable, *subcommand))
-    return " ".join((sys.executable, "-m", "hm_arch.integrations.cli", *subcommand))
+    return " ".join((*resolve_hm_arch_command_prefix(), *subcommand))
 
 
 def hook_metadata(role: str) -> dict[str, str]:

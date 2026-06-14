@@ -5,26 +5,26 @@ are offline and do not require API keys.
 
 ## Install HM-Arch
 
-**From a GitHub Release wheel** (current v2.0.2):
+**From a GitHub Release wheel** (current v2.0.3):
 
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install /path/to/hm_arch-2.0.2-py3-none-any.whl
+python -m pip install /path/to/hm_arch-2.0.3-py3-none-any.whl
 ```
 
 **From PyPI**:
 
 ```bash
-pip install hm-arch==2.0.2
+pip install hm-arch==2.0.3
 # or isolated CLI on PATH:
-pipx install hm-arch==2.0.2
+pipx install hm-arch==2.0.3
 ```
 
 **From npm**:
 
 ```bash
-npm install -g @hm-arch/installer@2.0.2
+npm install -g @hm-arch/installer@2.0.3
 hm-arch-install install codex
 ```
 

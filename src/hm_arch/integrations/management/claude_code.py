@@ -11,6 +11,7 @@ from hm_arch.integrations.claude_code.installer import (
     resolve_claude_code_paths,
     uninstall_claude_code,
 )
+from hm_arch.integrations.executable import is_running_as_standalone
 
 from .hooks import expected_claude_roles, inspect_claude_hooks
 from .types import Diagnostic, DiagnosticLevel, IntegrationReport, IntegrationState
@@ -106,6 +107,14 @@ def _base_diagnostics(config_root: Path) -> list[Diagnostic]:
                 code="hm_arch.executable.found",
                 level=DiagnosticLevel.INFO,
                 message=f"hm-arch is on PATH at {hm_arch}.",
+            )
+        )
+    elif is_running_as_standalone():
+        diagnostics.append(
+            Diagnostic(
+                code="hm_arch.executable.standalone",
+                level=DiagnosticLevel.INFO,
+                message="HM-Arch standalone executable is available for Claude Code hooks.",
             )
         )
     else:
