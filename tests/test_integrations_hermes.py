@@ -171,6 +171,8 @@ def test_lifecycle_recall_record_compress_consolidate_shutdown(
     try:
         hits = reopened.search("pytest offline", top_k=5)
         assert hits.results
+        synced = reopened.search("What test runner We use pytest", top_k=5)
+        assert any("What test runner?" in item.content for item in synced.results)
     finally:
         reopened.close()
 

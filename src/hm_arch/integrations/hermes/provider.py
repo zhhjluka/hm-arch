@@ -161,7 +161,11 @@ class HMArchHermesMemoryProvider:
 
         def _run() -> None:
             try:
-                context = self._recall_context(query)
+                memory = self._open_memory_handle()
+                try:
+                    context = self._recall_context(query, memory=memory)
+                finally:
+                    memory.close()
                 with self._prefetch_lock:
                     self._prefetched_context = context
             except Exception as exc:
@@ -187,8 +191,11 @@ class HMArchHermesMemoryProvider:
         def _run() -> None:
             try:
                 with self._sync_lock:
-                    memory = self._require_memory()
-                    record_turn_end(memory, user_content, assistant_content)
+                    memory = self._open_memory_handle()
+                    try:
+                        record_turn_end(memory, user_content, assistant_content)
+                    finally:
+                        memory.close()
             except Exception as exc:
                 logger.warning("HM-Arch sync_turn failed (non-fatal): %s", exc)
 
@@ -385,7 +392,11 @@ class HMArchHermesMemoryProvider:
             raise RuntimeError("HM-Arch Hermes provider is not initialized")
         return self._memory
 
-    def _search_hits(self, query: str, *, top_k: int):
+    def _open_memory_handle(self) -> HMArch:
+        self._require_memory()
+        return HMArch(config=self._integration.to_memory_config())
+
+    def _search_hits(self, query: str, *, top_k: int, memory: HMArch | None = None):
         if dual_store_enabled(self._integration):
             return search_cross_stores(
                 self._integration,
@@ -393,17 +404,22 @@ class HMArchHermesMemoryProvider:
                 top_k=top_k,
                 min_retention=0.0,
             )
-        return self._require_memory().search(query, top_k=top_k, min_retention=0.0)
+        handle = memory or self._require_memory()
+        return handle.search(query, top_k=top_k, min_retention=0.0)
 
-    def _recall_context(self, query: str) -> str:
+    def _recall_context(self, query: str, *, memory: HMArch | None = None) -> str:
         query = query.strip()
         if not query:
             return ""
-        memory = self._require_memory()
-        hits = self._search_hits(query, top_k=self._integration.recall_top_k)
+        handle = memory or self._require_memory()
+        hits = self._search_hits(
+            query,
+            top_k=self._integration.recall_top_k,
+            memory=handle,
+        )
         context, _ = apply_recall_context_limits(
             build_turn_start_context(
-                memory,
+                handle,
                 query,
                 top_k=self._integration.recall_top_k,
                 hits=hits,
