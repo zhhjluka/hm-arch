@@ -54,6 +54,12 @@ coverage.xml
 .pytest_cache/
 cover/
 
+# Local agent integration state
+.claude/
+.codex/
+.hm_arch_agent_memory.db
+.hm_arch_agent_memory.db-*
+
 # Translations
 *.mo
 *.pot
