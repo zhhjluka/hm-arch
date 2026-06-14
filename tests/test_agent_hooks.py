@@ -131,6 +131,20 @@ def test_agent_idle_consolidation_does_not_crash(
         assert stats.last_consolidation_at is not None
 
 
+def test_claude_idle_hook_emits_only_universal_json_fields(
+    hook_db_path: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    summary = claude_idle_consolidation_hook(
+        {"hook_event_name": "TeammateIdle"},
+        db_path=hook_db_path,
+    )
+    assert "extracted_semantics" in summary
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == {"continue": True}
+
+
 def test_record_turn_end_common_api(seeded_memory: HMArch) -> None:
     before = seeded_memory.get_stats().by_layer[2]
     ids = record_turn_end(

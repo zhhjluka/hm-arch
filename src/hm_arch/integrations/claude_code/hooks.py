@@ -19,12 +19,13 @@ from hm_arch.integrations.common import (
 from hm_arch.integrations.config import IntegrationConfig
 
 
-def _emit_claude_context(context: str) -> None:
+def _emit_claude_context(context: str, *, hook_event_name: str) -> None:
     """Claude Code hook output for context injection events."""
     payload: dict[str, Any] = {}
     if context.strip():
         payload = {
             "hookSpecificOutput": {
+                "hookEventName": hook_event_name,
                 "additionalContext": context,
             }
         }
@@ -52,7 +53,7 @@ def claude_turn_start_hook(
         )
 
     if payload:
-        _emit_claude_context(context)
+        _emit_claude_context(context, hook_event_name="UserPromptSubmit")
     return context
 
 
@@ -93,18 +94,7 @@ def claude_idle_consolidation_hook(
         "archived_to_l4": report.archived_to_l4,
     }
     if payload:
-        print(
-            json.dumps(
-                {
-                    "hookSpecificOutput": {
-                        "additionalContext": (
-                            "HM-Arch idle consolidation finished "
-                            f"(extracted={report.extracted_semantics})."
-                        )
-                    }
-                }
-            )
-        )
+        print(json.dumps({"continue": True}))
     return summary
 
 
