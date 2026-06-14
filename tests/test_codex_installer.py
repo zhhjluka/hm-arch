@@ -322,6 +322,7 @@ def test_codex_bridge_recall_subcommand_emits_context(
         check=True,
     )
     payload = json.loads(proc.stdout)
+    assert payload["hookSpecificOutput"]["hookEventName"] == "UserPromptSubmit"
     context = payload["hookSpecificOutput"]["additionalContext"]
     assert "pytest" in context.lower() or "offline" in context.lower()
 

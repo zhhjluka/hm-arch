@@ -19,12 +19,13 @@ from hm_arch.integrations.common import (
 from hm_arch.integrations.config import IntegrationConfig
 
 
-def _emit_additional_context(context: str) -> None:
+def _emit_additional_context(context: str, *, hook_event_name: str) -> None:
     """Codex hook output: inject memory text into the model context."""
     payload: dict[str, Any] = {}
     if context.strip():
         payload = {
             "hookSpecificOutput": {
+                "hookEventName": hook_event_name,
                 "additionalContext": context,
             }
         }
@@ -52,7 +53,7 @@ def codex_turn_start_hook(
         )
 
     if payload:
-        _emit_additional_context(context)
+        _emit_additional_context(context, hook_event_name="UserPromptSubmit")
     return context
 
 

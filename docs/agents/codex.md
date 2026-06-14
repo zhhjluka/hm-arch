@@ -73,6 +73,47 @@ Expected when installed:
 - `doctor` exits 0 when hooks and Codex hook feature flags are valid
 - Hooks use `hm-arch codex …` when `hm-arch` is on `PATH`
 
+### Verify the HM-Arch bridge
+
+Use the bridge commands first. They do not require a Codex model call and make it
+clear whether HM-Arch can record and recall memory:
+
+```bash
+cd /path/to/your/project
+printf '%s' '{"prompt":"Codex-HM-Arch-local-check","last_assistant_message":"Stored through HM-Arch."}' \
+  | hm-arch codex record
+
+printf '%s' '{"hook_event_name":"UserPromptSubmit","prompt":"Codex-HM-Arch-local-check"}' \
+  | hm-arch codex recall
+```
+
+The recall output should be JSON with:
+
+- `hookSpecificOutput.hookEventName` set to `UserPromptSubmit`
+- `hookSpecificOutput.additionalContext` containing an `HM-Arch recalled memory`
+  section
+
+Then open an interactive Codex CLI session from the same project:
+
+```bash
+codex --cd /path/to/your/project
+```
+
+Run `/hooks` and trust the HM-Arch hooks if Codex marks them as new or changed.
+Codex only runs project-local hooks after the project `.codex/` layer is trusted;
+changed command hooks also need review before they run.
+
+For an isolated HM-Arch test, temporarily disable Codex native memories so their
+local file-backed context does not hide whether HM-Arch is working:
+
+```bash
+codex --cd /path/to/your/project --disable memories
+```
+
+Do not use `codex exec` as the lifecycle hook smoke test. It is useful for
+non-interactive prompts, but HM-Arch validation should use the direct bridge
+commands above plus an interactive Codex session with `/hooks` review.
+
 Optional lifecycle check in a throwaway directory:
 
 ```bash

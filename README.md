@@ -184,6 +184,24 @@ hm-arch-install install codex --global
 hm-arch-install install claude-code --global
 ```
 
+To verify Codex specifically, start with the HM-Arch bridge before opening the
+Codex CLI:
+
+```bash
+printf '%s' '{"prompt":"Codex-HM-Arch-local-check","last_assistant_message":"Stored through HM-Arch."}' \
+  | hm-arch codex record
+
+printf '%s' '{"hook_event_name":"UserPromptSubmit","prompt":"Codex-HM-Arch-local-check"}' \
+  | hm-arch codex recall
+```
+
+The recall JSON should include
+`hookSpecificOutput.hookEventName: "UserPromptSubmit"` and an
+`HM-Arch recalled memory` section in `additionalContext`. In interactive Codex,
+run `/hooks` and trust the HM-Arch hooks if prompted. If Codex native memories
+are enabled, they can still inject local file-backed memory; for a one-off
+HM-Arch-only check, launch Codex with `codex --disable memories`.
+
 Hermes uses its own home directory, usually `~/.hermes`. After
 `hm-arch-install install hermes`, restart any running Hermes process so it loads
 the HM-Arch memory provider plugin. Validate with:
