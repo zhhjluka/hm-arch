@@ -153,7 +153,13 @@ class HMArchHermesMemoryProvider:
             self._prefetched_context = ""
         if cached:
             return cached
-        return self._recall_context(query)
+        if self._integration.db_path == ":memory:":
+            return self._recall_context(query)
+        memory = self._open_memory_handle()
+        try:
+            return self._recall_context(query, memory=memory)
+        finally:
+            memory.close()
 
     def queue_prefetch(self, query: str, *, session_id: str = "") -> None:
         """Warm recall for the next turn on a background thread."""
@@ -206,14 +212,19 @@ class HMArchHermesMemoryProvider:
 
     def handle_tool_call(self, tool_name: str, args: Dict[str, Any], **kwargs: Any) -> str:
         del kwargs
-        memory = self._require_memory()
+        if self._integration.db_path == ":memory:":
+            memory = self._require_memory()
+            close_memory = False
+        else:
+            memory = self._open_memory_handle()
+            close_memory = True
         try:
             if tool_name == "hm_arch_search":
                 query = str(args.get("query", "")).strip()
                 if not query:
                     return json.dumps({"error": "query is required"})
                 top_k = int(args.get("top_k", self._integration.recall_top_k))
-                hits = self._search_hits(query, top_k=max(1, top_k))
+                hits = self._search_hits(query, top_k=max(1, top_k), memory=memory)
                 return json.dumps(
                     {
                         "results": [
@@ -261,6 +272,9 @@ class HMArchHermesMemoryProvider:
             return json.dumps({"error": f"Unknown tool: {tool_name}"})
         except Exception as exc:
             return json.dumps({"error": str(exc)})
+        finally:
+            if close_memory:
+                memory.close()
 
     def on_session_end(self, messages: List[Dict[str, Any]]) -> None:
         """Consolidate at session boundaries and flush remaining transcript."""

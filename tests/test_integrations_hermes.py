@@ -294,6 +294,50 @@ def test_provider_tools_search_uses_hermes_config_db_path(hermes_home: str) -> N
         provider.shutdown()
 
 
+def test_provider_tool_calls_are_safe_from_worker_threads(
+    provider_db: tuple[HMArchHermesMemoryProvider, str],
+) -> None:
+    provider, db_path = provider_db
+    marker = "Hermes worker thread explicit remember marker"
+    provider.initialize("session-worker-tools", hermes_home=str(Path(db_path).parent))
+    results: list[dict[str, object]] = []
+
+    def call_tools() -> None:
+        results.append(
+            json.loads(
+                provider.handle_tool_call(
+                    "hm_arch_remember",
+                    {"content": marker},
+                )
+            )
+        )
+        results.append(
+            json.loads(
+                provider.handle_tool_call(
+                    "hm_arch_search",
+                    {"query": "worker thread explicit remember", "top_k": 2},
+                )
+            )
+        )
+
+    thread = threading.Thread(target=call_tools)
+    thread.start()
+    thread.join(timeout=2.0)
+
+    assert len(results) == 2
+    assert results[0].get("error") is None
+    assert results[0]["memory_id"]
+    assert results[1].get("error") is None
+    assert results[1]["count"] >= 1
+
+    reopened = HMArch(config=MemoryConfig(db_path=db_path))
+    try:
+        hits = reopened.search("worker thread explicit remember", top_k=3)
+        assert any(marker in item.content for item in hits.results)
+    finally:
+        reopened.close()
+
+
 def test_is_available_without_network() -> None:
     provider = HMArchHermesMemoryProvider()
     assert provider.is_available() is True
