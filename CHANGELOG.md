@@ -13,6 +13,23 @@ publication steps and maintainer approval rules.
 
 No changes yet.
 
+## [2.0.4] - 2026-06-14
+
+### Fixed
+
+- Codex `UserPromptSubmit` recall output now includes
+  `hookSpecificOutput.hookEventName`, matching the lifecycle hook schema used by
+  Codex and Claude Code.
+- Three-agent install, uninstall, status, doctor, and memory smoke paths were
+  validated across Hermes, Claude Code, and Codex.
+
+### Changed
+
+- README and agent setup docs now prefer latest stable install commands
+  (`pip install hm-arch`, `pipx install hm-arch`, `npm install -g
+  @hm-arch/installer`, and `npx @hm-arch/installer ...`) instead of asking users
+  to pin a patch version for normal installs.
+
 ## [2.0.0] - 2026-06-06
 
 ### Added
@@ -75,7 +92,8 @@ Phase 2 release-ready SDK: L4–L6 layers, full sleep consolidation, agent hook 
 - `examples/release_smoke.py` and `docs/api.md` API reference
 - `docs/RELEASE_CHECKLIST.md`, `docs/VERSIONING.md`, and `scripts/generate_api_docs.py`
 
-[Unreleased]: https://github.com/ZhangHangjianMA/hm-arch/compare/v2.0.0...HEAD
-[2.0.0]: https://github.com/ZhangHangjianMA/hm-arch/compare/v1.0.0...v2.0.0
-[1.0.0]: https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v1.0.0
-[0.1.0]: https://github.com/ZhangHangjianMA/hm-arch/releases/tag/v0.1.0
+[Unreleased]: https://github.com/zhhjluka/hm-arch/compare/v2.0.4...HEAD
+[2.0.4]: https://github.com/zhhjluka/hm-arch/compare/v2.0.0...v2.0.4
+[2.0.0]: https://github.com/zhhjluka/hm-arch/compare/v1.0.0...v2.0.0
+[1.0.0]: https://github.com/zhhjluka/hm-arch/releases/tag/v1.0.0
+[0.1.0]: https://github.com/zhhjluka/hm-arch/releases/tag/v0.1.0

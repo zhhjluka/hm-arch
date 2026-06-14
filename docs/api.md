@@ -1,6 +1,6 @@
 # HM-Arch API reference
 
-_Generated from `hm_arch` v2.0.3. Regenerate with `python scripts/generate_api_docs.py`._
+_Generated from `hm_arch` v2.0.4. Regenerate with `python scripts/generate_api_docs.py`._
 
 Stable integrations should import from the top-level package:
 

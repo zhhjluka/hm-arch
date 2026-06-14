@@ -5,8 +5,8 @@ integrations. It does **not** reimplement memory logic in TypeScript; it uses th
 matching standalone `hm-arch` executable on supported targets, or falls back to a
 managed Python virtual environment that installs the matching `hm-arch` package.
 
-**Status:** published for the coordinated v2.0.3 line. Install with
-`npm install -g @hm-arch/installer@2.0.3` or use `npx @hm-arch/installer@2.0.3`.
+**Status:** published for the coordinated v2.0.x line. Install the latest stable
+installer with `npm install -g @hm-arch/installer` or use `npx @hm-arch/installer`.
 Automated agents must **not** run `npm publish` without maintainer approval.
 
 See also:
@@ -109,16 +109,16 @@ Coordination rules:
 
 ```bash
 # One-shot install for a supported agent
-npx @hm-arch/installer@2.0.3 install codex
-npx @hm-arch/installer@2.0.3 install claude-code
+npx @hm-arch/installer install codex
+npx @hm-arch/installer install claude-code
 
 # Hermes: install the memory provider bridge, update config.yaml, then restart Hermes.
-npx @hm-arch/installer@2.0.3 install hermes
-npx @hm-arch/installer@2.0.3 status hermes
-npx @hm-arch/installer@2.0.3 doctor hermes
+npx @hm-arch/installer install hermes
+npx @hm-arch/installer status hermes
+npx @hm-arch/installer doctor hermes
 
 # Global CLI after npm install -g
-npm install -g @hm-arch/installer@2.0.3
+npm install -g @hm-arch/installer
 hm-arch-install doctor
 hm-arch-install status codex
 hm-arch-install install hermes
