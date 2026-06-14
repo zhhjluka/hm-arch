@@ -1,45 +1,41 @@
 # Hermes Agent setup (HM-Arch)
 
 Install HM-Arch and configure Hermes to use the native HM-Arch Memory Provider.
-Hermes integration is **configuration-driven**: `hm-arch install hermes` and
-`hm-arch uninstall hermes` are **not supported**. Use `hm-arch status hermes` and
-`hm-arch doctor hermes` to inspect and diagnose configuration.
+Hermes integration uses native plugin registration. `hm-arch install hermes`
+creates the HM-Arch plugin bridge, updates `$HERMES_HOME/config.yaml`, and
+initializes the SQLite database.
 
 ## Install HM-Arch
 
-**From a GitHub Release wheel** (current v2.0.0):
+**From a GitHub Release wheel** (current v2.0.1):
 
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install /path/to/hm_arch-2.0.0-py3-none-any.whl
+python -m pip install /path/to/hm_arch-2.0.1-py3-none-any.whl
 ```
 
 **From PyPI**:
 
 ```bash
-pip install hm-arch==2.0.0
+pip install hm-arch==2.0.1
 # or:
-pipx install hm-arch==2.0.0
+pipx install hm-arch==2.0.1
 ```
 
 **From npm**:
 
 ```bash
-npm install -g @hm-arch/installer@2.0.0
+npm install -g @hm-arch/installer@2.0.1
 ```
 
-The npm package can run Hermes diagnostics through its managed runtime:
+The npm package can install and diagnose Hermes through its managed runtime:
 
 ```bash
-export HM_ARCH_RUNTIME=python
+hm-arch-install install hermes
 hm-arch-install status hermes
 hm-arch-install doctor hermes
 ```
-
-Use `HM_ARCH_RUNTIME=python` while the GitHub repository is private. The
-standalone runtime downloads release assets from GitHub Releases, and private
-release assets return 404 to unauthenticated npm installs.
 
 ## Hermes home
 
@@ -53,7 +49,19 @@ export HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 mkdir -p "$HERMES_HOME"
 ```
 
-## Configure HM-Arch (manual)
+## Configure HM-Arch
+
+Recommended:
+
+```bash
+hm-arch install hermes
+# or:
+hm-arch-install install hermes
+```
+
+Then restart Hermes so the running agent process loads the provider plugin.
+
+Manual equivalent:
 
 Edit `$HERMES_HOME/config.yaml`. Example minimal configuration:
 
@@ -79,7 +87,7 @@ If another external provider is already configured (e.g. `mem0`), HM-Arch refuse
 to register silently. Set `memory.provider` to `hm-arch` **explicitly** when you
 intend to switch.
 
-## Smoke test (status and doctor only)
+## Smoke test
 
 ```bash
 hm-arch status hermes
@@ -89,7 +97,6 @@ hm-arch doctor hermes
 With npm:
 
 ```bash
-export HM_ARCH_RUNTIME=python
 hm-arch-install status hermes
 hm-arch-install doctor hermes
 ```
@@ -106,18 +113,17 @@ hm-arch status
 hm-arch doctor
 ```
 
-### Unsupported management commands
+## Uninstall / disable
+
+Recommended:
 
 ```bash
-hm-arch install hermes    # exits 2 — use Hermes config + plugin registration
-hm-arch uninstall hermes  # exits 2 — edit config.yaml manually
-hm-arch-install install hermes    # exits 2 — same behavior through npm
-hm-arch-install uninstall hermes  # exits 2 — same behavior through npm
+hm-arch uninstall hermes
+# or:
+hm-arch-install uninstall hermes
 ```
 
-Diagnostics include remediation text pointing to `status` and `doctor`.
-
-## Uninstall / disable
+Manual equivalent:
 
 1. Stop using HM-Arch as the active provider in Hermes (edit `config.yaml`).
 2. Remove or clear `plugins.hm-arch` settings without changing unrelated memory

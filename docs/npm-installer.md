@@ -1,12 +1,12 @@
 # npm installer (`@hm-arch/installer`)
 
 The `@hm-arch/installer` npm package is an installer and launcher for HM-Arch agent
-integrations. It does **not** reimplement memory logic in TypeScript; it creates a
-managed Python virtual environment, installs a compatible `hm-arch` package, and
-delegates agent commands to the Python `hm-arch` CLI.
+integrations. It does **not** reimplement memory logic in TypeScript; it uses the
+matching standalone `hm-arch` executable on supported targets, or falls back to a
+managed Python virtual environment that installs the matching `hm-arch` package.
 
-**Status:** published for the coordinated v2.0.0 line. Install with
-`npm install -g @hm-arch/installer@2.0.0` or use `npx @hm-arch/installer@2.0.0`.
+**Status:** published for the coordinated v2.0.1 line. Install with
+`npm install -g @hm-arch/installer@2.0.1` or use `npx @hm-arch/installer@2.0.1`.
 Automated agents must **not** run `npm publish` without maintainer approval.
 
 See also:
@@ -109,19 +109,20 @@ Coordination rules:
 
 ```bash
 # One-shot install for a supported agent
-npx @hm-arch/installer@2.0.0 install codex
-npx @hm-arch/installer@2.0.0 install claude-code
+npx @hm-arch/installer@2.0.1 install codex
+npx @hm-arch/installer@2.0.1 install claude-code
 
-# Hermes is configuration-driven: inspect with status/doctor after editing config.yaml
-export HM_ARCH_RUNTIME=python
-npx @hm-arch/installer@2.0.0 status hermes
-npx @hm-arch/installer@2.0.0 doctor hermes
+# Hermes: install the memory provider bridge, update config.yaml, then restart Hermes.
+npx @hm-arch/installer@2.0.1 install hermes
+npx @hm-arch/installer@2.0.1 status hermes
+npx @hm-arch/installer@2.0.1 doctor hermes
 
 # Global CLI after npm install -g
-npm install -g @hm-arch/installer@2.0.0
+npm install -g @hm-arch/installer@2.0.1
 hm-arch-install doctor
 hm-arch-install status codex
-HM_ARCH_RUNTIME=python hm-arch-install status hermes
+hm-arch-install install hermes
+hm-arch-install status hermes
 hm-arch-install upgrade
 hm-arch-install uninstall codex
 ```
@@ -129,9 +130,9 @@ hm-arch-install uninstall codex
 Supported agents: `codex`, `claude-code`, `hermes`.
 
 Supported subcommands: `install`, `status`, `doctor`, `upgrade`, `uninstall`.
-For Hermes, `install hermes` and `uninstall hermes` intentionally exit 2 because
-Hermes activation is done in `$HERMES_HOME/config.yaml`; use `status hermes` and
-`doctor hermes` from the npm CLI to validate the configuration.
+For Hermes, `install hermes` writes the HM-Arch provider config and plugin bridge
+under `$HERMES_HOME` (default: `~/.hermes`). Restart Hermes after install so the
+running agent process loads the plugin.
 
 Flags: `--global` / `-g`, `--help` / `-h`.
 
@@ -156,8 +157,8 @@ node dist/cli.js doctor
 
 `npm install` does **not** modify Codex, Claude Code, or Hermes configuration.
 Run `hm-arch-install install <agent>` explicitly after environment checks pass.
-For Hermes, edit `config.yaml` manually and run `hm-arch-install status hermes`
-or `hm-arch-install doctor hermes` instead of `install hermes`.
+For Hermes, run `hm-arch-install install hermes`, restart Hermes, then validate
+with `hm-arch-install status hermes` and `hm-arch-install doctor hermes`.
 
 ## CI verification
 

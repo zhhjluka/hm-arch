@@ -8,7 +8,7 @@ required.
 
 | Capability | Codex | Claude Code | Hermes |
 |------------|:-----:|:-----------:|:------:|
-| Hook install via `hm-arch install` | Yes | Yes | No (native plugin) |
+| Hook install via `hm-arch install` | Yes | Yes | Yes (native plugin bridge) |
 | `hm-arch status` / `doctor` | Yes | Yes | Yes |
 | `hm-arch doctor --fix` (safe config repair) | Yes | Yes | No |
 | Recall / record / consolidate hooks | Yes | Yes | Via plugin |
@@ -43,7 +43,7 @@ required.
 
 | Feature | Support | Notes |
 |---------|---------|-------|
-| Install / uninstall via CLI | **Not supported** | Use Hermes `config.yaml` and native plugin registration |
+| Install / uninstall via CLI | Supported | Writes Hermes `config.yaml`, plugin bridge, and HM-Arch database |
 | Status / doctor | Supported | Inspects `memory.provider`, plugin settings, conflicts |
 | Doctor `--fix` | **Not supported** | Provider conflicts and YAML edits require manual changes |
 | `memory.provider: mem0` conflict | Detected | Doctor reports error; user must switch provider explicitly |
