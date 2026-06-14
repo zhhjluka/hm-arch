@@ -123,24 +123,107 @@ class HermesAgentHandler:
 
     def uninstall(self, *, global_install: bool) -> IntegrationReport:
         del global_install
+        home = resolve_hermes_home()
+        config_path = home / "config.yaml"
+        diagnostics = _base_diagnostics(home, config_path)
+        changed = False
+        preserved_db_path: str | None = None
+
+        if config_path.exists():
+            try:
+                config = load_hermes_config(config_path)
+            except ValueError as exc:
+                diagnostics.append(
+                    Diagnostic(
+                        code="hermes.config.invalid",
+                        level=DiagnosticLevel.ERROR,
+                        message=str(exc),
+                        remedy=f"Fix YAML syntax in {config_path}.",
+                    )
+                )
+                return IntegrationReport(
+                    agent=self.name,
+                    scope=None,
+                    state=IntegrationState.PARTIAL,
+                    config_root=home,
+                    diagnostics=tuple(diagnostics),
+                )
+
+            preserved_db_path = resolve_db_path(home, read_plugin_settings(config))
+            changed = _remove_hm_arch_config(config) or changed
+            if changed:
+                _write_hermes_config(config_path, config)
+                diagnostics.append(
+                    Diagnostic(
+                        code="hermes.config.updated",
+                        level=DiagnosticLevel.INFO,
+                        message=f"Removed HM-Arch Hermes config from {config_path}.",
+                    )
+                )
+        else:
+            diagnostics.append(
+                Diagnostic(
+                    code="hermes.config.missing",
+                    level=DiagnosticLevel.INFO,
+                    message=f"Hermes config file does not exist yet: {config_path}.",
+                )
+            )
+
+        bridge_dir = _user_plugin_bridge_dir(home)
+        if bridge_dir.exists():
+            shutil.rmtree(bridge_dir)
+            changed = True
+            diagnostics.append(
+                Diagnostic(
+                    code="hermes.plugin.removed",
+                    level=DiagnosticLevel.INFO,
+                    message=f"Removed HM-Arch Hermes plugin bridge at {bridge_dir}.",
+                )
+            )
+        else:
+            diagnostics.append(
+                Diagnostic(
+                    code="hermes.plugin.not_present",
+                    level=DiagnosticLevel.INFO,
+                    message=f"HM-Arch Hermes plugin bridge is not present at {bridge_dir}.",
+                )
+            )
+
+        db_path = preserved_db_path or str(home / DEFAULT_DB_FILENAME)
+        if Path(db_path).exists():
+            diagnostics.append(
+                Diagnostic(
+                    code="hermes.db.preserved",
+                    level=DiagnosticLevel.INFO,
+                    message=f"Preserved HM-Arch database at {db_path}.",
+                    remedy="Delete this database manually only if you no longer need the memories.",
+                )
+            )
+
+        state = IntegrationState.NOT_INSTALLED
+        if not changed:
+            diagnostics.append(
+                Diagnostic(
+                    code="hermes.uninstall.noop",
+                    level=DiagnosticLevel.INFO,
+                    message="Hermes HM-Arch integration was already not installed.",
+                )
+            )
+        else:
+            diagnostics.append(
+                Diagnostic(
+                    code="hermes.uninstalled",
+                    level=DiagnosticLevel.INFO,
+                    message="Removed Hermes HM-Arch integration. Restart Hermes if it is running.",
+                )
+            )
+
         return IntegrationReport(
             agent=self.name,
             scope=None,
-            state=IntegrationState.UNSUPPORTED,
-            diagnostics=(
-                Diagnostic(
-                    code="hermes.uninstall.unsupported",
-                    level=DiagnosticLevel.ERROR,
-                    message=(
-                        "hm-arch uninstall hermes is not supported; remove HM-Arch "
-                        "plugin settings from Hermes config.yaml manually if needed."
-                    ),
-                    remedy=(
-                        "Edit Hermes config.yaml and clear plugins.hm-arch settings "
-                        "without changing unrelated memory providers."
-                    ),
-                ),
-            ),
+            state=state,
+            config_root=home,
+            diagnostics=tuple(diagnostics),
         )
 
     def status(self, *, global_install: bool) -> IntegrationReport:
@@ -404,11 +487,15 @@ def _dump_minimal_yaml(config: dict[str, object], *, indent: int = 0) -> str:
 
 
 def _user_plugin_bridge_path(home: Path) -> Path:
-    return home / "plugins" / HM_ARCH_PROVIDER_NAME / "__init__.py"
+    return _user_plugin_bridge_dir(home) / "__init__.py"
+
+
+def _user_plugin_bridge_dir(home: Path) -> Path:
+    return home / "plugins" / HM_ARCH_PROVIDER_NAME
 
 
 def _write_user_plugin_bridge(home: Path) -> Path:
-    plugin_dir = home / "plugins" / HM_ARCH_PROVIDER_NAME
+    plugin_dir = _user_plugin_bridge_dir(home)
     plugin_dir.mkdir(parents=True, exist_ok=True)
     bridge_path = plugin_dir / "__init__.py"
     bridge_path.write_text(
@@ -430,6 +517,30 @@ def _write_user_plugin_bridge(home: Path) -> Path:
         encoding="utf-8",
     )
     return bridge_path
+
+
+def _remove_hm_arch_config(config: dict[str, object]) -> bool:
+    """Remove HM-Arch-owned Hermes config while preserving unrelated settings."""
+    changed = False
+
+    memory = config.get("memory")
+    if isinstance(memory, dict) and memory.get("provider") == HM_ARCH_PROVIDER_NAME:
+        del memory["provider"]
+        changed = True
+        if not memory:
+            del config["memory"]
+    elif config.get("memory.provider") == HM_ARCH_PROVIDER_NAME:
+        del config["memory.provider"]
+        changed = True
+
+    plugins = config.get("plugins")
+    if isinstance(plugins, dict) and HM_ARCH_PROVIDER_NAME in plugins:
+        del plugins[HM_ARCH_PROVIDER_NAME]
+        changed = True
+        if not plugins:
+            del config["plugins"]
+
+    return changed
 
 
 def _ensure_database_initialized(home: Path | None) -> list[Diagnostic]:

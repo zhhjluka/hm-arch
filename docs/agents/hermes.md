@@ -7,26 +7,26 @@ initializes the SQLite database.
 
 ## Install HM-Arch
 
-**From a GitHub Release wheel** (current v2.0.1):
+**From a GitHub Release wheel** (current v2.0.2):
 
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install /path/to/hm_arch-2.0.1-py3-none-any.whl
+python -m pip install /path/to/hm_arch-2.0.2-py3-none-any.whl
 ```
 
 **From PyPI**:
 
 ```bash
-pip install hm-arch==2.0.1
+pip install hm-arch==2.0.2
 # or:
-pipx install hm-arch==2.0.1
+pipx install hm-arch==2.0.2
 ```
 
 **From npm**:
 
 ```bash
-npm install -g @hm-arch/installer@2.0.1
+npm install -g @hm-arch/installer@2.0.2
 ```
 
 The npm package can install and diagnose Hermes through its managed runtime:

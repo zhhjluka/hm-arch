@@ -59,7 +59,7 @@ Environment variables unchanged: `HM_ARCH_HOME`, `HM_ARCH_RELEASE_BASE_URL`,
 |-------|---------------------|------------------------|-------|
 | Codex | install / status / doctor / uninstall | same via delegation | Hooks under `.codex/hooks.json` |
 | Claude Code | install / status / doctor / uninstall | same via delegation | Hooks under `.claude/settings.json` |
-| Hermes | status / doctor only | same via delegation | Install/uninstall unsupported by design; configure Hermes provider manually |
+| Hermes | install / status / doctor / uninstall | same via delegation | Native plugin bridge under `~/.hermes/plugins/hm-arch` |
 
 See [agents/compatibility-matrix.md](agents/compatibility-matrix.md) for full
 capability details.

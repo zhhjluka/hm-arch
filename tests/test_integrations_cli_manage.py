@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from hm_arch.integrations.cli.main import main
+from hm_arch.integrations.hermes.config import load_hermes_config, read_memory_provider
 from hm_arch.integrations.management.hermes import resolve_hermes_home
 from hm_arch.integrations.management.hooks import inspect_codex_hooks
 
@@ -142,15 +143,74 @@ def test_status_hermes_configured(
     assert "HM-Arch database schema is initialized" in err
 
 
-def test_uninstall_hermes_reports_unsupported_diagnostic(
+def test_uninstall_hermes_removes_provider_config_and_bridge(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    assert main(["uninstall", "hermes"]) == 2
+    hermes_home = tmp_path / "hermes_uninstall"
+    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+
+    assert main(["install", "hermes"]) == 0
+    capsys.readouterr()
+    db_path = hermes_home / "hm_arch_memory.db"
+    assert db_path.exists()
+
+    assert main(["uninstall", "hermes"]) == 0
     err = capsys.readouterr().err
-    assert "hermes: unsupported" in err
-    assert "hm-arch uninstall hermes is not supported" in err
-    assert "config.yaml" in err
-    assert "without changing unrelated memory providers" in err
+    assert "hermes: not_installed" in err
+    assert "Removed HM-Arch Hermes config" in err
+    assert "Removed HM-Arch Hermes plugin bridge" in err
+    assert "Preserved HM-Arch database" in err
+    assert "Restart Hermes" in err
+    assert db_path.exists()
+    assert not (hermes_home / "plugins" / "hm-arch").exists()
+
+    config = load_hermes_config(hermes_home / "config.yaml")
+    assert read_memory_provider(config) is None
+    assert "hm-arch" not in config.get("plugins", {})
+
+    assert main(["uninstall", "hermes"]) == 0
+    err = capsys.readouterr().err
+    assert "already not installed" in err
+
+
+def test_uninstall_hermes_preserves_unrelated_provider_config(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    hermes_home = tmp_path / "hermes_other_provider"
+    plugin_dir = hermes_home / "plugins" / "hm-arch"
+    plugin_dir.mkdir(parents=True)
+    (plugin_dir / "__init__.py").write_text("# old bridge\n", encoding="utf-8")
+    custom_db = hermes_home / "custom.db"
+    custom_db.write_text("placeholder", encoding="utf-8")
+    (hermes_home / "config.yaml").write_text(
+        "memory:\n"
+        "  provider: mem0\n"
+        "plugins:\n"
+        "  hm-arch:\n"
+        "    db_path: custom.db\n"
+        "  other-plugin:\n"
+        "    enabled: true\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+
+    assert main(["uninstall", "hermes"]) == 0
+    err = capsys.readouterr().err
+    assert "Removed HM-Arch Hermes config" in err
+    assert "Removed HM-Arch Hermes plugin bridge" in err
+    assert "Preserved HM-Arch database" in err
+    assert str(custom_db) in err
+    assert custom_db.exists()
+    assert not plugin_dir.exists()
+
+    config = load_hermes_config(hermes_home / "config.yaml")
+    assert read_memory_provider(config) == "mem0"
+    assert "hm-arch" not in config["plugins"]
+    assert "other-plugin" in config["plugins"]
 
 
 def test_status_all_agents(

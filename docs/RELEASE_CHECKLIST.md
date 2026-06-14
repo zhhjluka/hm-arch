@@ -175,7 +175,7 @@ completes:
 - [ ] After upload: `pip install hm-arch==X.Y.Z` in a fresh venv passes (§1 post-publish).
 - [ ] After upload: `pipx install hm-arch==X.Y.Z` smoke test passes (§2 post-publish).
 - [ ] `hm-arch install codex` / `claude-code` smoke from pip-installed CLI passes ([integration-cli-smoke.md](integration-cli-smoke.md)).
-- [ ] `hm-arch status hermes` / `doctor hermes` documented; install/uninstall hermes remain unsupported by design.
+- [ ] `hm-arch install hermes` / `uninstall hermes` / `status hermes` / `doctor hermes` documented and smoke-tested.
 - [ ] `docs/RELEASE_NOTES_vX.Y.Z.md` prepared (e.g. [RELEASE_NOTES_v2.0.0.md](RELEASE_NOTES_v2.0.0.md) for the coordinated v2 release).
 - [ ] GitHub Release notes mention `pip install hm-arch` when PyPI is live for this version.
 

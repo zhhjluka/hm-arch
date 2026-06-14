@@ -50,20 +50,23 @@ hm-arch uninstall claude-code
 
 Expected: same lifecycle as Codex, using `.claude/settings.json`.
 
-## Hermes (config inspection)
+## Hermes (native plugin bridge)
 
 ```bash
 export HERMES_HOME=/tmp/hm-arch-smoke-hermes
 mkdir -p "$HERMES_HOME"
+hm-arch install hermes
 hm-arch status hermes
 hm-arch doctor hermes
+hm-arch uninstall hermes
 ```
 
 With `memory.provider: mem0` in `$HERMES_HOME/config.yaml`, `status` and `doctor`
 should report a provider conflict with remediation text.
 
-`hm-arch install hermes` and `hm-arch uninstall hermes` are intentionally
-unsupported; Hermes registers HM-Arch through its plugin system.
+Expected: install writes the HM-Arch provider config and plugin bridge,
+doctor initializes the SQLite schema, and uninstall removes HM-Arch-owned
+config/bridge files while preserving the memory database.
 
 ## Automated offline tests
 

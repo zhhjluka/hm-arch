@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.1"><img src="https://img.shields.io/badge/release-v2.0.1-111111" alt="GitHub Release v2.0.1"></a>
+  <a href="https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.2"><img src="https://img.shields.io/badge/release-v2.0.2-111111" alt="GitHub Release v2.0.2"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB" alt="Python 3.10+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-4C9A7D" alt="Apache-2.0 License"></a>
   <a href="https://github.com/zhhjluka/hm-arch/actions"><img src="https://img.shields.io/badge/CI-passing-4C9A7D" alt="CI passing"></a>
@@ -35,26 +35,26 @@ Most agent memory systems focus on storing and retrieving text. HM-Arch also mod
 
 ### Install
 
-**Current release (v2.0.1):** install from [PyPI](https://pypi.org/project/hm-arch/2.0.1/), [npm](https://www.npmjs.com/package/@hm-arch/installer/v/2.0.1), the [v2.0.1 GitHub Release](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.1), or from source (below).
+**Current release (v2.0.2):** install from [PyPI](https://pypi.org/project/hm-arch/2.0.2/), [npm](https://www.npmjs.com/package/@hm-arch/installer/v/2.0.2), the [v2.0.2 GitHub Release](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.2), or from source (below).
 
 **Release channels** (see [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md)):
 
 | Channel | Package | Current version | Install |
 |---------|---------|-----------------|---------|
-| GitHub Releases | wheel + sdist + standalone binaries | v2.0.1 | [Download assets](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.1) |
-| PyPI | `hm-arch` | v2.0.1 | `pip install hm-arch==2.0.1` |
-| npm | `@hm-arch/installer` | v2.0.1 | `npm install -g @hm-arch/installer@2.0.1` |
+| GitHub Releases | wheel + sdist + standalone binaries | v2.0.2 | [Download assets](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.2) |
+| PyPI | `hm-arch` | v2.0.2 | `pip install hm-arch==2.0.2` |
+| npm | `@hm-arch/installer` | v2.0.2 | `npm install -g @hm-arch/installer@2.0.2` |
 
 All public channels use the same semver from `src/hm_arch/_version.py`. Automated agents must not create tags, GitHub Releases, or registry uploads without explicit maintainer instruction. See [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) and [docs/VERSIONING.md](docs/VERSIONING.md).
 
 #### Install from the GitHub Release (current)
 
-Download `hm_arch-2.0.1-py3-none-any.whl` from the [v2.0.1 release page](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.1), then install it in a Python 3.10+ environment:
+Download `hm_arch-2.0.2-py3-none-any.whl` from the [v2.0.2 release page](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.2), then install it in a Python 3.10+ environment:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/hm_arch-2.0.1-py3-none-any.whl
+python -m pip install /path/to/hm_arch-2.0.2-py3-none-any.whl
 ```
 
 For development from source:
@@ -68,14 +68,14 @@ python -m pip install -e ".[dev]"
 Install from PyPI:
 
 ```bash
-pip install hm-arch==2.0.1
-# or: pipx install hm-arch==2.0.1
+pip install hm-arch==2.0.2
+# or: pipx install hm-arch==2.0.2
 ```
 
 Node.js users can install the agent installer from npm:
 
 ```bash
-npm install -g @hm-arch/installer@2.0.1
+npm install -g @hm-arch/installer@2.0.2
 hm-arch-install doctor
 ```
 
@@ -139,7 +139,7 @@ See [docs/api.md](docs/api.md) for the full public API and [docs/spec.md](docs/s
 
 Install and connect supported agents with the npm installer or the Python CLI
 (offline, no API keys). The npm installer exposes `hm-arch-install` and delegates
-to the matching `hm-arch==2.0.1` runtime.
+to the matching `hm-arch==2.0.2` runtime.
 
 ### Install Agents With npm
 
@@ -147,25 +147,25 @@ One-shot usage with `npx`:
 
 ```bash
 # Codex: run from the project root where .codex/ should be managed.
-npx @hm-arch/installer@2.0.1 install codex
-npx @hm-arch/installer@2.0.1 status codex
-npx @hm-arch/installer@2.0.1 doctor codex
+npx @hm-arch/installer@2.0.2 install codex
+npx @hm-arch/installer@2.0.2 status codex
+npx @hm-arch/installer@2.0.2 doctor codex
 
 # Claude Code: run from the project root where .claude/ should be managed.
-npx @hm-arch/installer@2.0.1 install claude-code
-npx @hm-arch/installer@2.0.1 status claude-code
-npx @hm-arch/installer@2.0.1 doctor claude-code
+npx @hm-arch/installer@2.0.2 install claude-code
+npx @hm-arch/installer@2.0.2 status claude-code
+npx @hm-arch/installer@2.0.2 doctor claude-code
 
 # Hermes: installs the Hermes memory provider bridge and updates config.yaml.
-npx @hm-arch/installer@2.0.1 install hermes
-npx @hm-arch/installer@2.0.1 status hermes
-npx @hm-arch/installer@2.0.1 doctor hermes
+npx @hm-arch/installer@2.0.2 install hermes
+npx @hm-arch/installer@2.0.2 status hermes
+npx @hm-arch/installer@2.0.2 doctor hermes
 ```
 
 Or install the npm launcher globally:
 
 ```bash
-npm install -g @hm-arch/installer@2.0.1
+npm install -g @hm-arch/installer@2.0.2
 
 hm-arch-install install codex
 hm-arch-install install claude-code
@@ -199,20 +199,20 @@ Use the same npm installer to remove HM-Arch-managed agent configuration:
 
 ```bash
 # Codex: run from the same project root used during install.
-npx @hm-arch/installer@2.0.1 uninstall codex
+npx @hm-arch/installer@2.0.2 uninstall codex
 
 # Claude Code: run from the same project root used during install.
-npx @hm-arch/installer@2.0.1 uninstall claude-code
+npx @hm-arch/installer@2.0.2 uninstall claude-code
 
 # Hermes: removes the provider bridge/config entries, then restart Hermes.
-npx @hm-arch/installer@2.0.1 uninstall hermes
+npx @hm-arch/installer@2.0.2 uninstall hermes
 ```
 
 For global Codex or Claude Code hooks:
 
 ```bash
-npx @hm-arch/installer@2.0.1 uninstall codex --global
-npx @hm-arch/installer@2.0.1 uninstall claude-code --global
+npx @hm-arch/installer@2.0.2 uninstall codex --global
+npx @hm-arch/installer@2.0.2 uninstall claude-code --global
 ```
 
 If you installed the npm launcher globally, use `hm-arch-install` directly:
@@ -300,7 +300,7 @@ The default test suite runs fully offline. Benchmark tests are marked separately
 | [docs/benchmarks.md](docs/benchmarks.md) | PRD benchmark results and limitations |
 | [docs/RELEASE_NOTES_v1.0.0.md](docs/RELEASE_NOTES_v1.0.0.md) | v1.0.0 release notes |
 | [docs/RELEASE_NOTES_v2.0.0.md](docs/RELEASE_NOTES_v2.0.0.md) | v2.0.0 coordinated release notes |
-| [docs/RELEASE_NOTES_v2.0.1.md](docs/RELEASE_NOTES_v2.0.1.md) | v2.0.1 Hermes threading fix release notes |
+| [docs/RELEASE_NOTES_v2.0.2.md](docs/RELEASE_NOTES_v2.0.2.md) | v2.0.2 Hermes uninstall fix release notes |
 | [docs/v2-migration-guide.md](docs/v2-migration-guide.md) | v2.0.0 migration and compatibility |
 | [docs/agents/README.md](docs/agents/README.md) | Codex, Claude Code, and Hermes setup |
 | [docs/pypi-clean-install.md](docs/pypi-clean-install.md) | pip / pipx clean-install verification |

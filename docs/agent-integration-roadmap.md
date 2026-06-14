@@ -107,7 +107,7 @@ pipx install hm-arch
 
 hm-arch install codex
 hm-arch install claude-code
-# Hermes: configure config.yaml + plugin (no `install hermes`)
+# Hermes: configure config.yaml + plugin bridge
 
 hm-arch status
 hm-arch doctor
