@@ -327,6 +327,48 @@ def _optional_int(data: dict[str, Any], key: str) -> int | None:
     return value
 
 
+def _require_bool(data: dict[str, Any], key: str) -> bool:
+    if key not in data:
+        raise ProtocolValidationError(f"{key} is required")
+    value = data[key]
+    if not isinstance(value, bool):
+        raise ProtocolValidationError(f"{key} must be a boolean")
+    return value
+
+
+def _require_int(data: dict[str, Any], key: str) -> int:
+    if key not in data:
+        raise ProtocolValidationError(f"{key} is required")
+    value = data[key]
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ProtocolValidationError(f"{key} must be an integer")
+    return value
+
+
+def _require_float(data: dict[str, Any], key: str) -> float:
+    if key not in data:
+        raise ProtocolValidationError(f"{key} is required")
+    value = data[key]
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ProtocolValidationError(f"{key} must be a number")
+    return float(value)
+
+
+def _require_string(data: dict[str, Any], key: str) -> str:
+    if key not in data:
+        raise ProtocolValidationError(f"{key} is required")
+    value = data[key]
+    if not isinstance(value, str):
+        raise ProtocolValidationError(f"{key} must be a string")
+    return value
+
+
+def _require_operation(data: dict[str, Any]) -> SidecarOperation:
+    if "operation" not in data:
+        raise ProtocolValidationError("operation is required")
+    return validate_operation(data["operation"])
+
+
 def _optional_float(data: dict[str, Any], key: str) -> float | None:
     if key not in data:
         return None
@@ -476,7 +518,7 @@ def parse_sidecar_request(data: dict[str, Any]) -> SidecarRequest:
     protocol_version = _require_str(payload, "protocol_version")
     validate_protocol_version(protocol_version)
     correlation_id = _require_str(payload, "correlation_id")
-    operation = validate_operation(payload["operation"])
+    operation = _require_operation(payload)
     timeout_ms = _optional_int(payload, "timeout_ms")
     if timeout_ms is not None and timeout_ms < 1:
         raise ProtocolValidationError("timeout_ms must be >= 1")
@@ -526,18 +568,49 @@ def _parse_telemetry(data: Any) -> SidecarTelemetry | None:
 def _parse_search_hit(data: dict[str, Any]) -> SearchHit:
     return SearchHit(
         memory_id=_require_str(data, "memory_id"),
-        layer=_optional_int(data, "layer") or 0,
-        content=data.get("content", ""),
-        score=float(data.get("score", 0.0)),
-        retention=float(data.get("retention", 0.0)),
+        layer=_require_int(data, "layer"),
+        content=_require_string(data, "content"),
+        score=_require_float(data, "score"),
+        retention=_require_float(data, "retention"),
     )
 
 
-def _parse_result(operation: SidecarOperation, data: dict[str, Any]) -> SidecarResult:
-    result = _require_mapping(data.get("result", {}), "result")
+def _parse_search_result(result: dict[str, Any]) -> SearchResult:
+    hits_raw = result.get("hits", [])
+    if not isinstance(hits_raw, list):
+        raise ProtocolValidationError("result.hits must be an array")
+    hits = tuple(_parse_search_hit(_require_mapping(item, "hit")) for item in hits_raw)
+    return SearchResult(
+        context=_require_string(result, "context"),
+        hits=hits,
+        result_count=_require_int(result, "result_count"),
+        truncated=_require_bool(result, "truncated"),
+    )
+
+
+def _parse_remember_result(result: dict[str, Any]) -> RememberResult:
+    if "memory_id" not in result:
+        raise ProtocolValidationError("result.memory_id is required")
+    memory_id = result["memory_id"]
+    if memory_id is not None and not isinstance(memory_id, str):
+        raise ProtocolValidationError("result.memory_id must be a string or null")
+    return RememberResult(
+        memory_id=memory_id,
+        recorded=_require_bool(result, "recorded"),
+    )
+
+
+def _parse_record_turn_result(result: dict[str, Any]) -> RecordTurnResult:
+    return RecordTurnResult(
+        memory_ids=_optional_string_list(result, "memory_ids"),
+        recorded_count=_require_int(result, "recorded_count"),
+    )
+
+
+def _parse_success_result(operation: SidecarOperation, result: dict[str, Any]) -> SidecarResult:
     if operation is SidecarOperation.INITIALIZE:
         return InitializeResult(
-            ready=bool(result.get("ready", False)),
+            ready=_require_bool(result, "ready"),
             negotiated_protocol_version=_require_str(result, "negotiated_protocol_version"),
             server_capabilities=_optional_string_list(result, "server_capabilities"),
             negotiated_capabilities=_optional_string_list(result, "negotiated_capabilities"),
@@ -546,48 +619,49 @@ def _parse_result(operation: SidecarOperation, data: dict[str, Any]) -> SidecarR
     if operation is SidecarOperation.HEALTH:
         return HealthResult(
             status=_require_str(result, "status"),
-            db_reachable=bool(result.get("db_reachable", False)),
+            db_reachable=_require_bool(result, "db_reachable"),
             stats=_optional_object(result, "stats"),
         )
     if operation is SidecarOperation.SEARCH:
-        hits_raw = result.get("hits", [])
-        if not isinstance(hits_raw, list):
-            raise ProtocolValidationError("result.hits must be an array")
-        hits = tuple(_parse_search_hit(_require_mapping(item, "hit")) for item in hits_raw)
-        return SearchResult(
-            context=str(result.get("context", "")),
-            hits=hits,
-            result_count=int(result.get("result_count", len(hits))),
-            truncated=bool(result.get("truncated", False)),
-        )
+        return _parse_search_result(result)
     if operation is SidecarOperation.REMEMBER:
-        memory_id = result.get("memory_id")
-        if memory_id is not None and not isinstance(memory_id, str):
-            raise ProtocolValidationError("result.memory_id must be a string or null")
-        return RememberResult(
-            memory_id=memory_id,
-            recorded=bool(result.get("recorded", False)),
-        )
+        return _parse_remember_result(result)
     if operation is SidecarOperation.FORGET:
         return ForgetResult(
-            forgotten_count=int(result.get("forgotten_count", 0)),
+            forgotten_count=_require_int(result, "forgotten_count"),
             memory_ids=_optional_string_list(result, "memory_ids"),
         )
     if operation is SidecarOperation.RECORD_TURN:
-        return RecordTurnResult(
-            memory_ids=_optional_string_list(result, "memory_ids"),
-            recorded_count=int(result.get("recorded_count", 0)),
-        )
+        return _parse_record_turn_result(result)
     if operation is SidecarOperation.CONSOLIDATE:
         return ConsolidateResult(
-            extracted_semantics=int(result.get("extracted_semantics", 0)),
-            merged_duplicates=int(result.get("merged_duplicates", 0)),
-            scheduled_reviews=int(result.get("scheduled_reviews", 0)),
-            archived_to_l4=int(result.get("archived_to_l4", 0)),
+            extracted_semantics=_require_int(result, "extracted_semantics"),
+            merged_duplicates=_require_int(result, "merged_duplicates"),
+            scheduled_reviews=_require_int(result, "scheduled_reviews"),
+            archived_to_l4=_require_int(result, "archived_to_l4"),
         )
     if operation is SidecarOperation.SHUTDOWN:
-        return ShutdownResult(shutdown_ack=bool(result.get("shutdown_ack", False)))
+        return ShutdownResult(shutdown_ack=_require_bool(result, "shutdown_ack"))
     raise ProtocolValidationError(f"Unsupported operation {operation.value!r}")
+
+
+def _parse_fail_open_result(operation: SidecarOperation, result: dict[str, Any]) -> SidecarResult:
+    if operation is SidecarOperation.SEARCH:
+        return _parse_search_result(result)
+    if operation is SidecarOperation.REMEMBER:
+        return _parse_remember_result(result)
+    if operation is SidecarOperation.RECORD_TURN:
+        return _parse_record_turn_result(result)
+    return dict(result)
+
+
+def _parse_result(operation: SidecarOperation, data: dict[str, Any], *, ok: bool) -> SidecarResult:
+    result = _require_mapping(data.get("result", {}), "result")
+    if ok:
+        return _parse_success_result(operation, result)
+    if operation.value in FAIL_OPEN_OPERATIONS:
+        return _parse_fail_open_result(operation, result)
+    return dict(result)
 
 
 def parse_sidecar_response(data: dict[str, Any]) -> SidecarResponse:
@@ -596,17 +670,23 @@ def parse_sidecar_response(data: dict[str, Any]) -> SidecarResponse:
     protocol_version = _require_str(payload, "protocol_version")
     validate_protocol_version(protocol_version)
     correlation_id = _require_str(payload, "correlation_id")
-    operation = validate_operation(payload["operation"])
-    if "ok" not in payload or not isinstance(payload["ok"], bool):
-        raise ProtocolValidationError("ok must be a boolean")
-    result = _parse_result(operation, payload)
-    error = _parse_error(payload.get("error"))
+    operation = _require_operation(payload)
+    ok = _require_bool(payload, "ok")
+    if ok:
+        if payload.get("error") is not None:
+            raise ProtocolValidationError("successful responses must not include error")
+        error = None
+    else:
+        if payload.get("error") is None:
+            raise ProtocolValidationError("failed responses must include error")
+        error = _parse_error(payload["error"])
+    result = _parse_result(operation, payload, ok=ok)
     telemetry = _parse_telemetry(payload.get("telemetry"))
     return SidecarResponse(
         protocol_version=protocol_version,
         correlation_id=correlation_id,
         operation=operation,
-        ok=payload["ok"],
+        ok=ok,
         result=result,
         error=error,
         telemetry=telemetry,

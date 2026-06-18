@@ -192,6 +192,264 @@ function optionalInt(
   return value;
 }
 
+function requireBool(data: Record<string, unknown>, key: string): boolean {
+  if (!(key in data)) {
+    throw new ProtocolValidationError(`${key} is required`);
+  }
+  const value = data[key];
+  if (typeof value !== "boolean") {
+    throw new ProtocolValidationError(`${key} must be a boolean`);
+  }
+  return value;
+}
+
+function requireInt(data: Record<string, unknown>, key: string): number {
+  if (!(key in data)) {
+    throw new ProtocolValidationError(`${key} is required`);
+  }
+  const value = data[key];
+  if (typeof value === "boolean") {
+    throw new ProtocolValidationError(`${key} must be an integer`);
+  }
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    throw new ProtocolValidationError(`${key} must be an integer`);
+  }
+  return value;
+}
+
+function requireFloat(data: Record<string, unknown>, key: string): number {
+  if (!(key in data)) {
+    throw new ProtocolValidationError(`${key} is required`);
+  }
+  const value = data[key];
+  if (typeof value === "boolean") {
+    throw new ProtocolValidationError(`${key} must be a number`);
+  }
+  if (typeof value !== "number") {
+    throw new ProtocolValidationError(`${key} must be a number`);
+  }
+  return value;
+}
+
+function requireStringValue(
+  data: Record<string, unknown>,
+  key: string,
+): string {
+  if (!(key in data)) {
+    throw new ProtocolValidationError(`${key} is required`);
+  }
+  const value = data[key];
+  if (typeof value !== "string") {
+    throw new ProtocolValidationError(`${key} must be a string`);
+  }
+  return value;
+}
+
+function requireOperation(data: Record<string, unknown>): SidecarOperation {
+  if (!("operation" in data)) {
+    throw new ProtocolValidationError("operation is required");
+  }
+  return validateOperation(data.operation);
+}
+
+function optionalStringList(
+  data: Record<string, unknown>,
+  key: string,
+): string[] {
+  if (!(key in data)) {
+    return [];
+  }
+  const value = data[key];
+  if (value === null || value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new ProtocolValidationError(`${key} must be an array of strings`);
+  }
+  return value.map((item, index) => {
+    if (typeof item !== "string" || !item.trim()) {
+      throw new ProtocolValidationError(
+        `${key}[${index}] must be a non-empty string`,
+      );
+    }
+    return item.trim();
+  });
+}
+
+function parseSearchHit(data: Record<string, unknown>): Record<string, unknown> {
+  return {
+    memory_id: requireString(data.memory_id, "memory_id"),
+    layer: requireInt(data, "layer"),
+    content: requireStringValue(data, "content"),
+    score: requireFloat(data, "score"),
+    retention: requireFloat(data, "retention"),
+  };
+}
+
+function parseSearchResult(result: Record<string, unknown>): Record<string, unknown> {
+  const hitsRaw = result.hits;
+  if (!Array.isArray(hitsRaw)) {
+    throw new ProtocolValidationError("result.hits must be an array");
+  }
+  return {
+    context: requireStringValue(result, "context"),
+    hits: hitsRaw.map((item) =>
+      parseSearchHit(requireObject(item, "hit")),
+    ),
+    result_count: requireInt(result, "result_count"),
+    truncated: requireBool(result, "truncated"),
+  };
+}
+
+function parseRememberResult(result: Record<string, unknown>): Record<string, unknown> {
+  if (!("memory_id" in result)) {
+    throw new ProtocolValidationError("result.memory_id is required");
+  }
+  const memoryId = result.memory_id;
+  if (memoryId !== null && typeof memoryId !== "string") {
+    throw new ProtocolValidationError("result.memory_id must be a string or null");
+  }
+  return {
+    memory_id: memoryId,
+    recorded: requireBool(result, "recorded"),
+  };
+}
+
+function parseRecordTurnResult(result: Record<string, unknown>): Record<string, unknown> {
+  return {
+    memory_ids: optionalStringList(result, "memory_ids"),
+    recorded_count: requireInt(result, "recorded_count"),
+  };
+}
+
+function parseSuccessResult(
+  operation: SidecarOperation,
+  result: Record<string, unknown>,
+): Record<string, unknown> {
+  switch (operation) {
+    case "initialize":
+      return {
+        ready: requireBool(result, "ready"),
+        negotiated_protocol_version: requireString(
+          result.negotiated_protocol_version,
+          "negotiated_protocol_version",
+        ),
+        server_capabilities: optionalStringList(result, "server_capabilities"),
+        negotiated_capabilities: optionalStringList(
+          result,
+          "negotiated_capabilities",
+        ),
+        db_path: requireString(result.db_path, "db_path"),
+      };
+    case "health":
+      return {
+        status: requireString(result.status, "status"),
+        db_reachable: requireBool(result, "db_reachable"),
+        ...(typeof result.stats === "object" &&
+        result.stats !== null &&
+        !Array.isArray(result.stats)
+          ? { stats: result.stats as Record<string, unknown> }
+          : {}),
+      };
+    case "search":
+      return parseSearchResult(result);
+    case "remember":
+      return parseRememberResult(result);
+    case "forget":
+      return {
+        forgotten_count: requireInt(result, "forgotten_count"),
+        memory_ids: optionalStringList(result, "memory_ids"),
+      };
+    case "record_turn":
+      return parseRecordTurnResult(result);
+    case "consolidate":
+      return {
+        extracted_semantics: requireInt(result, "extracted_semantics"),
+        merged_duplicates: requireInt(result, "merged_duplicates"),
+        scheduled_reviews: requireInt(result, "scheduled_reviews"),
+        archived_to_l4: requireInt(result, "archived_to_l4"),
+      };
+    case "shutdown":
+      return { shutdown_ack: requireBool(result, "shutdown_ack") };
+    default:
+      throw new ProtocolValidationError(`Unsupported operation ${operation}`);
+  }
+}
+
+function parseFailOpenResult(
+  operation: SidecarOperation,
+  result: Record<string, unknown>,
+): Record<string, unknown> {
+  switch (operation) {
+    case "search":
+      return parseSearchResult(result);
+    case "remember":
+      return parseRememberResult(result);
+    case "record_turn":
+      return parseRecordTurnResult(result);
+    default:
+      return { ...result };
+  }
+}
+
+function parseResult(
+  operation: SidecarOperation,
+  payload: Record<string, unknown>,
+  ok: boolean,
+): Record<string, unknown> {
+  const result = requireObject(payload.result ?? {}, "result");
+  if (ok) {
+    return parseSuccessResult(operation, result);
+  }
+  if ((FAIL_OPEN_OPERATIONS as readonly string[]).includes(operation)) {
+    return parseFailOpenResult(operation, result);
+  }
+  return { ...result };
+}
+
+function parseStructuredError(data: unknown): StructuredError {
+  const err = requireObject(data, "error");
+  return {
+    code: requireString(err.code, "error.code"),
+    message: requireString(err.message, "error.message"),
+    retryable:
+      typeof err.retryable === "boolean"
+        ? err.retryable
+        : (() => {
+            throw new ProtocolValidationError("error.retryable must be a boolean");
+          })(),
+    ...(typeof err.details === "object" &&
+    err.details !== null &&
+    !Array.isArray(err.details)
+      ? { details: err.details as Record<string, unknown> }
+      : {}),
+  };
+}
+
+function parseTelemetryField(data: unknown): SidecarTelemetry | null {
+  if (data === null || data === undefined) {
+    return null;
+  }
+  const payload = requireObject(data, "telemetry");
+  const telemetry: SidecarTelemetry = {};
+  if ("query_latency_ms" in payload) {
+    telemetry.query_latency_ms = requireFloat(payload, "query_latency_ms");
+  }
+  if ("hit_count" in payload) {
+    telemetry.hit_count = requireInt(payload, "hit_count");
+  }
+  if ("returned_characters" in payload) {
+    telemetry.returned_characters = requireInt(payload, "returned_characters");
+  }
+  if ("returned_tokens" in payload) {
+    telemetry.returned_tokens = requireInt(payload, "returned_tokens");
+  }
+  if ("storage_latency_ms" in payload) {
+    telemetry.storage_latency_ms = requireFloat(payload, "storage_latency_ms");
+  }
+  return telemetry;
+}
+
 function validateParams(
   operation: SidecarOperation,
   params: Record<string, unknown>,
@@ -251,7 +509,7 @@ export function parseSidecarRequest(data: unknown): SidecarRequest {
   const protocolVersion = requireString(payload.protocol_version, "protocol_version");
   validateProtocolVersion(protocolVersion);
   const correlationId = requireString(payload.correlation_id, "correlation_id");
-  const operation = validateOperation(payload.operation);
+  const operation = requireOperation(payload);
   const params = requireObject(payload.params ?? {}, "params");
   validateParams(operation, params);
   const timeoutMs = optionalInt(payload, "timeout_ms");
@@ -275,41 +533,33 @@ export function parseSidecarResponse(data: unknown): SidecarResponse {
   const protocolVersion = requireString(payload.protocol_version, "protocol_version");
   validateProtocolVersion(protocolVersion);
   const correlationId = requireString(payload.correlation_id, "correlation_id");
-  const operation = validateOperation(payload.operation);
-  if (typeof payload.ok !== "boolean") {
-    throw new ProtocolValidationError("ok must be a boolean");
-  }
-  const result = requireObject(payload.result ?? {}, "result");
+  const operation = requireOperation(payload);
+  const ok = requireBool(payload, "ok");
   let error: StructuredError | null = null;
-  if (payload.error !== null && payload.error !== undefined) {
-    const err = requireObject(payload.error, "error");
-    error = {
-      code: requireString(err.code, "error.code"),
-      message: requireString(err.message, "error.message"),
-      retryable:
-        typeof err.retryable === "boolean"
-          ? err.retryable
-          : (() => {
-              throw new ProtocolValidationError("error.retryable must be a boolean");
-            })(),
-      ...(typeof err.details === "object" &&
-      err.details !== null &&
-      !Array.isArray(err.details)
-        ? { details: err.details as Record<string, unknown> }
-        : {}),
-    };
+  if (ok) {
+    if (payload.error !== null && payload.error !== undefined) {
+      throw new ProtocolValidationError(
+        "successful responses must not include error",
+      );
+    }
+  } else {
+    if (payload.error === null || payload.error === undefined) {
+      throw new ProtocolValidationError("failed responses must include error");
+    }
+    error = parseStructuredError(payload.error);
   }
+  const result = parseResult(operation, payload, ok);
   let telemetry: SidecarTelemetry | null | undefined;
   if (payload.telemetry === null) {
     telemetry = null;
   } else if (payload.telemetry !== undefined) {
-    telemetry = requireObject(payload.telemetry, "telemetry") as SidecarTelemetry;
+    telemetry = parseTelemetryField(payload.telemetry);
   }
   return {
     protocol_version: protocolVersion,
     correlation_id: correlationId,
     operation,
-    ok: payload.ok,
+    ok,
     result,
     telemetry,
     error,

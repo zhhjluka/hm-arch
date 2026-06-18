@@ -203,3 +203,209 @@ class TestOperationValidation:
 
     def test_current_protocol_version(self) -> None:
         assert CURRENT_PROTOCOL_VERSION == "1.0"
+
+
+class TestAdversarialEnvelopeValidation:
+    """Strict validation for malformed envelopes and typed fields."""
+
+    def test_missing_operation_raises_protocol_validation_error(self) -> None:
+        with pytest.raises(ProtocolValidationError, match="operation is required"):
+            parse_sidecar_request(
+                {
+                    "protocol_version": "1.0",
+                    "correlation_id": "x",
+                    "params": {},
+                }
+            )
+
+    def test_missing_operation_on_response_raises_protocol_validation_error(self) -> None:
+        with pytest.raises(ProtocolValidationError, match="operation is required"):
+            parse_sidecar_response(
+                {
+                    "protocol_version": "1.0",
+                    "correlation_id": "x",
+                    "ok": True,
+                    "result": {},
+                    "error": None,
+                }
+            )
+
+    @pytest.mark.parametrize(
+        "db_reachable",
+        ["false", "true", 1, 0],
+    )
+    def test_rejects_non_boolean_db_reachable(self, db_reachable: object) -> None:
+        with pytest.raises(ProtocolValidationError, match="db_reachable must be a boolean"):
+            parse_sidecar_response(
+                {
+                    "protocol_version": "1.0",
+                    "correlation_id": "x",
+                    "operation": "health",
+                    "ok": True,
+                    "result": {"status": "healthy", "db_reachable": db_reachable},
+                    "error": None,
+                }
+            )
+
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("result_count", "1"),
+            ("result_count", 1.5),
+            ("extracted_semantics", "0"),
+        ],
+    )
+    def test_rejects_non_integer_result_fields(self, field: str, value: object) -> None:
+        base_result = {
+            "context": "",
+            "hits": [],
+            "result_count": 0,
+            "truncated": False,
+        }
+        if field.startswith("extracted"):
+            payload = {
+                "protocol_version": "1.0",
+                "correlation_id": "x",
+                "operation": "consolidate",
+                "ok": True,
+                "result": {
+                    "extracted_semantics": 0,
+                    "merged_duplicates": 0,
+                    "scheduled_reviews": 0,
+                    "archived_to_l4": 0,
+                    field: value,
+                },
+                "error": None,
+            }
+        else:
+            base_result[field] = value
+            payload = {
+                "protocol_version": "1.0",
+                "correlation_id": "x",
+                "operation": "search",
+                "ok": True,
+                "result": base_result,
+                "error": None,
+            }
+        with pytest.raises(ProtocolValidationError, match=f"{field} must be an integer"):
+            parse_sidecar_response(payload)
+
+    @pytest.mark.parametrize(
+        "hit_patch,match",
+        [
+            ({"content": 42}, "content must be a string"),
+            ({"layer": "3"}, "layer must be an integer"),
+            ({"score": "0.8"}, "score must be a number"),
+            ({"retention": False}, "retention must be a number"),
+        ],
+    )
+    def test_rejects_malformed_search_hit_fields(
+        self, hit_patch: dict, match: str
+    ) -> None:
+        hit = {
+            "memory_id": "mem-1",
+            "layer": 3,
+            "content": "hello",
+            "score": 0.8,
+            "retention": 0.9,
+        }
+        hit.update(hit_patch)
+        with pytest.raises(ProtocolValidationError, match=match):
+            parse_sidecar_response(
+                {
+                    "protocol_version": "1.0",
+                    "correlation_id": "x",
+                    "operation": "search",
+                    "ok": True,
+                    "result": {
+                        "context": "",
+                        "hits": [hit],
+                        "result_count": 1,
+                        "truncated": False,
+                    },
+                    "error": None,
+                }
+            )
+
+    def test_initialize_error_without_success_result_is_accepted(self) -> None:
+        response = parse_sidecar_response(
+            {
+                "protocol_version": "1.0",
+                "correlation_id": "x",
+                "operation": "initialize",
+                "ok": False,
+                "result": {},
+                "error": {
+                    "code": "STORAGE_ERROR",
+                    "message": "cannot open database",
+                    "retryable": True,
+                },
+            }
+        )
+        assert response.ok is False
+        assert response.result == {}
+        assert response.error is not None
+        assert response.error.code == "STORAGE_ERROR"
+
+    def test_successful_response_must_not_include_error(self) -> None:
+        with pytest.raises(
+            ProtocolValidationError, match="successful responses must not include error"
+        ):
+            parse_sidecar_response(
+                {
+                    "protocol_version": "1.0",
+                    "correlation_id": "x",
+                    "operation": "health",
+                    "ok": True,
+                    "result": {"status": "healthy", "db_reachable": True},
+                    "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "should not be here",
+                        "retryable": True,
+                    },
+                }
+            )
+
+    def test_failed_response_must_include_error(self) -> None:
+        with pytest.raises(
+            ProtocolValidationError, match="failed responses must include error"
+        ):
+            parse_sidecar_response(
+                {
+                    "protocol_version": "1.0",
+                    "correlation_id": "x",
+                    "operation": "search",
+                    "ok": False,
+                    "result": {
+                        "context": "",
+                        "hits": [],
+                        "result_count": 0,
+                        "truncated": False,
+                    },
+                    "error": None,
+                }
+            )
+
+    def test_fail_open_error_responses_still_validate_result_shape(self) -> None:
+        response = parse_sidecar_response(
+            {
+                "protocol_version": "1.0",
+                "correlation_id": "x",
+                "operation": "search",
+                "ok": False,
+                "result": {
+                    "context": "",
+                    "hits": [],
+                    "result_count": 0,
+                    "truncated": False,
+                },
+                "error": {
+                    "code": "STORAGE_ERROR",
+                    "message": "database locked",
+                    "retryable": True,
+                },
+            }
+        )
+        assert response.ok is False
+        assert response.result.context == ""
+        assert response.result.result_count == 0
