@@ -78,6 +78,20 @@ def _build_parser() -> argparse.ArgumentParser:
 
     add_manage_parsers(subparsers)
     add_memory_parsers(subparsers)
+
+    openclaw_parser = subparsers.add_parser(
+        "openclaw",
+        help="OpenClaw integration commands.",
+    )
+    openclaw_subparsers = openclaw_parser.add_subparsers(
+        dest="openclaw_command",
+        required=True,
+    )
+    openclaw_subparsers.add_parser(
+        "sidecar",
+        help="Run the persistent HM-Arch JSONL stdio sidecar for OpenClaw.",
+    )
+
     return parser
 
 
@@ -136,6 +150,11 @@ def main(argv: list[str] | None = None) -> int:
         return run_doctor_command(args)
     if args.command == "memory":
         return run_memory_command(args)
+    if args.command == "openclaw":
+        if args.openclaw_command == "sidecar":
+            from hm_arch.integrations.openclaw.cli import run_openclaw_sidecar
+
+            return run_openclaw_sidecar()
 
     parser.error(f"unknown command {args.command!r}")
     return 2

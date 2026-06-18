@@ -1,0 +1,27 @@
+{
+  "id": "memory-hm-arch",
+  "name": "HM-Arch Memory",
+  "description": "HM-Arch local SQLite memory provider for OpenClaw",
+  "kind": "memory",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "dbPath": { "type": "string" },
+      "sidecarCommand": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "autoRecall": { "type": "boolean" },
+      "autoCapture": { "type": "boolean" },
+      "topK": { "type": "integer" },
+      "maxContextChars": { "type": "integer" },
+      "consolidateOnSessionEnd": { "type": "boolean" },
+      "requestTimeoutMs": { "type": "integer" }
+    }
+  },
+  "contracts": {
+    "tools": ["memory_recall", "memory_store", "memory_forget"]
+  }
+}

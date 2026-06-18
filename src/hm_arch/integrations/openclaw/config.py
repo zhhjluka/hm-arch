@@ -63,6 +63,24 @@ def resolve_sidecar_command() -> tuple[str, ...]:
     return (*resolve_hm_arch_command_prefix(), "openclaw", "sidecar")
 
 
+def resolve_bundled_openclaw_plugin_dir() -> Path | None:
+    """Return a bundled ``packages/openclaw-plugin`` directory when present."""
+    env_override = os.environ.get("HM_ARCH_OPENCLAW_PLUGIN_PATH", "").strip()
+    if env_override:
+        candidate = Path(env_override).expanduser()
+        if (candidate / "dist" / "index.js").exists() or (candidate / "index.mjs").exists():
+            return candidate
+
+    module_dir = Path(__file__).resolve().parent
+    for ancestor in module_dir.parents:
+        candidate = ancestor / "packages" / "openclaw-plugin"
+        if (candidate / "dist" / "index.js").exists():
+            return candidate
+        if (candidate / "index.mjs").exists() and (candidate / "openclaw.plugin.json").exists():
+            return candidate
+    return None
+
+
 def _normalize_slot(value: Any) -> str | None:
     if value is None:
         return None

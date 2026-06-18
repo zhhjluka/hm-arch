@@ -237,5 +237,10 @@ __marimo__/
 packages/installer/node_modules/
 packages/installer/dist/
 
+# npm (@hm-arch/openclaw-plugin)
+packages/openclaw-plugin/node_modules/
+packages/openclaw-plugin/dist-test/
+!packages/openclaw-plugin/dist/
+
 # npm installer managed runtime (local overrides)
 .hm-arch/

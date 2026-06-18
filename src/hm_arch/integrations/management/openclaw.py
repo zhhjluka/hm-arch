@@ -22,6 +22,7 @@ from hm_arch.integrations.openclaw.config import (
     resolve_sidecar_command,
     write_openclaw_config,
 )
+from hm_arch.integrations.openclaw.plugin_bundle import install_openclaw_plugin_runtime
 from hm_arch.storage.sqlite import SQLiteStore
 
 from .types import Diagnostic, DiagnosticLevel, IntegrationReport, IntegrationState
@@ -620,60 +621,56 @@ def _plugin_manifest_path(config_root: Path) -> Path:
 
 def _write_plugin_extension(config_root: Path) -> Path:
     plugin_dir = _plugin_extension_dir(config_root)
-    plugin_dir.mkdir(parents=True, exist_ok=True)
+    runtime_ready = install_openclaw_plugin_runtime(plugin_dir)
     manifest_path = plugin_dir / "openclaw.plugin.json"
-    manifest_path.write_text(
-        json.dumps(
-            {
-                "id": HM_ARCH_PLUGIN_ID,
-                "name": "HM-Arch Memory",
-                "description": "HM-Arch local SQLite memory provider for OpenClaw",
-                "kind": "memory",
-                "version": "0.0.0",
-                "configSchema": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "dbPath": {"type": "string"},
-                        "sidecarCommand": {
-                            "type": "array",
-                            "items": {"type": "string"},
+    if not manifest_path.exists():
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "id": HM_ARCH_PLUGIN_ID,
+                    "name": "HM-Arch Memory",
+                    "description": "HM-Arch local SQLite memory provider for OpenClaw",
+                    "kind": "memory",
+                    "version": "0.0.0",
+                    "configSchema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "dbPath": {"type": "string"},
+                            "sidecarCommand": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                            },
+                            "autoRecall": {"type": "boolean"},
+                            "autoCapture": {"type": "boolean"},
+                            "topK": {"type": "integer"},
+                            "maxContextChars": {"type": "integer"},
+                            "consolidateOnSessionEnd": {"type": "boolean"},
                         },
-                        "autoRecall": {"type": "boolean"},
-                        "autoCapture": {"type": "boolean"},
-                        "topK": {"type": "integer"},
-                        "maxContextChars": {"type": "integer"},
                     },
                 },
-            },
-            indent=2,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
         )
-        + "\n",
-        encoding="utf-8",
-    )
-    (plugin_dir / "package.json").write_text(
-        json.dumps(
-            {
-                "name": "@hm-arch/openclaw-memory",
-                "version": "0.0.0",
-                "private": True,
-                "type": "module",
-                "openclaw": {"extensions": ["./index.mjs"]},
-            },
-            indent=2,
+    if not (plugin_dir / "package.json").exists():
+        (plugin_dir / "package.json").write_text(
+            json.dumps(
+                {
+                    "name": "@hm-arch/openclaw-memory",
+                    "version": "0.0.0",
+                    "private": True,
+                    "type": "module",
+                    "openclaw": {"extensions": ["./index.mjs"]},
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
         )
-        + "\n",
-        encoding="utf-8",
-    )
-    (plugin_dir / "index.mjs").write_text(
-        "// HM-Arch OpenClaw memory plugin entrypoint.\n"
-        "// Full runtime is provided by @hm-arch/openclaw-plugin when published.\n"
-        "export async function register() {\n"
-        f"  throw new Error('{_PLUGIN_RUNTIME_STUB_MARKER}. "
-        "Install @hm-arch/openclaw-plugin or run hm-arch install openclaw.');\n"
-        "}\n",
-        encoding="utf-8",
-    )
+    if not runtime_ready and not (plugin_dir / "index.mjs").exists():
+        install_openclaw_plugin_runtime(plugin_dir)
     return manifest_path
 
 
