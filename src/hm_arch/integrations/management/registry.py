@@ -5,15 +5,17 @@ from __future__ import annotations
 from .claude_code import ClaudeCodeAgentHandler
 from .codex import CodexAgentHandler
 from .hermes import HermesAgentHandler
+from .openclaw import OpenClawAgentHandler
 from .types import AgentHandler
 
-ALL_AGENTS: tuple[str, ...] = ("codex", "claude-code", "hermes")
+ALL_AGENTS: tuple[str, ...] = ("codex", "claude-code", "hermes", "openclaw")
 INSTALLABLE_AGENTS: tuple[str, ...] = ("codex", "claude-code")
 
 _HANDLERS: dict[str, AgentHandler] = {
     "codex": CodexAgentHandler(),
     "claude-code": ClaudeCodeAgentHandler(),
     "hermes": HermesAgentHandler(),
+    "openclaw": OpenClawAgentHandler(),
 }
 
 
