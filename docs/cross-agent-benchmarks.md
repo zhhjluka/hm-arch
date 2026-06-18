@@ -19,9 +19,13 @@ agents and memory providers. The PRD-scale HM-Arch benchmarks live in
 |----------------|----------------|-------|
 | `no_memory` | Implemented | Empty-recall baseline |
 | `hm_arch` | Implemented | SQLite-isolated HM-Arch adapter |
-| `native_memory` | Stub | Register via `register_memory_backend()` |
-| `openviking` | Stub | Register via `register_memory_backend()` |
-| `mem0` | Stub | Register via `register_memory_backend()` |
+| `native_memory` | Implemented | Requires agent runner `native_memory_bridge()` |
+| `openviking` | Implemented | Requires `openviking` package; fails if unavailable |
+| `mem0` | Implemented | Requires `mem0ai` package; fails if unavailable |
+| `mock` | Implemented | Explicit offline substitute for contract tests (`simulated=true`) |
+
+Unsupported provider/agent pairs raise :class:`~benchmarks.cross_agent.types.UnsupportedCombinationError`.
+Runs labeled `mem0` or `openviking` never substitute an offline fallback — use `mock` for offline tests.
 
 | Agent | Status in repo | Notes |
 |-------|----------------|-------|
@@ -33,12 +37,16 @@ agents and memory providers. The PRD-scale HM-Arch benchmarks live in
 ## Lifecycle phases
 
 1. **setup** — create isolated storage directory, `backend.open()`
-2. **ingest** — persist fixture corpus via `backend.ingest()`
+2. **ingest** — persist fixture corpus via `backend.ingest()` (records ingest latency/errors)
 3. **consolidate** — optional `backend.consolidate()` (family-dependent)
 4. **query** — for each query: recall → agent answer → per-query metrics
 5. **evaluate** — aggregate roll-up metrics (no external scorer required offline)
 6. **checkpoint** — persist `checkpoint.json`, JSONL, CSV, and summary JSON
-7. **teardown** — `backend.close()`
+7. **teardown** — `backend.close()` (records teardown latency/errors)
+
+Provider-side operation records (ingest, recall, reset, consolidate, teardown) and
+provider identity/version/config are exported in `summary.json` under
+`provider_artifacts`.
 
 Synthetic fixtures in `benchmarks/cross_agent/fixtures/synthetic.py` exercise every
 phase offline without API keys.
@@ -102,7 +110,23 @@ uv run python scripts/run_cross_agent_benchmark.py \
   --family hotpotqa --agent hermes --backend no_memory --seed 1
 
 # Offline tests (included in default pytest suite)
-uv run pytest tests/test_cross_agent_benchmark.py -v
+uv run pytest tests/test_cross_agent_benchmark.py tests/test_memory_backend_contract.py -v
+```
+
+## External service requirements
+
+| Backend | Python package | Agent constraints |
+|---------|----------------|-------------------|
+| `mem0` | `mem0ai` | Hermes or OpenClaw only |
+| `openviking` | `openviking` | OpenClaw only |
+| `native_memory` | none (agent bridge) | Agent runner must expose `native_memory_bridge()` |
+| `mock` | none | Offline contract tests only; never use for labeled provider comparisons |
+
+Install optional providers when running live benchmarks:
+
+```bash
+pip install mem0ai    # Mem0 backend
+pip install openviking  # OpenViking backend
 ```
 
 ## Extending adapters

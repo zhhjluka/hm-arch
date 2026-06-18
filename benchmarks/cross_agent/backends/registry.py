@@ -4,22 +4,27 @@ from __future__ import annotations
 
 from typing import Callable
 
-from ..protocol import MemoryBackend
-from ..types import MemoryBackendKind
+from ..compatibility import assert_supported
+from ..protocol import AgentNativeMemoryBridge, MemoryBackend
+from ..types import BenchmarkRunConfig, MemoryBackendKind
 from .hm_arch import HmArchBackend
+from .mem0 import Mem0Backend
+from .mock import MockMemoryBackend
+from .native import NativeMemoryBackend
 from .no_memory import NoMemoryBackend
-from .stub import StubMemoryBackend
+from .openviking import OpenVikingBackend
 
-_BackendFactory = Callable[[], MemoryBackend]
+_BackendFactory = Callable[[BenchmarkRunConfig, AgentNativeMemoryBridge | None], MemoryBackend]
 
 _REGISTRY: dict[MemoryBackendKind, _BackendFactory] = {
-    MemoryBackendKind.NO_MEMORY: NoMemoryBackend,
-    MemoryBackendKind.HM_ARCH: HmArchBackend,
-    MemoryBackendKind.NATIVE_MEMORY: lambda: StubMemoryBackend(
-        MemoryBackendKind.NATIVE_MEMORY
+    MemoryBackendKind.NO_MEMORY: lambda _config, _bridge: NoMemoryBackend(),
+    MemoryBackendKind.HM_ARCH: lambda _config, _bridge: HmArchBackend(),
+    MemoryBackendKind.MEM0: lambda _config, _bridge: Mem0Backend(),
+    MemoryBackendKind.OPENVIKING: lambda _config, _bridge: OpenVikingBackend(),
+    MemoryBackendKind.MOCK: lambda _config, _bridge: MockMemoryBackend(),
+    MemoryBackendKind.NATIVE_MEMORY: lambda _config, bridge: NativeMemoryBackend(
+        bridge=bridge
     ),
-    MemoryBackendKind.OPENVIKING: lambda: StubMemoryBackend(MemoryBackendKind.OPENVIKING),
-    MemoryBackendKind.MEM0: lambda: StubMemoryBackend(MemoryBackendKind.MEM0),
 }
 
 
@@ -30,9 +35,16 @@ def register_memory_backend(
     _REGISTRY[kind] = factory
 
 
-def create_memory_backend(kind: MemoryBackendKind) -> MemoryBackend:
+def create_memory_backend(
+    kind: MemoryBackendKind,
+    config: BenchmarkRunConfig,
+    *,
+    native_bridge: AgentNativeMemoryBridge | None = None,
+) -> MemoryBackend:
+    """Instantiate a backend after validating the provider/agent matrix."""
+    assert_supported(kind, config.agent)
     try:
         factory = _REGISTRY[kind]
     except KeyError as exc:
         raise ValueError(f"Unknown memory backend: {kind}") from exc
-    return factory()
+    return factory(config, native_bridge)

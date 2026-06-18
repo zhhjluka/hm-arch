@@ -23,6 +23,7 @@ class MemoryBackendKind(str, Enum):
     HM_ARCH = "hm_arch"
     OPENVIKING = "openviking"
     MEM0 = "mem0"
+    MOCK = "mock"
 
 
 class AgentKind(str, Enum):
@@ -92,6 +93,52 @@ class BenchmarkRunConfig:
     resume: bool = True
 
 
+class ProviderUnavailableError(RuntimeError):
+    """Raised when a real provider SDK or service is required but missing."""
+
+
+class UnsupportedCombinationError(ValueError):
+    """Raised when a provider/agent pair is declared unsupported."""
+
+
+@dataclass(frozen=True)
+class ProviderDescriptor:
+    """Identity and configuration recorded in benchmark artifacts."""
+
+    provider_id: str
+    version: str | None = None
+    config: dict[str, Any] = field(default_factory=dict)
+    simulated: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class OperationRecord:
+    """One provider-side lifecycle operation for artifact export."""
+
+    operation: str
+    latency_ms: float
+    error: str | None = None
+    context_chars: int = 0
+    hit_count: int = 0
+    ingested_count: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class IngestOutcome:
+    """Result of a memory ingest operation."""
+
+    ingested_ids: tuple[str, ...] = ()
+    ingest_time_ms: float = 0.0
+    failure_count: int = 0
+    error: str | None = None
+
+
 @dataclass
 class RecallOutcome:
     """Result of a memory recall operation."""
@@ -99,6 +146,17 @@ class RecallOutcome:
     context: str
     retrieved_ids: tuple[str, ...]
     recall_time_ms: float
+    failure_count: int = 0
+    error: str | None = None
+    context_chars: int = 0
+    hit_count: int = 0
+
+
+@dataclass
+class OperationOutcome:
+    """Result of reset, consolidate, or teardown operations."""
+
+    latency_ms: float = 0.0
     failure_count: int = 0
     error: str | None = None
 
@@ -160,6 +218,20 @@ class AggregateMetrics:
 
 
 @dataclass
+class ProviderArtifacts:
+    """Provider-side metrics persisted with each benchmark run."""
+
+    provider: ProviderDescriptor
+    operations: list[OperationRecord] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "provider": self.provider.to_dict(),
+            "operations": [op.to_dict() for op in self.operations],
+        }
+
+
+@dataclass
 class BenchmarkRunResult:
     """Structured result for one harness run."""
 
@@ -170,9 +242,10 @@ class BenchmarkRunResult:
     queries: list[QueryRecord]
     aggregates: AggregateMetrics
     environment: dict[str, Any] = field(default_factory=dict)
+    provider_artifacts: ProviderArtifacts | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "run_id": self.run_id,
             "config": {
                 "family": self.config.family.value,
@@ -187,3 +260,6 @@ class BenchmarkRunResult:
             "aggregates": self.aggregates.to_dict(),
             "environment": self.environment,
         }
+        if self.provider_artifacts is not None:
+            payload["provider_artifacts"] = self.provider_artifacts.to_dict()
+        return payload

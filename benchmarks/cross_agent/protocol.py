@@ -10,8 +10,25 @@ from .types import (
     BenchmarkQuery,
     BenchmarkRunConfig,
     IngestItem,
+    IngestOutcome,
+    OperationOutcome,
+    ProviderArtifacts,
     RecallOutcome,
 )
+
+
+@runtime_checkable
+class AgentNativeMemoryBridge(Protocol):
+    """Bridge supplied by an agent runner for native-memory benchmark mode."""
+
+    def ingest(self, item: IngestItem) -> IngestOutcome:
+        """Persist one turn using the agent's built-in memory."""
+
+    def recall(self, query: BenchmarkQuery, *, top_k: int) -> RecallOutcome:
+        """Recall context from the agent's built-in memory."""
+
+    def consolidate(self) -> OperationOutcome:
+        """Trigger native consolidation when supported."""
 
 
 @runtime_checkable
@@ -27,17 +44,23 @@ class MemoryBackend(Protocol):
     def open(self, storage_dir: Path, config: BenchmarkRunConfig) -> None:
         """Prepare isolated storage for this run."""
 
-    def close(self) -> None:
-        """Release resources for this run."""
+    def close(self) -> OperationOutcome:
+        """Release resources for this run (teardown)."""
 
-    def ingest(self, item: IngestItem) -> None:
+    def ingest(self, item: IngestItem) -> IngestOutcome:
         """Persist one ingest event into durable memory."""
 
-    def consolidate(self) -> None:
+    def consolidate(self) -> OperationOutcome:
         """Optional offline consolidation between ingest and query phases."""
+
+    def reset(self) -> OperationOutcome:
+        """Clear durable memory while keeping the run workspace."""
 
     def recall(self, query: BenchmarkQuery, *, top_k: int) -> RecallOutcome:
         """Retrieve memory relevant to *query*."""
+
+    def provider_artifacts(self) -> ProviderArtifacts:
+        """Export provider identity and per-operation latency/error records."""
 
 
 @runtime_checkable
@@ -54,3 +77,6 @@ class AgentRunner(Protocol):
         seed: int,
     ) -> AgentOutcome:
         """Produce an answer using the recalled memory context."""
+
+    def native_memory_bridge(self) -> AgentNativeMemoryBridge | None:
+        """Return the agent's native-memory bridge, if this agent supports it."""

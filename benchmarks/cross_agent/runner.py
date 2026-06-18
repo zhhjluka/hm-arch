@@ -92,8 +92,12 @@ class CrossAgentBenchmarkHarness:
         storage_dir = paths["run_dir"] / "storage"
         storage_dir.mkdir(parents=True, exist_ok=True)
 
-        backend = self._backend or create_memory_backend(config.backend)
         agent = self._agent or create_agent_runner(config.agent)
+        backend = self._backend or create_memory_backend(
+            config.backend,
+            config,
+            native_bridge=getattr(agent, "native_memory_bridge", lambda: None)(),
+        )
 
         phases_completed: list[str] = []
         completed_query_ids: list[str] = []
@@ -180,8 +184,15 @@ class CrossAgentBenchmarkHarness:
             )
 
         if not phase_done(phases_completed, RunPhase.TEARDOWN):
+            provider_artifacts = None
+            if hasattr(backend, "provider_artifacts"):
+                provider_artifacts = backend.provider_artifacts()
             backend.close()
             mark_phase(phases_completed, RunPhase.TEARDOWN)
+        else:
+            provider_artifacts = None
+            if hasattr(backend, "provider_artifacts"):
+                provider_artifacts = backend.provider_artifacts()
 
         aggregates = aggregate_query_records(query_records)
         result = BenchmarkRunResult(
@@ -192,6 +203,7 @@ class CrossAgentBenchmarkHarness:
             queries=query_records,
             aggregates=aggregates,
             environment=environment,
+            provider_artifacts=provider_artifacts,
         )
 
         mark_phase(phases_completed, RunPhase.CHECKPOINT)
@@ -208,7 +220,11 @@ class CrossAgentBenchmarkHarness:
 
     def _run_ingest(self, backend: MemoryBackend, fixture: SyntheticFixture) -> None:
         for item in fixture.ingest_items:
-            backend.ingest(item)
+            outcome = backend.ingest(item)
+            if outcome.failure_count:
+                raise RuntimeError(
+                    f"Ingest failed for item {item.item_id}: {outcome.error}"
+                )
 
     def _run_query(
         self,

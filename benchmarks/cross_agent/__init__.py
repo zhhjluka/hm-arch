@@ -4,7 +4,7 @@ Reproducible evaluation of LoCoMo, tau2-bench, and HotpotQA across agents and
 memory backends. See ``docs/cross-agent-benchmarks.md``.
 """
 
-from .protocol import AgentRunner, MemoryBackend
+from .protocol import AgentNativeMemoryBridge, AgentRunner, MemoryBackend
 from .runner import CrossAgentBenchmarkHarness, run_cross_agent_benchmark
 from .types import (
     AgentKind,
@@ -12,12 +12,15 @@ from .types import (
     BenchmarkRunConfig,
     BenchmarkRunResult,
     MemoryBackendKind,
+    ProviderUnavailableError,
     QueryRecord,
     RunPhase,
+    UnsupportedCombinationError,
 )
 
 __all__ = [
     "AgentKind",
+    "AgentNativeMemoryBridge",
     "AgentRunner",
     "BenchmarkFamily",
     "BenchmarkRunConfig",
@@ -25,7 +28,9 @@ __all__ = [
     "CrossAgentBenchmarkHarness",
     "MemoryBackend",
     "MemoryBackendKind",
+    "ProviderUnavailableError",
     "QueryRecord",
     "RunPhase",
+    "UnsupportedCombinationError",
     "run_cross_agent_benchmark",
 ]

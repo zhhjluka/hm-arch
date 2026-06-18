@@ -12,7 +12,9 @@ from benchmarks.cross_agent import (
     BenchmarkFamily,
     BenchmarkRunConfig,
     MemoryBackendKind,
+    ProviderUnavailableError,
     RunPhase,
+    UnsupportedCombinationError,
     run_cross_agent_benchmark,
 )
 from benchmarks.cross_agent.agents.registry import create_agent_runner
@@ -131,19 +133,26 @@ def test_checkpoint_resume_skips_completed_queries(tmp_path: Path) -> None:
     assert len(second.queries) == len(first.queries)
 
 
-def test_stub_backends_raise_until_registered() -> None:
-    for kind in (
-        MemoryBackendKind.NATIVE_MEMORY,
-        MemoryBackendKind.OPENVIKING,
-        MemoryBackendKind.MEM0,
-    ):
-        backend = create_memory_backend(kind)
-        with pytest.raises(NotImplementedError):
-            backend.open(Path("/tmp/unused"), BenchmarkRunConfig(
-                family=BenchmarkFamily.LOCOMO,
-                agent=AgentKind.CODEX,
-                backend=kind,
-            ))
+def test_stub_backends_require_real_providers_or_mock() -> None:
+    config = BenchmarkRunConfig(
+        family=BenchmarkFamily.LOCOMO,
+        agent=AgentKind.HERMES,
+        backend=MemoryBackendKind.MEM0,
+        resume=False,
+    )
+    backend = create_memory_backend(MemoryBackendKind.MEM0, config)
+    with pytest.raises(ProviderUnavailableError):
+        backend.open(Path("/tmp/unused-mem0"), config)
+
+    native_config = BenchmarkRunConfig(
+        family=BenchmarkFamily.LOCOMO,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.NATIVE_MEMORY,
+        resume=False,
+    )
+    native = create_memory_backend(MemoryBackendKind.NATIVE_MEMORY, native_config)
+    with pytest.raises(UnsupportedCombinationError):
+        native.open(Path("/tmp/unused-native"), native_config)
 
 
 def test_all_agents_use_synthetic_runner() -> None:
@@ -171,3 +180,4 @@ def test_result_schema_covers_all_families(tmp_path: Path) -> None:
     summary = json.loads((tmp_path / results[0].run_id / "summary.json").read_text())
     assert "aggregates" in summary
     assert "queries" in summary
+    assert "provider_artifacts" in summary

@@ -2,37 +2,44 @@
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 
-from ..protocol import MemoryBackend
-from ..types import BenchmarkQuery, BenchmarkRunConfig, IngestItem, RecallOutcome
+from ..types import (
+    BenchmarkQuery,
+    BenchmarkRunConfig,
+    IngestItem,
+    IngestOutcome,
+    OperationOutcome,
+    ProviderDescriptor,
+    RecallOutcome,
+)
+from .base import BaseMemoryBackend
 
 
-class NoMemoryBackend:
+class NoMemoryBackend(BaseMemoryBackend):
     """Baseline that never recalls or persists memory."""
 
     kind = "no_memory"
 
-    def open(self, storage_dir: Path, config: BenchmarkRunConfig) -> None:
-        storage_dir.mkdir(parents=True, exist_ok=True)
-        self._storage_dir = storage_dir
-
-    def close(self) -> None:
+    def _setup_provider(self) -> None:
         return None
 
-    def ingest(self, item: IngestItem) -> None:
-        return None
+    def _teardown_provider(self) -> OperationOutcome:
+        return OperationOutcome()
 
-    def consolidate(self) -> None:
-        return None
+    def _ingest_item(self, item: IngestItem) -> IngestOutcome:
+        _ = item
+        return IngestOutcome()
 
-    def recall(self, query: BenchmarkQuery, *, top_k: int) -> RecallOutcome:
-        t0 = time.perf_counter()
+    def _consolidate_provider(self) -> OperationOutcome:
+        return OperationOutcome()
+
+    def _reset_provider(self) -> OperationOutcome:
+        return OperationOutcome()
+
+    def _recall_query(self, query: BenchmarkQuery, *, top_k: int) -> RecallOutcome:
         _ = query, top_k
-        elapsed = (time.perf_counter() - t0) * 1000.0
-        return RecallOutcome(
-            context="",
-            retrieved_ids=(),
-            recall_time_ms=elapsed,
-        )
+        return RecallOutcome(context="", retrieved_ids=(), recall_time_ms=0.0)
+
+    def _provider_descriptor(self) -> ProviderDescriptor:
+        return ProviderDescriptor(provider_id="no_memory", version=None, config={})

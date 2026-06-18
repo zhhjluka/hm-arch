@@ -7,6 +7,7 @@ import time
 
 from ..metrics import approximate_token_count, normalize_answer
 from ..types import AgentOutcome, BenchmarkQuery
+from ..protocol import AgentNativeMemoryBridge
 
 
 class SyntheticAgentRunner:
@@ -46,6 +47,10 @@ class SyntheticAgentRunner:
             output_tokens=output_tokens,
             agent_time_ms=elapsed,
         )
+
+    def native_memory_bridge(self) -> AgentNativeMemoryBridge | None:
+        """Synthetic runner has no native-memory bridge."""
+        return None
 
     def _extract_answer(self, query: BenchmarkQuery, context: str) -> str:
         if query.expected_answer and normalize_answer(query.expected_answer) in normalize_answer(
