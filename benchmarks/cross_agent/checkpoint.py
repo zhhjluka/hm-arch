@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .types import QueryRecord, RunPhase
+from .types import BenchmarkRunConfig, QueryRecord, RunPhase
 
 
 def checkpoint_path(storage_dir: Path) -> Path:
@@ -20,9 +20,15 @@ def write_checkpoint(
     phases_completed: list[str],
     completed_query_ids: list[str],
     queries: list[QueryRecord],
+    config: BenchmarkRunConfig | None = None,
+    status: str = "in_progress",
+    error: str | None = None,
 ) -> None:
     payload: dict[str, Any] = {
         "run_id": run_id,
+        "status": status,
+        "error": error,
+        "config": config.to_dict() if config is not None else None,
         "phases_completed": phases_completed,
         "completed_query_ids": completed_query_ids,
         "queries": [q.to_dict() for q in queries],

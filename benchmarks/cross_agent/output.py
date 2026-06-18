@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -70,10 +71,33 @@ def write_queries_csv(path: Path, result: BenchmarkRunResult) -> None:
 
 def default_output_paths(output_dir: Path, run_id: str) -> dict[str, Path]:
     run_dir = output_dir / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
     return {
         "run_dir": run_dir,
         "queries_jsonl": run_dir / "queries.jsonl",
         "queries_csv": run_dir / "queries.csv",
         "summary_json": run_dir / "summary.json",
     }
+
+
+def prepare_run_directory(paths: dict[str, Path], *, resume: bool) -> None:
+    """Create or reset the run directory before artifact writes."""
+    run_dir = paths["run_dir"]
+    if resume:
+        run_dir.mkdir(parents=True, exist_ok=True)
+        return
+    if run_dir.exists():
+        shutil.rmtree(run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    for artifact in ("queries_jsonl", "queries_csv", "summary_json"):
+        path = paths[artifact]
+        if path.exists():
+            path.unlink()
+
+
+def write_queries_jsonl(path: Path, records: list[QueryRecord], *, run_id: str) -> None:
+    """Write the full query log atomically (truncate + rewrite)."""
+    rows = [{"run_id": run_id, **record.to_dict()} for record in records]
+    path.write_text(
+        "".join(json.dumps(row, default=str) + "\n" for row in rows),
+        encoding="utf-8",
+    )

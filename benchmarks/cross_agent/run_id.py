@@ -13,11 +13,17 @@ def derive_run_id(
     agent: AgentKind,
     backend: MemoryBackendKind,
     seed: int,
+    top_k: int,
 ) -> str:
-    """Return a stable run id from benchmark matrix coordinates."""
-    payload = f"{family.value}|{agent.value}|{backend.value}|{seed}"
+    """Return a stable run id from benchmark matrix coordinates.
+
+    All settings that can change query results must appear in the payload.
+    """
+    payload = f"{family.value}|{agent.value}|{backend.value}|{seed}|{top_k}"
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
-    return f"{family.value}-{agent.value}-{backend.value}-s{seed}-{digest}"
+    return (
+        f"{family.value}-{agent.value}-{backend.value}-s{seed}-k{top_k}-{digest}"
+    )
 
 
 def resolve_run_id(config: BenchmarkRunConfig) -> str:
@@ -29,4 +35,5 @@ def resolve_run_id(config: BenchmarkRunConfig) -> str:
         agent=config.agent,
         backend=config.backend,
         seed=config.seed,
+        top_k=config.top_k,
     )

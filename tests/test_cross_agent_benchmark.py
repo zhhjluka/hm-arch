@@ -25,7 +25,7 @@ from benchmarks.cross_agent.metrics import (
     retrieval_hit_rate,
 )
 from benchmarks.cross_agent.protocol import AgentRunner, MemoryBackend
-from benchmarks.cross_agent.run_id import derive_run_id
+from benchmarks.cross_agent.run_id import derive_run_id, resolve_run_id
 from benchmarks.cross_agent.runner import CrossAgentBenchmarkHarness, run_synthetic_matrix
 
 
@@ -68,21 +68,239 @@ def test_deterministic_run_id() -> None:
         agent=AgentKind.CODEX,
         backend=MemoryBackendKind.HM_ARCH,
         seed=0,
+        top_k=5,
     )
     rid_b = derive_run_id(
         family=BenchmarkFamily.LOCOMO,
         agent=AgentKind.CODEX,
         backend=MemoryBackendKind.HM_ARCH,
         seed=0,
+        top_k=5,
     )
     rid_c = derive_run_id(
         family=BenchmarkFamily.LOCOMO,
         agent=AgentKind.CODEX,
         backend=MemoryBackendKind.HM_ARCH,
         seed=1,
+        top_k=5,
+    )
+    rid_d = derive_run_id(
+        family=BenchmarkFamily.HOTPOTQA,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.HM_ARCH,
+        seed=0,
+        top_k=20,
+    )
+    rid_e = derive_run_id(
+        family=BenchmarkFamily.HOTPOTQA,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.HM_ARCH,
+        seed=0,
+        top_k=5,
     )
     assert rid_a == rid_b
     assert rid_a != rid_c
+    assert rid_d != rid_e
+
+
+def test_top_k_run_isolation(tmp_path: Path) -> None:
+    config_k5 = BenchmarkRunConfig(
+        family=BenchmarkFamily.HOTPOTQA,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.HM_ARCH,
+        seed=0,
+        top_k=5,
+        resume=False,
+    )
+    config_k20 = BenchmarkRunConfig(
+        family=BenchmarkFamily.HOTPOTQA,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.HM_ARCH,
+        seed=0,
+        top_k=20,
+        resume=False,
+    )
+    assert config_k5.run_id is None
+    result_k5 = run_cross_agent_benchmark(config_k5, output_root=tmp_path)
+    result_k20 = run_cross_agent_benchmark(config_k20, output_root=tmp_path)
+    assert result_k5.run_id != result_k20.run_id
+    assert (tmp_path / result_k5.run_id).is_dir()
+    assert (tmp_path / result_k20.run_id).is_dir()
+    assert result_k5.run_id != result_k20.run_id
+
+
+def test_non_resume_rerun_replaces_jsonl(tmp_path: Path) -> None:
+    config = BenchmarkRunConfig(
+        family=BenchmarkFamily.LOCOMO,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.HM_ARCH,
+        seed=0,
+        resume=False,
+    )
+    first = run_cross_agent_benchmark(config, output_root=tmp_path)
+    jsonl_path = tmp_path / first.run_id / "queries.jsonl"
+    first_lines = jsonl_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(first_lines) == len(first.queries)
+
+    second = run_cross_agent_benchmark(config, output_root=tmp_path)
+    second_lines = jsonl_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(second_lines) == len(second.queries)
+    assert len(second_lines) == len(first_lines)
+
+
+def test_interrupted_checkpoint_reopens_backend(tmp_path: Path) -> None:
+    from benchmarks.cross_agent.types import IngestItem, RecallOutcome
+
+    class TrackingBackend:
+        kind = "tracking"
+
+        def __init__(self) -> None:
+            self.open_count = 0
+            self.close_count = 0
+            self._ingested = False
+
+        def open(self, storage_dir: Path, config: BenchmarkRunConfig) -> None:
+            self.open_count += 1
+            storage_dir.mkdir(parents=True, exist_ok=True)
+
+        def close(self) -> None:
+            self.close_count += 1
+
+        def ingest(self, item: IngestItem) -> None:
+            self._ingested = True
+
+        def consolidate(self) -> None:
+            return None
+
+        def recall(self, query, *, top_k: int) -> RecallOutcome:
+            return RecallOutcome(context="ok", retrieved_ids=(), recall_time_ms=1.0)
+
+    class FailingAgent:
+        kind = "failing"
+
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def answer(self, query, *, recalled_context: str, seed: int):
+            from benchmarks.cross_agent.types import AgentOutcome
+
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("simulated agent crash")
+            return AgentOutcome(
+                answer="recovered",
+                task_success=None,
+                input_tokens=1,
+                output_tokens=1,
+                agent_time_ms=1.0,
+            )
+
+    config = BenchmarkRunConfig(
+        family=BenchmarkFamily.TAU2_BENCH,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.HM_ARCH,
+        seed=0,
+        resume=True,
+    )
+    backend = TrackingBackend()
+    agent = FailingAgent()
+    harness = CrossAgentBenchmarkHarness(output_root=tmp_path, backend=backend, agent=agent)
+
+    partial = harness.run(config)
+    assert backend.open_count == 1
+    assert backend.close_count == 1
+    assert len(partial.queries) == 2
+    assert partial.queries[0].failure_count == 1
+    assert partial.queries[1].failure_count == 0
+
+    resumed = harness.run(config)
+    assert backend.open_count == 2
+    assert backend.close_count == 2
+    assert len(resumed.queries) == 2
+
+
+def test_teardown_after_ingest_exception(tmp_path: Path) -> None:
+    from benchmarks.cross_agent.types import IngestItem
+
+    class ExplodingBackend:
+        kind = "exploding"
+
+        def __init__(self) -> None:
+            self.open_count = 0
+            self.close_count = 0
+
+        def open(self, storage_dir: Path, config: BenchmarkRunConfig) -> None:
+            self.open_count += 1
+            storage_dir.mkdir(parents=True, exist_ok=True)
+
+        def close(self) -> None:
+            self.close_count += 1
+
+        def ingest(self, item: IngestItem) -> None:
+            raise RuntimeError("ingest failed")
+
+        def consolidate(self) -> None:
+            return None
+
+        def recall(self, query, *, top_k: int):
+            raise AssertionError("recall should not run")
+
+    config = BenchmarkRunConfig(
+        family=BenchmarkFamily.LOCOMO,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.HM_ARCH,
+        seed=0,
+        resume=False,
+    )
+    backend = ExplodingBackend()
+    harness = CrossAgentBenchmarkHarness(output_root=tmp_path, backend=backend)
+
+    with pytest.raises(RuntimeError, match="ingest failed"):
+        harness.run(config)
+
+    assert backend.open_count == 1
+    assert backend.close_count == 1
+    checkpoint = load_checkpoint(tmp_path / resolve_run_id(config) / "storage")
+    assert checkpoint is not None
+    assert checkpoint["status"] == "failed"
+    assert checkpoint["error"] == "ingest failed"
+
+
+def test_recall_exception_counts_as_query_failure(tmp_path: Path) -> None:
+    from benchmarks.cross_agent.types import IngestItem
+
+    class RecallExplodingBackend:
+        kind = "recall_exploding"
+
+        def open(self, storage_dir: Path, config: BenchmarkRunConfig) -> None:
+            storage_dir.mkdir(parents=True, exist_ok=True)
+
+        def close(self) -> None:
+            return None
+
+        def ingest(self, item: IngestItem) -> None:
+            return None
+
+        def consolidate(self) -> None:
+            return None
+
+        def recall(self, query, *, top_k: int):
+            raise RuntimeError("recall failed")
+
+    config = BenchmarkRunConfig(
+        family=BenchmarkFamily.LOCOMO,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.HM_ARCH,
+        seed=0,
+        resume=False,
+    )
+    harness = CrossAgentBenchmarkHarness(
+        output_root=tmp_path,
+        backend=RecallExplodingBackend(),
+    )
+    result = harness.run(config)
+    assert all(q.failure_count >= 1 for q in result.queries)
+    assert result.aggregates.total_failure_count >= len(result.queries)
 
 
 def test_hm_arch_retrieval_beats_no_memory_baseline(tmp_path: Path) -> None:

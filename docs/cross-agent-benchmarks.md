@@ -32,7 +32,7 @@ agents and memory providers. The PRD-scale HM-Arch benchmarks live in
 
 ## Lifecycle phases
 
-1. **setup** — create isolated storage directory, `backend.open()`
+1. **setup** — create isolated storage directory, always call `backend.open()`
 2. **ingest** — persist fixture corpus via `backend.ingest()`
 3. **consolidate** — optional `backend.consolidate()` (family-dependent)
 4. **query** — for each query: recall → agent answer → per-query metrics
@@ -83,10 +83,18 @@ The per-query schema supports all three families:
 When `run_id` is omitted, the harness derives:
 
 ```
-sha256("{family}|{agent}|{backend}|{seed}")[:16]
+sha256("{family}|{agent}|{backend}|{seed}|{top_k}")[:16]
 ```
 
-prefixed as `{family}-{agent}-{backend}-s{seed}-<digest>`.
+prefixed as `{family}-{agent}-{backend}-s{seed}-k{top_k}-<digest>`.
+
+All result-affecting matrix coordinates (`family`, `agent`, `backend`, `seed`,
+`top_k`) are included so runs with different retrieval depth never share storage
+or checkpoints. The full config is also persisted in `checkpoint.json`.
+
+Fresh runs (`resume=False`) reset the run directory before writing artifacts.
+Re-running with the same derived id therefore replaces `queries.jsonl`, CSV, and
+summary rather than appending to stale JSONL.
 
 ## Running
 

@@ -91,6 +91,29 @@ class BenchmarkRunConfig:
     top_k: int = 5
     resume: bool = True
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "family": self.family.value,
+            "agent": self.agent.value,
+            "backend": self.backend.value,
+            "seed": self.seed,
+            "run_id": self.run_id,
+            "top_k": self.top_k,
+            "resume": self.resume,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> BenchmarkRunConfig:
+        return cls(
+            family=BenchmarkFamily(data["family"]),
+            agent=AgentKind(data["agent"]),
+            backend=MemoryBackendKind(data["backend"]),
+            seed=int(data["seed"]),
+            run_id=data.get("run_id"),
+            top_k=int(data.get("top_k", 5)),
+            resume=bool(data.get("resume", True)),
+        )
+
 
 @dataclass
 class RecallOutcome:
@@ -174,13 +197,7 @@ class BenchmarkRunResult:
     def to_dict(self) -> dict[str, Any]:
         return {
             "run_id": self.run_id,
-            "config": {
-                "family": self.config.family.value,
-                "agent": self.config.agent.value,
-                "backend": self.config.backend.value,
-                "seed": self.config.seed,
-                "top_k": self.config.top_k,
-            },
+            "config": self.config.to_dict(),
             "storage_dir": self.storage_dir,
             "phases_completed": self.phases_completed,
             "queries": [q.to_dict() for q in self.queries],
