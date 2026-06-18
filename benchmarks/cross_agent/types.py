@@ -124,6 +124,9 @@ class RecallOutcome:
     recall_time_ms: float
     failure_count: int = 0
     error: str | None = None
+    context_chars: int = 0
+    hit_count: int = 0
+    agent_managed: bool = False
 
 
 @dataclass
@@ -159,6 +162,9 @@ class QueryRecord:
     failure_count: int
     retrieved_ids: tuple[str, ...] = ()
     expected_memory_ids: tuple[str, ...] = ()
+    recall_context_chars: int = 0
+    recall_hit_count: int = 0
+    agent_managed: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

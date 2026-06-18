@@ -72,6 +72,8 @@ class HmArchBackend:
                 context=context,
                 retrieved_ids=retrieved_fixture_ids,
                 recall_time_ms=elapsed,
+                context_chars=len(context),
+                hit_count=len(hits.results),
             )
         except Exception as exc:  # noqa: BLE001 — benchmark must count failures
             elapsed = (time.perf_counter() - t0) * 1000.0

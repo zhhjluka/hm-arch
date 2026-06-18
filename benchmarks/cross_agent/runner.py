@@ -72,6 +72,9 @@ def _query_record_from_checkpoint(row: dict[str, Any]) -> QueryRecord:
         failure_count=int(row["failure_count"]),
         retrieved_ids=tuple(row.get("retrieved_ids", ())),
         expected_memory_ids=tuple(row.get("expected_memory_ids", ())),
+        recall_context_chars=int(row.get("recall_context_chars", 0)),
+        recall_hit_count=int(row.get("recall_hit_count", 0)),
+        agent_managed=bool(row.get("agent_managed", False)),
     )
 
 
@@ -106,7 +109,7 @@ class CrossAgentBenchmarkHarness:
         storage_dir = paths["run_dir"] / "storage"
         storage_dir.mkdir(parents=True, exist_ok=True)
 
-        backend = self._backend or create_memory_backend(config.backend)
+        backend = self._backend or create_memory_backend(config.backend, agent=config.agent)
         agent = self._agent or create_agent_runner(config.agent)
 
         phases_completed: list[str] = []
@@ -313,6 +316,9 @@ class CrossAgentBenchmarkHarness:
             failure_count=failure_count,
             retrieved_ids=recall.retrieved_ids,
             expected_memory_ids=query.expected_memory_ids,
+            recall_context_chars=recall.context_chars,
+            recall_hit_count=recall.hit_count,
+            agent_managed=recall.agent_managed,
         )
 
     def _safe_recall(

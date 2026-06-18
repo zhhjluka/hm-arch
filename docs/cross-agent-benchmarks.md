@@ -19,9 +19,9 @@ agents and memory providers. The PRD-scale HM-Arch benchmarks live in
 |----------------|----------------|-------|
 | `no_memory` | Implemented | Empty-recall baseline |
 | `hm_arch` | Implemented | SQLite-isolated HM-Arch adapter |
-| `native_memory` | Stub | Register via `register_memory_backend()` |
-| `openviking` | Stub | Register via `register_memory_backend()` |
-| `mem0` | Stub | Register via `register_memory_backend()` |
+| `native_memory` | Implemented | Agent-owned memory via optional `AgentNativeMemoryBridge` |
+| `openviking` | Implemented | Requires `openviking` package (no silent fallback) |
+| `mem0` | Implemented | Requires `mem0ai` package (no silent fallback) |
 
 | Agent | Status in repo | Notes |
 |-------|----------------|-------|
@@ -29,6 +29,26 @@ agents and memory providers. The PRD-scale HM-Arch benchmarks live in
 | `hermes` | Synthetic offline runner | Replace with real adapter when available |
 | `claude_code` | Synthetic offline runner | Replace with real adapter when available |
 | `codex` | Synthetic offline runner | Replace with real adapter when available |
+
+### Provider/agent compatibility matrix
+
+Unsupported combinations raise `UnsupportedCombinationError`; the harness does
+not silently substitute another provider.
+
+| Backend | OpenClaw | Hermes | Claude Code | Codex |
+|---------|:--------:|:------:|:-----------:|:-----:|
+| `no_memory` | Yes | Yes | Yes | Yes |
+| `hm_arch` | Yes | Yes | Yes | Yes |
+| `native_memory` | Yes | Yes | Yes | Yes |
+| `mem0` | Yes* | Yes* | No | No |
+| `openviking` | Yes* | No | No | No |
+
+\* Requires the external package and agent-specific configuration. See
+[External service requirements](#external-service-requirements).
+
+Reason strings are available from
+`benchmarks.cross_agent.compatibility.compatibility_cell` and
+`unsupported_pairs()`.
 
 ## Lifecycle phases
 
@@ -51,6 +71,9 @@ phase offline without API keys.
 | `task_success` | Agent-reported success for tau2-style tasks; `null` when not applicable | Agent step only |
 | `retrieval_hit_rate` | Fraction of `expected_memory_ids` present in `retrieved_ids`; `null` when fixture provides none | Recall step only |
 | `recall_time_ms` | Wall time inside `backend.recall()` | Recall start → recall return |
+| `recall_context_chars` | Length of recalled context string | Recall step only |
+| `recall_hit_count` | Provider-reported hit count from recall | Recall step only |
+| `agent_managed` | `true` when native-memory mode delegates to the agent | Recall step only |
 | `agent_time_ms` | Wall time inside `agent.answer()` | Agent start → agent return |
 | `query_time_ms` | Wall time for recall **and** agent answer for one query | Before recall → after agent return |
 | `input_tokens` | Whitespace token estimate of prompt passed to agent (offline approximation) | Agent step |
@@ -110,8 +133,38 @@ uv run python scripts/run_cross_agent_benchmark.py \
   --family hotpotqa --agent hermes --backend no_memory --seed 1
 
 # Offline tests (included in default pytest suite)
-uv run pytest tests/test_cross_agent_benchmark.py -v
+uv run pytest tests/test_cross_agent_benchmark.py tests/test_cross_agent_memory_backends.py -v
 ```
+
+## External service requirements
+
+**Mem0**
+
+- Package: `pip install mem0ai`
+- For OSS mode the adapter writes a local Qdrant path under the isolated run
+  storage directory (`storage/qdrant`).
+- Platform mode requires `MEM0_API_KEY` and is not used by default offline tests.
+- Offline contract tests inject `OfflineMem0Client` directly; production runs
+  without injection fail fast with `ProviderPackageRequired`.
+
+**OpenViking**
+
+- Package: `pip install openviking`
+- Embedded mode stores data under `storage/openviking`.
+- HTTP mode can be wired by passing a custom client implementing
+  `OpenVikingClientProtocol`.
+- Offline contract tests inject `OfflineOpenVikingClient` directly.
+
+**HM-Arch**
+
+- No external services. Uses SQLite under `storage/hm_arch.db`.
+
+**Native memory**
+
+- Supply an `AgentNativeMemoryBridge` to `NativeMemoryBackend(..., bridge=...)`
+  when the agent runner owns recall/ingest. Without a bridge the backend reports
+  `agent_managed=True` and returns empty context so benchmarks can distinguish
+  the mode from `no_memory`.
 
 ## Extending adapters
 

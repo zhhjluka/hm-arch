@@ -35,4 +35,6 @@ class NoMemoryBackend:
             context="",
             retrieved_ids=(),
             recall_time_ms=elapsed,
+            context_chars=0,
+            hit_count=0,
         )

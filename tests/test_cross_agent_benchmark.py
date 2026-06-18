@@ -16,7 +16,7 @@ from benchmarks.cross_agent import (
     run_cross_agent_benchmark,
 )
 from benchmarks.cross_agent.agents.registry import create_agent_runner
-from benchmarks.cross_agent.backends.registry import create_memory_backend
+from benchmarks.cross_agent.compatibility import UnsupportedCombinationError, assert_supported
 from benchmarks.cross_agent.checkpoint import load_checkpoint
 from benchmarks.cross_agent.fixtures.synthetic import all_synthetic_fixtures
 from benchmarks.cross_agent.metrics import (
@@ -348,19 +348,9 @@ def test_checkpoint_resume_skips_completed_queries(tmp_path: Path) -> None:
     assert len(second.queries) == len(first.queries)
 
 
-def test_stub_backends_raise_until_registered() -> None:
-    for kind in (
-        MemoryBackendKind.NATIVE_MEMORY,
-        MemoryBackendKind.OPENVIKING,
-        MemoryBackendKind.MEM0,
-    ):
-        backend = create_memory_backend(kind)
-        with pytest.raises(NotImplementedError):
-            backend.open(Path("/tmp/unused"), BenchmarkRunConfig(
-                family=BenchmarkFamily.LOCOMO,
-                agent=AgentKind.CODEX,
-                backend=kind,
-            ))
+def test_unsupported_backend_agent_pairs_raise() -> None:
+    with pytest.raises(UnsupportedCombinationError):
+        assert_supported(MemoryBackendKind.MEM0, AgentKind.CODEX)
 
 
 def test_all_agents_use_synthetic_runner() -> None:

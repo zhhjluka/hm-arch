@@ -4,6 +4,13 @@ Reproducible evaluation of LoCoMo, tau2-bench, and HotpotQA across agents and
 memory backends. See ``docs/cross-agent-benchmarks.md``.
 """
 
+from .compatibility import (
+    UnsupportedCombinationError,
+    assert_supported,
+    compatibility_cell,
+    supported_pairs,
+    unsupported_pairs,
+)
 from .protocol import AgentRunner, MemoryBackend
 from .runner import CrossAgentBenchmarkHarness, run_cross_agent_benchmark
 from .types import (
@@ -27,5 +34,10 @@ __all__ = [
     "MemoryBackendKind",
     "QueryRecord",
     "RunPhase",
+    "UnsupportedCombinationError",
+    "assert_supported",
+    "compatibility_cell",
     "run_cross_agent_benchmark",
+    "supported_pairs",
+    "unsupported_pairs",
 ]

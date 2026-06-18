@@ -27,6 +27,9 @@ _QUERY_CSV_FIELDS = [
     "input_tokens",
     "output_tokens",
     "failure_count",
+    "recall_context_chars",
+    "recall_hit_count",
+    "agent_managed",
 ]
 
 
@@ -65,6 +68,9 @@ def write_queries_csv(path: Path, result: BenchmarkRunResult) -> None:
                     "input_tokens": record.input_tokens,
                     "output_tokens": record.output_tokens,
                     "failure_count": record.failure_count,
+                    "recall_context_chars": record.recall_context_chars,
+                    "recall_hit_count": record.recall_hit_count,
+                    "agent_managed": record.agent_managed,
                 }
             )
 
