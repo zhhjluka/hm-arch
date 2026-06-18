@@ -34,10 +34,16 @@ def _configure_openclaw_env(
     home: Path,
     project_root: Path | None = None,
     global_install: bool = False,
+    config_path: Path | None = None,
 ) -> Path:
     monkeypatch.setenv("HOME", str(home))
     state_dir = home / ".openclaw"
     monkeypatch.setenv("OPENCLAW_STATE_DIR", str(state_dir))
+    if config_path is not None:
+        monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(config_path))
+        if project_root is not None:
+            monkeypatch.chdir(project_root)
+        return config_path
     if project_root is not None:
         monkeypatch.chdir(project_root)
     if global_install:
@@ -60,9 +66,10 @@ def test_install_status_doctor_openclaw_lifecycle(
 
     assert main(["install", "openclaw"]) == 0
     err = capsys.readouterr().err
-    assert "openclaw (project): installed" in err
+    assert "openclaw (project): partial" in err
     assert "Configured OpenClaw memory slot" in err
     assert "Installed HM-Arch OpenClaw plugin" in err
+    assert "management-stage stub" in err
     assert config_path.exists()
     assert (config_path.parent / "extensions" / HM_ARCH_PLUGIN_ID / "openclaw.plugin.json").exists()
 
@@ -72,11 +79,17 @@ def test_install_status_doctor_openclaw_lifecycle(
 
     assert main(["status", "openclaw"]) == 0
     err = capsys.readouterr().err
+    assert "openclaw (project): partial" in err
     assert "plugins.slots.memory is set to 'memory-hm-arch'" in err
+    assert "management-stage stub" in err
 
-    assert main(["doctor", "openclaw"]) == 0
+    assert main(["doctor", "openclaw"]) == 1
     err = capsys.readouterr().err
-    assert "HM-Arch database schema is initialized" in err or "Created HM-Arch database" in err
+    assert (
+        "HM-Arch database schema is initialized" in err
+        or "Created HM-Arch database" in err
+        or "HM-Arch database exists at" in err
+    )
 
     assert main(["uninstall", "openclaw"]) == 0
     err = capsys.readouterr().err
@@ -196,6 +209,104 @@ def test_uninstall_openclaw_preserves_unrelated_memory_slot(
     assert read_memory_slot(config) == "memory-mem0"
     assert HM_ARCH_PLUGIN_ID not in config["plugins"]["entries"]
     assert "memory-mem0" in config["plugins"]["entries"]
+
+
+def test_install_status_doctor_openclaw_custom_config_path_lifecycle(
+    project_root: Path,
+    openclaw_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    custom_config = openclaw_home / "custom" / "custom.json"
+    custom_db = custom_config.parent / "custom-memory.db"
+    config_path = _configure_openclaw_env(
+        monkeypatch,
+        home=openclaw_home,
+        project_root=project_root,
+        config_path=custom_config,
+    )
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        json.dumps(
+            {
+                "plugins": {
+                    "entries": {
+                        HM_ARCH_PLUGIN_ID: {
+                            "enabled": True,
+                            "config": {"dbPath": "custom-memory.db"},
+                        }
+                    }
+                }
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert main(["install", "openclaw"]) == 0
+    err = capsys.readouterr().err
+    assert "openclaw (project): partial" in err
+    assert config_path.exists()
+    assert not (config_path.parent / "hm_arch_memory.db").exists()
+
+    assert main(["doctor", "openclaw"]) == 1
+    err = capsys.readouterr().err
+    assert (
+        f"HM-Arch database schema is initialized at {custom_db}" in err
+        or f"Created HM-Arch database at {custom_db}" in err
+        or f"HM-Arch database exists at {custom_db}" in err
+    )
+    assert custom_db.exists()
+
+    assert main(["status", "openclaw"]) == 0
+    err = capsys.readouterr().err
+    assert f"HM-Arch database exists at {custom_db}" in err
+
+
+def test_install_openclaw_config_write_permission_error(
+    project_root: Path,
+    openclaw_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    readonly_dir = openclaw_home / "readonly"
+    readonly_dir.mkdir(parents=True)
+    readonly_dir.chmod(0o555)
+    config_path = readonly_dir / "openclaw.json"
+    _configure_openclaw_env(
+        monkeypatch,
+        home=openclaw_home,
+        project_root=project_root,
+        config_path=config_path,
+    )
+
+    assert main(["install", "openclaw"]) == 2
+    err = capsys.readouterr().err
+    assert "openclaw (project): partial" in err
+    assert "Could not write OpenClaw config" in err
+    assert not config_path.exists()
+
+
+def test_install_openclaw_extension_write_permission_error(
+    project_root: Path,
+    openclaw_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_path = _configure_openclaw_env(
+        monkeypatch,
+        home=openclaw_home,
+        project_root=project_root,
+    )
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    (config_path.parent / "extensions").write_text("blocked", encoding="utf-8")
+
+    assert main(["install", "openclaw"]) == 2
+    err = capsys.readouterr().err
+    assert "openclaw (project): partial" in err
+    assert "Could not write HM-Arch OpenClaw plugin" in err
+    assert config_path.exists()
 
 
 def test_resolve_openclaw_config_path_env(

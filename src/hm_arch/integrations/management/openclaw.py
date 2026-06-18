@@ -33,6 +33,11 @@ _OPENCLAW_INSTALL_REMEDY = (
     "configuration."
 )
 _GATEWAY_RESTART_REMEDY = "Restart the OpenClaw gateway if it is running."
+_PLUGIN_RUNTIME_REMEDY = (
+    "Install @hm-arch/openclaw-plugin when published, or wait for the HM-Arch "
+    "OpenClaw runtime package to supply a loadable plugin entrypoint."
+)
+_PLUGIN_RUNTIME_STUB_MARKER = "HM-Arch OpenClaw plugin runtime is not installed"
 
 
 class OpenClawAgentHandler:
@@ -91,7 +96,29 @@ class OpenClawAgentHandler:
                 )
             )
 
-            manifest_path = _write_plugin_extension(config_root)
+            plugin_settings = read_plugin_settings(merged)
+            try:
+                manifest_path = _write_plugin_extension(config_root)
+            except OSError as exc:
+                diagnostics.append(
+                    Diagnostic(
+                        code="openclaw.plugin.write_failed",
+                        level=DiagnosticLevel.ERROR,
+                        message=(
+                            f"Could not write HM-Arch OpenClaw plugin at "
+                            f"{_plugin_extension_dir(config_root)}: {exc}"
+                        ),
+                        remedy=f"Check permissions for {config_root}.",
+                    )
+                )
+                return IntegrationReport(
+                    agent=self.name,
+                    scope=scope,
+                    state=IntegrationState.PARTIAL,
+                    config_root=config_root,
+                    diagnostics=tuple(diagnostics),
+                )
+
             diagnostics.append(
                 Diagnostic(
                     code="openclaw.plugin.installed",
@@ -99,7 +126,13 @@ class OpenClawAgentHandler:
                     message=f"Installed HM-Arch OpenClaw plugin at {manifest_path.parent}.",
                 )
             )
-            diagnostics.extend(_ensure_database_initialized(config_root))
+            diagnostics.extend(
+                _ensure_database_initialized(
+                    config_path,
+                    config_root=config_root,
+                    plugin_settings=plugin_settings,
+                )
+            )
             diagnostics.append(
                 Diagnostic(
                     code="openclaw.gateway.restart",
@@ -107,6 +140,36 @@ class OpenClawAgentHandler:
                     message="OpenClaw gateway restart is required to load the memory plugin.",
                     remedy=_GATEWAY_RESTART_REMEDY,
                 )
+            )
+            runtime_ready = _plugin_runtime_ready(manifest_path.parent)
+            if not runtime_ready:
+                diagnostics.append(
+                    Diagnostic(
+                        code="openclaw.plugin.runtime_stub",
+                        level=DiagnosticLevel.WARNING,
+                        message=(
+                            "OpenClaw plugin manifest and config are installed, but the "
+                            "plugin entrypoint is a management-stage stub and will not load "
+                            "until the HM-Arch OpenClaw runtime is available."
+                        ),
+                        remedy=_PLUGIN_RUNTIME_REMEDY,
+                    )
+                )
+        except OSError as exc:
+            diagnostics.append(
+                Diagnostic(
+                    code="openclaw.install.failed",
+                    level=DiagnosticLevel.ERROR,
+                    message=f"Could not write OpenClaw config at {config_path}: {exc}",
+                    remedy=f"Check permissions for {config_path.parent}.",
+                )
+            )
+            return IntegrationReport(
+                agent=self.name,
+                scope=scope,
+                state=IntegrationState.PARTIAL,
+                config_root=config_root,
+                diagnostics=tuple(diagnostics),
             )
         except (ValueError, json.JSONDecodeError) as exc:
             diagnostics.append(
@@ -125,10 +188,16 @@ class OpenClawAgentHandler:
                 diagnostics=tuple(diagnostics),
             )
 
+        runtime_ready = _plugin_runtime_ready(_plugin_extension_dir(config_root))
+        state = (
+            IntegrationState.INSTALLED
+            if runtime_ready
+            else IntegrationState.PARTIAL
+        )
         return IntegrationReport(
             agent=self.name,
             scope=scope,
-            state=IntegrationState.INSTALLED,
+            state=state,
             config_root=config_root,
             installed_roles=("memory-plugin",),
             diagnostics=tuple(diagnostics),
@@ -342,6 +411,19 @@ class OpenClawAgentHandler:
                     message=f"HM-Arch OpenClaw plugin manifest exists at {manifest_path}.",
                 )
             )
+            if slot == HM_ARCH_PLUGIN_ID and not _plugin_runtime_ready(manifest_path.parent):
+                state = IntegrationState.PARTIAL
+                diagnostics.append(
+                    Diagnostic(
+                        code="openclaw.plugin.runtime_stub",
+                        level=DiagnosticLevel.WARNING,
+                        message=(
+                            "HM-Arch OpenClaw plugin entrypoint is a management-stage stub "
+                            "and will not load until the runtime package is available."
+                        ),
+                        remedy=_PLUGIN_RUNTIME_REMEDY,
+                    )
+                )
         elif slot == HM_ARCH_PLUGIN_ID:
             state = IntegrationState.PARTIAL
             diagnostics.append(
@@ -416,7 +498,28 @@ class OpenClawAgentHandler:
             if report.config_root is not None and not _plugin_manifest_path(
                 report.config_root
             ).exists():
-                manifest_path = _write_plugin_extension(report.config_root)
+                try:
+                    manifest_path = _write_plugin_extension(report.config_root)
+                except OSError as exc:
+                    diagnostics.append(
+                        Diagnostic(
+                            code="openclaw.plugin.write_failed",
+                            level=DiagnosticLevel.ERROR,
+                            message=(
+                                f"Could not write HM-Arch OpenClaw plugin at "
+                                f"{_plugin_extension_dir(report.config_root)}: {exc}"
+                            ),
+                            remedy=f"Check permissions for {report.config_root}.",
+                        )
+                    )
+                    return IntegrationReport(
+                        agent=report.agent,
+                        scope=report.scope,
+                        state=IntegrationState.PARTIAL,
+                        config_root=report.config_root,
+                        installed_roles=report.installed_roles,
+                        diagnostics=tuple(diagnostics),
+                    )
                 diagnostics.append(
                     Diagnostic(
                         code="openclaw.plugin.installed",
@@ -424,7 +527,17 @@ class OpenClawAgentHandler:
                         message=f"Installed HM-Arch OpenClaw plugin at {manifest_path.parent}.",
                     )
                 )
-            init_diagnostics = _ensure_database_initialized(report.config_root)
+            config_path = resolve_openclaw_config_path(global_install=global_install)
+            plugin_settings = (
+                read_plugin_settings(load_openclaw_config(config_path))
+                if config_path.exists()
+                else {}
+            )
+            init_diagnostics = _ensure_database_initialized(
+                config_path,
+                config_root=report.config_root,
+                plugin_settings=plugin_settings,
+            )
             if any(item.code == "openclaw.db.created" for item in init_diagnostics):
                 diagnostics = [
                     item for item in diagnostics if item.code != "openclaw.db.missing"
@@ -479,6 +592,22 @@ def _base_diagnostics(
         )
     )
     return diagnostics
+
+
+def _plugin_entrypoint_path(plugin_dir: Path) -> Path:
+    return plugin_dir / "index.mjs"
+
+
+def _plugin_runtime_ready(plugin_dir: Path) -> bool:
+    """Return True when the plugin entrypoint is loadable (not a management stub)."""
+    entrypoint = _plugin_entrypoint_path(plugin_dir)
+    if not entrypoint.exists():
+        return False
+    try:
+        text = entrypoint.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return _PLUGIN_RUNTIME_STUB_MARKER not in text
 
 
 def _plugin_extension_dir(config_root: Path) -> Path:
@@ -540,10 +669,8 @@ def _write_plugin_extension(config_root: Path) -> Path:
         "// HM-Arch OpenClaw memory plugin entrypoint.\n"
         "// Full runtime is provided by @hm-arch/openclaw-plugin when published.\n"
         "export async function register() {\n"
-        "  throw new Error(\n"
-        "    'HM-Arch OpenClaw plugin runtime is not installed. "
-        "Install @hm-arch/openclaw-plugin or run hm-arch install openclaw.'\n"
-        "  );\n"
+        f"  throw new Error('{_PLUGIN_RUNTIME_STUB_MARKER}. "
+        "Install @hm-arch/openclaw-plugin or run hm-arch install openclaw.');\n"
         "}\n",
         encoding="utf-8",
     )
@@ -642,23 +769,31 @@ def _storage_permission_diagnostics(config_root: Path | None) -> list[Diagnostic
     ]
 
 
-def _ensure_database_initialized(config_root: Path | None) -> list[Diagnostic]:
-    if config_root is None:
+def _ensure_database_initialized(
+    config_path: Path | None,
+    *,
+    config_root: Path | None = None,
+    plugin_settings: dict[str, object] | None = None,
+) -> list[Diagnostic]:
+    if config_path is None:
         return []
-    config_path = config_root / "openclaw.json"
-    try:
-        config = load_openclaw_config(config_path) if config_path.exists() else {}
-    except (ValueError, json.JSONDecodeError) as exc:
-        return [
-            Diagnostic(
-                code="openclaw.config.invalid",
-                level=DiagnosticLevel.ERROR,
-                message=str(exc),
-                remedy=f"Fix JSON syntax in {config_path}.",
-            )
-        ]
+    root = config_root or config_path.parent
+    settings = plugin_settings
+    if settings is None:
+        try:
+            config = load_openclaw_config(config_path) if config_path.exists() else {}
+        except (ValueError, json.JSONDecodeError) as exc:
+            return [
+                Diagnostic(
+                    code="openclaw.config.invalid",
+                    level=DiagnosticLevel.ERROR,
+                    message=str(exc),
+                    remedy=f"Fix JSON syntax in {config_path}.",
+                )
+            ]
+        settings = read_plugin_settings(config)
 
-    db_path = resolve_db_path(config_root, read_plugin_settings(config))
+    db_path = resolve_db_path(root, settings)
     db_file = Path(db_path)
     existed = db_file.exists()
     try:
