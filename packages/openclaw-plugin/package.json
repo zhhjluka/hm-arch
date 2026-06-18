@@ -1,0 +1,19 @@
+{
+  "name": "@hm-arch/openclaw-plugin",
+  "version": "2.0.4",
+  "description": "HM-Arch memory plugin for OpenClaw",
+  "type": "module",
+  "license": "Apache-2.0",
+  "files": [
+    "openclaw.plugin.json",
+    "dist"
+  ],
+  "openclaw": {
+    "extensions": [
+      "./dist/index.js"
+    ],
+    "runtimeExtensions": [
+      "./dist/index.js"
+    ]
+  }
+}

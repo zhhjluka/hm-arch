@@ -11,6 +11,8 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+!packages/openclaw-plugin/dist/
+!packages/openclaw-plugin/dist/**
 downloads/
 eggs/
 .eggs/

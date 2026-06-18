@@ -200,12 +200,14 @@ export async function withStandaloneRuntimeEnv<T>(
 
   const previousHome = process.env.HM_ARCH_HOME;
   const previousHermesHome = process.env.HERMES_HOME;
+  const previousOpenClawStateDir = process.env.OPENCLAW_STATE_DIR;
   const previousRuntime = process.env.HM_ARCH_RUNTIME;
   const previousCwd = process.cwd();
   const pathGuard = options.stripPython ? stripPythonFromPath() : null;
 
   process.env.HM_ARCH_HOME = home;
   process.env.HERMES_HOME = join(home, "hermes-home");
+  process.env.OPENCLAW_STATE_DIR = join(home, "openclaw-state");
   process.env.HM_ARCH_RUNTIME = "standalone";
   process.chdir(workdir);
 
@@ -225,6 +227,11 @@ export async function withStandaloneRuntimeEnv<T>(
       delete process.env.HERMES_HOME;
     } else {
       process.env.HERMES_HOME = previousHermesHome;
+    }
+    if (previousOpenClawStateDir === undefined) {
+      delete process.env.OPENCLAW_STATE_DIR;
+    } else {
+      process.env.OPENCLAW_STATE_DIR = previousOpenClawStateDir;
     }
     if (previousRuntime === undefined) {
       delete process.env.HM_ARCH_RUNTIME;

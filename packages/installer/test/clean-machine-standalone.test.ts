@@ -198,4 +198,102 @@ describe("clean-machine integration management via standalone executable (MEM-64
       assert.ok(doctorCode === 0 || doctorCode === 1);
     });
   });
+
+  it("manages OpenClaw plugin setup without Python on PATH", {
+    skip: !hasStandaloneFixture() || detectReleaseTarget() === null,
+  }, async () => {
+    await withStandaloneRuntimeEnv({ stripPython: true }, async ({ workdir }) => {
+      assert.equal(
+        await runParsedCommand({
+          command: "install",
+          agent: "openclaw",
+          global: false,
+          help: false,
+        }),
+        0,
+      );
+
+      const pluginDir = `${workdir}/.openclaw/extensions/memory-hm-arch`;
+      const configPath = `${workdir}/.openclaw/openclaw.json`;
+      assert.ok(existsSync(`${pluginDir}/openclaw.plugin.json`));
+      assert.ok(existsSync(`${pluginDir}/dist/index.js`));
+      assert.ok(existsSync(configPath));
+
+      assert.equal(
+        await runParsedCommand({
+          command: "status",
+          agent: "openclaw",
+          global: false,
+          help: false,
+        }),
+        0,
+      );
+
+      assert.equal(
+        await runParsedCommand({
+          command: "doctor",
+          agent: "openclaw",
+          global: false,
+          help: false,
+        }),
+        0,
+      );
+
+      assert.equal(
+        await runParsedCommand({
+          command: "upgrade",
+          agent: "openclaw",
+          global: false,
+          help: false,
+        }),
+        0,
+      );
+
+      assert.equal(
+        await runParsedCommand({
+          command: "uninstall",
+          agent: "openclaw",
+          global: false,
+          help: false,
+        }),
+        0,
+      );
+      assert.equal(existsSync(pluginDir), false);
+    });
+  });
+
+  it("manages global OpenClaw plugin setup without Python on PATH", {
+    skip: !hasStandaloneFixture() || detectReleaseTarget() === null,
+  }, async () => {
+    await withStandaloneRuntimeEnv({ stripPython: true }, async ({ home }) => {
+      const stateDir = process.env.OPENCLAW_STATE_DIR;
+      assert.ok(stateDir);
+
+      assert.equal(
+        await runParsedCommand({
+          command: "install",
+          agent: "openclaw",
+          global: true,
+          help: false,
+        }),
+        0,
+      );
+
+      const pluginDir = `${stateDir}/extensions/memory-hm-arch`;
+      const configPath = `${stateDir}/openclaw.json`;
+      assert.ok(existsSync(`${pluginDir}/openclaw.plugin.json`));
+      assert.ok(existsSync(configPath));
+
+      assert.equal(
+        await runParsedCommand({
+          command: "uninstall",
+          agent: "openclaw",
+          global: true,
+          help: false,
+        }),
+        0,
+      );
+      assert.equal(existsSync(pluginDir), false);
+    });
+  });
 });

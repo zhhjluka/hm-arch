@@ -7,6 +7,7 @@ import os
 import shutil
 from pathlib import Path
 
+from hm_arch._version import __version__
 from hm_arch.integrations.openclaw.config import (
     DEFAULT_DB_FILENAME,
     HM_ARCH_PLUGIN_ID,
@@ -22,6 +23,12 @@ from hm_arch.integrations.openclaw.config import (
     resolve_sidecar_command,
     write_openclaw_config,
 )
+from hm_arch.integrations.openclaw.plugin_source import (
+    install_plugin_package,
+    plugin_payload_matches,
+    resolve_bundled_plugin_source,
+    verify_plugin_package_version,
+)
 from hm_arch.storage.sqlite import SQLiteStore
 
 from .types import Diagnostic, DiagnosticLevel, IntegrationReport, IntegrationState
@@ -34,10 +41,9 @@ _OPENCLAW_INSTALL_REMEDY = (
 )
 _GATEWAY_RESTART_REMEDY = "Restart the OpenClaw gateway if it is running."
 _PLUGIN_RUNTIME_REMEDY = (
-    "Install @hm-arch/openclaw-plugin when published, or wait for the HM-Arch "
-    "OpenClaw runtime package to supply a loadable plugin entrypoint."
+    "Reinstall with `hm-arch install openclaw` or `npx @hm-arch/installer install openclaw` "
+    "to refresh the @hm-arch/openclaw-plugin package."
 )
-_PLUGIN_RUNTIME_STUB_MARKER = "HM-Arch OpenClaw plugin runtime is not installed"
 
 
 class OpenClawAgentHandler:
@@ -85,6 +91,7 @@ class OpenClawAgentHandler:
                     "sidecarCommand": sidecar_command,
                     "autoRecall": True,
                     "autoCapture": True,
+                    "hmArchVersion": __version__,
                 },
             )
             write_openclaw_config(config_path, merged)
@@ -98,7 +105,26 @@ class OpenClawAgentHandler:
 
             plugin_settings = read_plugin_settings(merged)
             try:
-                manifest_path = _write_plugin_extension(config_root)
+                manifest_path = _install_plugin_extension(config_root)
+            except ValueError as exc:
+                diagnostics.append(
+                    Diagnostic(
+                        code="openclaw.version.mismatch",
+                        level=DiagnosticLevel.ERROR,
+                        message=str(exc),
+                        remedy=(
+                            "Install a matching @hm-arch/installer and hm-arch release, "
+                            "then rerun `hm-arch install openclaw`."
+                        ),
+                    )
+                )
+                return IntegrationReport(
+                    agent=self.name,
+                    scope=scope,
+                    state=IntegrationState.PARTIAL,
+                    config_root=config_root,
+                    diagnostics=tuple(diagnostics),
+                )
             except OSError as exc:
                 diagnostics.append(
                     Diagnostic(
@@ -141,20 +167,6 @@ class OpenClawAgentHandler:
                     remedy=_GATEWAY_RESTART_REMEDY,
                 )
             )
-            runtime_ready = _plugin_runtime_ready(manifest_path.parent)
-            if not runtime_ready:
-                diagnostics.append(
-                    Diagnostic(
-                        code="openclaw.plugin.runtime_stub",
-                        level=DiagnosticLevel.WARNING,
-                        message=(
-                            "OpenClaw plugin manifest and config are installed, but the "
-                            "plugin entrypoint is a management-stage stub and will not load "
-                            "until the HM-Arch OpenClaw runtime is available."
-                        ),
-                        remedy=_PLUGIN_RUNTIME_REMEDY,
-                    )
-                )
         except OSError as exc:
             diagnostics.append(
                 Diagnostic(
@@ -188,12 +200,7 @@ class OpenClawAgentHandler:
                 diagnostics=tuple(diagnostics),
             )
 
-        runtime_ready = _plugin_runtime_ready(_plugin_extension_dir(config_root))
-        state = (
-            IntegrationState.INSTALLED
-            if runtime_ready
-            else IntegrationState.PARTIAL
-        )
+        state = IntegrationState.INSTALLED
         return IntegrationReport(
             agent=self.name,
             scope=scope,
@@ -415,11 +422,11 @@ class OpenClawAgentHandler:
                 state = IntegrationState.PARTIAL
                 diagnostics.append(
                     Diagnostic(
-                        code="openclaw.plugin.runtime_stub",
+                        code="openclaw.plugin.runtime_missing",
                         level=DiagnosticLevel.WARNING,
                         message=(
-                            "HM-Arch OpenClaw plugin entrypoint is a management-stage stub "
-                            "and will not load until the runtime package is available."
+                            "HM-Arch OpenClaw plugin manifest exists but the runtime "
+                            "entrypoint is missing or incomplete."
                         ),
                         remedy=_PLUGIN_RUNTIME_REMEDY,
                     )
@@ -499,7 +506,27 @@ class OpenClawAgentHandler:
                 report.config_root
             ).exists():
                 try:
-                    manifest_path = _write_plugin_extension(report.config_root)
+                    manifest_path = _install_plugin_extension(report.config_root)
+                except ValueError as exc:
+                    diagnostics.append(
+                        Diagnostic(
+                            code="openclaw.version.mismatch",
+                            level=DiagnosticLevel.ERROR,
+                            message=str(exc),
+                            remedy=(
+                                "Install a matching @hm-arch/installer and hm-arch release, "
+                                "then rerun `hm-arch install openclaw`."
+                            ),
+                        )
+                    )
+                    return IntegrationReport(
+                        agent=report.agent,
+                        scope=report.scope,
+                        state=IntegrationState.PARTIAL,
+                        config_root=report.config_root,
+                        installed_roles=report.installed_roles,
+                        diagnostics=tuple(diagnostics),
+                    )
                 except OSError as exc:
                     diagnostics.append(
                         Diagnostic(
@@ -595,19 +622,12 @@ def _base_diagnostics(
 
 
 def _plugin_entrypoint_path(plugin_dir: Path) -> Path:
-    return plugin_dir / "index.mjs"
+    return plugin_dir / "dist" / "index.js"
 
 
 def _plugin_runtime_ready(plugin_dir: Path) -> bool:
-    """Return True when the plugin entrypoint is loadable (not a management stub)."""
-    entrypoint = _plugin_entrypoint_path(plugin_dir)
-    if not entrypoint.exists():
-        return False
-    try:
-        text = entrypoint.read_text(encoding="utf-8")
-    except OSError:
-        return False
-    return _PLUGIN_RUNTIME_STUB_MARKER not in text
+    """Return True when the canonical plugin entrypoint is installed."""
+    return _plugin_entrypoint_path(plugin_dir).is_file()
 
 
 def _plugin_extension_dir(config_root: Path) -> Path:
@@ -618,63 +638,13 @@ def _plugin_manifest_path(config_root: Path) -> Path:
     return _plugin_extension_dir(config_root) / "openclaw.plugin.json"
 
 
-def _write_plugin_extension(config_root: Path) -> Path:
+def _install_plugin_extension(config_root: Path) -> Path:
+    source = resolve_bundled_plugin_source()
+    verify_plugin_package_version(source)
     plugin_dir = _plugin_extension_dir(config_root)
-    plugin_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path = plugin_dir / "openclaw.plugin.json"
-    manifest_path.write_text(
-        json.dumps(
-            {
-                "id": HM_ARCH_PLUGIN_ID,
-                "name": "HM-Arch Memory",
-                "description": "HM-Arch local SQLite memory provider for OpenClaw",
-                "kind": "memory",
-                "version": "0.0.0",
-                "configSchema": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "dbPath": {"type": "string"},
-                        "sidecarCommand": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                        },
-                        "autoRecall": {"type": "boolean"},
-                        "autoCapture": {"type": "boolean"},
-                        "topK": {"type": "integer"},
-                        "maxContextChars": {"type": "integer"},
-                    },
-                },
-            },
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    (plugin_dir / "package.json").write_text(
-        json.dumps(
-            {
-                "name": "@hm-arch/openclaw-memory",
-                "version": "0.0.0",
-                "private": True,
-                "type": "module",
-                "openclaw": {"extensions": ["./index.mjs"]},
-            },
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    (plugin_dir / "index.mjs").write_text(
-        "// HM-Arch OpenClaw memory plugin entrypoint.\n"
-        "// Full runtime is provided by @hm-arch/openclaw-plugin when published.\n"
-        "export async function register() {\n"
-        f"  throw new Error('{_PLUGIN_RUNTIME_STUB_MARKER}. "
-        "Install @hm-arch/openclaw-plugin or run hm-arch install openclaw.');\n"
-        "}\n",
-        encoding="utf-8",
-    )
-    return manifest_path
+    if not plugin_payload_matches(source, plugin_dir):
+        install_plugin_package(source, plugin_dir)
+    return plugin_dir / "openclaw.plugin.json"
 
 
 def _remove_hm_arch_config(config: dict[str, object]) -> bool:

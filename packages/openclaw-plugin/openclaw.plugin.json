@@ -1,0 +1,44 @@
+{
+  "id": "memory-hm-arch",
+  "name": "HM-Arch Memory",
+  "description": "HM-Arch local SQLite memory provider for OpenClaw",
+  "kind": "memory",
+  "version": "2.0.4",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "dbPath": {
+        "type": "string",
+        "description": "SQLite database path relative to the OpenClaw config root"
+      },
+      "sidecarCommand": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "HM-Arch sidecar command prefix invoked by the plugin"
+      },
+      "hmArchVersion": {
+        "type": "string",
+        "description": "Expected HM-Arch package version for coordination checks"
+      },
+      "topK": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 5
+      },
+      "maxContextChars": {
+        "type": "integer",
+        "minimum": 256,
+        "default": 4000
+      },
+      "autoRecall": {
+        "type": "boolean",
+        "default": true
+      },
+      "autoCapture": {
+        "type": "boolean",
+        "default": true
+      }
+    }
+  }
+}

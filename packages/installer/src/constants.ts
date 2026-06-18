@@ -34,6 +34,9 @@ export const ENV_HM_ARCH_RUNTIME = "HM_ARCH_RUNTIME";
 /** Override GitHub release download base URL (for tests or mirrors). */
 export const ENV_HM_ARCH_RELEASE_BASE_URL = "HM_ARCH_RELEASE_BASE_URL";
 
+/** Local standalone hm-arch executable used by clean-machine tests. */
+export const ENV_HM_ARCH_STANDALONE_FIXTURE = "HM_ARCH_STANDALONE_FIXTURE";
+
 /** Default GitHub repository for standalone release assets. */
 export const DEFAULT_GITHUB_REPO = "zhhjluka/hm-arch";
 

@@ -66,12 +66,12 @@ def test_install_status_doctor_openclaw_lifecycle(
 
     assert main(["install", "openclaw"]) == 0
     err = capsys.readouterr().err
-    assert "openclaw (project): partial" in err
+    assert "openclaw (project): installed" in err
     assert "Configured OpenClaw memory slot" in err
     assert "Installed HM-Arch OpenClaw plugin" in err
-    assert "management-stage stub" in err
     assert config_path.exists()
     assert (config_path.parent / "extensions" / HM_ARCH_PLUGIN_ID / "openclaw.plugin.json").exists()
+    assert (config_path.parent / "extensions" / HM_ARCH_PLUGIN_ID / "dist" / "index.js").exists()
 
     config = load_openclaw_config(config_path)
     assert read_memory_slot(config) == HM_ARCH_PLUGIN_ID
@@ -79,11 +79,10 @@ def test_install_status_doctor_openclaw_lifecycle(
 
     assert main(["status", "openclaw"]) == 0
     err = capsys.readouterr().err
-    assert "openclaw (project): partial" in err
+    assert "openclaw (project): installed" in err
     assert "plugins.slots.memory is set to 'memory-hm-arch'" in err
-    assert "management-stage stub" in err
 
-    assert main(["doctor", "openclaw"]) == 1
+    assert main(["doctor", "openclaw"]) == 0
     err = capsys.readouterr().err
     assert (
         "HM-Arch database schema is initialized" in err
@@ -246,11 +245,11 @@ def test_install_status_doctor_openclaw_custom_config_path_lifecycle(
 
     assert main(["install", "openclaw"]) == 0
     err = capsys.readouterr().err
-    assert "openclaw (project): partial" in err
+    assert "openclaw (project): installed" in err
     assert config_path.exists()
     assert not (config_path.parent / "hm_arch_memory.db").exists()
 
-    assert main(["doctor", "openclaw"]) == 1
+    assert main(["doctor", "openclaw"]) == 0
     err = capsys.readouterr().err
     assert (
         f"HM-Arch database schema is initialized at {custom_db}" in err
@@ -317,3 +316,31 @@ def test_resolve_openclaw_config_path_env(
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(custom))
     assert resolve_openclaw_config_path(global_install=False) == custom
     assert resolve_openclaw_config_path(global_install=True) == custom
+
+
+def test_install_openclaw_plugin_version_mismatch(
+    project_root: Path,
+    openclaw_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _configure_openclaw_env(
+        monkeypatch,
+        home=openclaw_home,
+        project_root=project_root,
+    )
+    from hm_arch.integrations.openclaw import plugin_source
+
+    source = plugin_source.resolve_bundled_plugin_source()
+    package_json = source / "package.json"
+    original = package_json.read_text(encoding="utf-8")
+    package_json.write_text(
+        original.replace('"version": "2.0.4"', '"version": "0.0.0"'),
+        encoding="utf-8",
+    )
+    try:
+        assert main(["install", "openclaw"]) == 2
+        err = capsys.readouterr().err
+        assert "version mismatch" in err.lower()
+    finally:
+        package_json.write_text(original, encoding="utf-8")
