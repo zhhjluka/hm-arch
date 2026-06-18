@@ -126,7 +126,6 @@ def test_top_k_run_isolation(tmp_path: Path) -> None:
     assert result_k5.run_id != result_k20.run_id
     assert (tmp_path / result_k5.run_id).is_dir()
     assert (tmp_path / result_k20.run_id).is_dir()
-    assert result_k5.run_id != result_k20.run_id
 
 
 def test_non_resume_rerun_replaces_jsonl(tmp_path: Path) -> None:
