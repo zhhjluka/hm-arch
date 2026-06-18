@@ -1,4 +1,8 @@
-"""PRD scale and performance benchmarks for HM-Arch (HM-31 / MEM-31)."""
+"""PRD scale and performance benchmarks for HM-Arch (HM-31 / MEM-31).
+
+Cross-agent memory benchmarks (LoCoMo, tau2-bench, HotpotQA) live in
+``benchmarks.cross_agent`` — see ``docs/cross-agent-benchmarks.md``.
+"""
 
 from .harness import (
     BenchmarkReport,
