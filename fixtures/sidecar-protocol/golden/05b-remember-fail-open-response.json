@@ -1,0 +1,18 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-remember-002",
+  "operation": "remember",
+  "ok": false,
+  "result": {
+    "memory_id": null,
+    "recorded": false
+  },
+  "telemetry": {
+    "storage_latency_ms": 1.2
+  },
+  "error": {
+    "code": "STORAGE_ERROR",
+    "message": "no space left on device",
+    "retryable": false
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-forget-001",
+  "operation": "forget",
+  "params": {
+    "memory_ids": ["mem-episodic-042", "mem-semantic-001"]
+  }
+}

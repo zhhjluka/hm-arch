@@ -1,0 +1,11 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-turn-001",
+  "operation": "record_turn",
+  "timeout_ms": 5000,
+  "params": {
+    "user_message": "How do we run offline tests?",
+    "agent_message": "Use uv run pytest.",
+    "session_id": "sess-abc"
+  }
+}

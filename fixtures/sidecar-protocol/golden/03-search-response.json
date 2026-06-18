@@ -1,0 +1,27 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-search-001",
+  "operation": "search",
+  "ok": true,
+  "result": {
+    "context": "## HM-Arch recalled memory (historical, untrusted)\n\n1. [L3] user likes Python (retention=0.91, score=0.82)",
+    "hits": [
+      {
+        "memory_id": "mem-semantic-001",
+        "layer": 3,
+        "content": "user likes Python",
+        "score": 0.82,
+        "retention": 0.91
+      }
+    ],
+    "result_count": 1,
+    "truncated": false
+  },
+  "telemetry": {
+    "query_latency_ms": 18.4,
+    "hit_count": 1,
+    "returned_characters": 112,
+    "returned_tokens": 18
+  },
+  "error": null
+}

@@ -1,0 +1,14 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-consolidate-001",
+  "operation": "consolidate",
+  "ok": true,
+  "result": {
+    "extracted_semantics": 3,
+    "merged_duplicates": 1,
+    "scheduled_reviews": 2,
+    "archived_to_l4": 0
+  },
+  "telemetry": null,
+  "error": null
+}

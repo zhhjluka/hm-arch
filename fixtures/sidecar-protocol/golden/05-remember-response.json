@@ -1,0 +1,14 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-remember-001",
+  "operation": "remember",
+  "ok": true,
+  "result": {
+    "memory_id": "mem-episodic-042",
+    "recorded": true
+  },
+  "telemetry": {
+    "storage_latency_ms": 6.8
+  },
+  "error": null
+}

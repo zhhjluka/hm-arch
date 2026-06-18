@@ -1,0 +1,8 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-bad-001",
+  "operation": "search",
+  "params": {
+    "query": ""
+  }
+}

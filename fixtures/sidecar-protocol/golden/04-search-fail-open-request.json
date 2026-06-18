@@ -1,0 +1,10 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-search-002",
+  "operation": "search",
+  "timeout_ms": 5000,
+  "params": {
+    "query": "database locked scenario",
+    "top_k": 5
+  }
+}

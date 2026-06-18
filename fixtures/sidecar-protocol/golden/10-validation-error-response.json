@@ -1,0 +1,18 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-bad-001",
+  "operation": "search",
+  "ok": false,
+  "result": {
+    "context": "",
+    "hits": [],
+    "result_count": 0,
+    "truncated": false
+  },
+  "telemetry": null,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "search requires a non-empty query",
+    "retryable": false
+  }
+}
