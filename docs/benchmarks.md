@@ -116,3 +116,15 @@ Linux VM (2026-06-03, Python 3.12, local fallback):
 | L4 mixed-age | 7400 archived | threshold capacity test | — |
 
 Re-run `scripts/run_prd_benchmarks.py` on your hardware for authoritative numbers.
+
+## Cross-agent memory benchmarks
+
+Separate from the PRD SDK contract above, HM-Arch compares memory backends
+(no-memory, native-memory, HM-Arch, Mem0, OpenViking) across OpenClaw, Hermes,
+Claude Code, and Codex on LoCoMo, tau2-bench, and HotpotQA.
+
+Methodology, commands, result schema, and known limitations:
+[cross-agent-benchmarks.md](cross-agent-benchmarks.md).
+
+No cross-agent headline numbers are published here until result artifacts are
+checked in under `benchmarks/cross_agent/results/`.

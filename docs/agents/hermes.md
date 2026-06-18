@@ -146,6 +146,7 @@ Default: `$HERMES_HOME/hm_arch_memory.db`. Override with `plugins.hm-arch.db_pat
 
 - [Codex setup](codex.md)
 - [Claude Code setup](claude-code.md)
+- [OpenClaw setup](openclaw.md)
 - [npm installer](../npm-installer.md)
 - [Integration CLI smoke tests](../integration-cli-smoke.md)
 - [PyPI clean-install verification](../pypi-clean-install.md)

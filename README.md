@@ -160,6 +160,11 @@ npx @hm-arch/installer doctor claude-code
 npx @hm-arch/installer install hermes
 npx @hm-arch/installer status hermes
 npx @hm-arch/installer doctor hermes
+
+# OpenClaw: installs the HM-Arch memory plugin and sidecar wiring.
+npx @hm-arch/installer install openclaw
+npx @hm-arch/installer status openclaw
+npx @hm-arch/installer doctor openclaw
 ```
 
 Or install the npm launcher globally:
@@ -170,10 +175,12 @@ npm install -g @hm-arch/installer
 hm-arch-install install codex
 hm-arch-install install claude-code
 hm-arch-install install hermes
+hm-arch-install install openclaw
 
 hm-arch-install status codex
 hm-arch-install status claude-code
 hm-arch-install status hermes
+hm-arch-install status openclaw
 ```
 
 Use `--global` when you want Codex or Claude Code hooks in the user-level config
@@ -224,6 +231,9 @@ npx @hm-arch/installer uninstall claude-code
 
 # Hermes: removes the provider bridge/config entries, then restart Hermes.
 npx @hm-arch/installer uninstall hermes
+
+# OpenClaw: removes HM-Arch plugin wiring, then restart the gateway.
+npx @hm-arch/installer uninstall openclaw
 ```
 
 For global Codex or Claude Code hooks:
@@ -239,6 +249,7 @@ If you installed the npm launcher globally, use `hm-arch-install` directly:
 hm-arch-install uninstall codex
 hm-arch-install uninstall claude-code
 hm-arch-install uninstall hermes
+hm-arch-install uninstall openclaw
 ```
 
 Uninstalling agent integration removes HM-Arch-managed hooks or Hermes provider
@@ -258,6 +269,7 @@ files manually only after you no longer need the stored memories. Common paths:
 | Codex | `hm-arch install codex` | `hm-arch status codex`, `hm-arch doctor codex` |
 | Claude Code | `hm-arch install claude-code` | `hm-arch status claude-code`, `hm-arch doctor claude-code` |
 | Hermes | `hm-arch install hermes` | `hm-arch status hermes`, `hm-arch doctor hermes` |
+| OpenClaw | `hm-arch install openclaw` | `hm-arch status openclaw`, `hm-arch doctor openclaw` |
 
 Python uninstall commands mirror npm:
 
@@ -265,7 +277,24 @@ Python uninstall commands mirror npm:
 hm-arch uninstall codex
 hm-arch uninstall claude-code
 hm-arch uninstall hermes
+hm-arch uninstall openclaw
 ```
+
+### Memory modes
+
+Benchmark and integration docs distinguish five memory configurations:
+
+| Mode | Meaning |
+|------|---------|
+| No memory | Agent runs with memory disabled (baseline) |
+| Native memory | Agent built-in memory only |
+| HM-Arch | HM-Arch hooks, Hermes provider, or OpenClaw plugin + sidecar |
+| Mem0 | Mem0 as the active external provider |
+| OpenViking | OpenViking as the active external provider |
+
+See [docs/cross-agent-benchmarks.md](docs/cross-agent-benchmarks.md) for the
+comparison matrix and [docs/agents/openclaw.md](docs/agents/openclaw.md) for
+OpenClaw-specific setup.
 
 Setup guides: [docs/agents/README.md](docs/agents/README.md). Smoke tests:
 [docs/integration-cli-smoke.md](docs/integration-cli-smoke.md).
@@ -288,14 +317,27 @@ When `provider_fallback_to_local=True` (the default), missing credentials, depen
 
 ## Benchmarks
 
-HM-Arch includes reproducible PRD-scale benchmarks for latency, storage, consolidation, and long-running memory behavior.
+HM-Arch includes two benchmark families:
+
+1. **PRD performance** — offline SDK latency, storage, consolidation, and
+   long-running memory behavior.
+2. **Cross-agent memory** — LoCoMo, tau2-bench, and HotpotQA comparisons across
+   OpenClaw, Hermes, Claude Code, and Codex with no-memory, native-memory,
+   HM-Arch, Mem0, and OpenViking backends.
 
 ```bash
+# PRD performance (offline SDK contract)
 uv run pytest tests/prd_benchmarks -m benchmark -v
 uv run python scripts/run_prd_benchmarks.py
+
+# Cross-agent memory (requires harness + agent runners; see docs)
+uv run python scripts/run_cross_agent_benchmarks.py --help
 ```
 
-The benchmark suite covers 10k L2 memories, search and add latency p95, consolidation runtime, storage size, semantic accuracy, and 30-day archive scenarios. Results and known limitations are documented in [docs/benchmarks.md](docs/benchmarks.md).
+PRD results and limitations: [docs/benchmarks.md](docs/benchmarks.md).
+Cross-agent methodology, metrics, and result schema:
+[docs/cross-agent-benchmarks.md](docs/cross-agent-benchmarks.md). Published
+accuracy or token claims require checked-in result artifacts.
 
 ## Development
 
@@ -316,6 +358,8 @@ The default test suite runs fully offline. Benchmark tests are marked separately
 | [docs/api.md](docs/api.md) | Public API reference |
 | [docs/spec.md](docs/spec.md) | Product and API contract |
 | [docs/benchmarks.md](docs/benchmarks.md) | PRD benchmark results and limitations |
+| [docs/cross-agent-benchmarks.md](docs/cross-agent-benchmarks.md) | Cross-agent memory benchmark methodology |
+| [docs/agents/openclaw.md](docs/agents/openclaw.md) | OpenClaw memory plugin and sidecar setup |
 | [docs/RELEASE_NOTES_v1.0.0.md](docs/RELEASE_NOTES_v1.0.0.md) | v1.0.0 release notes |
 | [docs/RELEASE_NOTES_v2.0.0.md](docs/RELEASE_NOTES_v2.0.0.md) | v2.0.0 coordinated release notes |
 | [docs/RELEASE_NOTES_v2.0.4.md](docs/RELEASE_NOTES_v2.0.4.md) | v2.0.4 three-agent validation and latest install guidance |

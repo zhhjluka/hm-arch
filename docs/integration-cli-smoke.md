@@ -68,6 +68,26 @@ Expected: install writes the HM-Arch provider config and plugin bridge,
 doctor initializes the SQLite schema, and uninstall removes HM-Arch-owned
 config/bridge files while preserving the memory database.
 
+## OpenClaw (memory plugin + sidecar)
+
+```bash
+export OPENCLAW_HOME=/tmp/hm-arch-smoke-openclaw
+mkdir -p "$OPENCLAW_HOME"
+hm-arch install openclaw
+hm-arch status openclaw
+hm-arch doctor openclaw
+hm-arch uninstall openclaw
+```
+
+With another memory provider already registered in the OpenClaw memory slot,
+`status` and `doctor` should report a provider conflict with remediation text.
+
+Expected: install writes the HM-Arch memory plugin registration and sidecar
+wiring, doctor validates plugin package and sidecar executable discovery, and
+uninstall removes HM-Arch-owned configuration while preserving the memory
+database. Restart the OpenClaw gateway after install or uninstall in a real
+environment.
+
 ## Automated offline tests
 
 ```bash

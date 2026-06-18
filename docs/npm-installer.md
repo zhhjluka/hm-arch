@@ -117,22 +117,34 @@ npx @hm-arch/installer install hermes
 npx @hm-arch/installer status hermes
 npx @hm-arch/installer doctor hermes
 
+# OpenClaw: install the memory plugin and sidecar wiring, then restart the gateway.
+npx @hm-arch/installer install openclaw
+npx @hm-arch/installer status openclaw
+npx @hm-arch/installer doctor openclaw
+
 # Global CLI after npm install -g
 npm install -g @hm-arch/installer
 hm-arch-install doctor
 hm-arch-install status codex
 hm-arch-install install hermes
+hm-arch-install install openclaw
 hm-arch-install status hermes
+hm-arch-install status openclaw
 hm-arch-install upgrade
 hm-arch-install uninstall codex
+hm-arch-install uninstall openclaw
 ```
 
-Supported agents: `codex`, `claude-code`, `hermes`.
+Supported agents: `codex`, `claude-code`, `hermes`, `openclaw`.
 
 Supported subcommands: `install`, `status`, `doctor`, `upgrade`, `uninstall`.
 For Hermes, `install hermes` writes the HM-Arch provider config and plugin bridge
 under `$HERMES_HOME` (default: `~/.hermes`). Restart Hermes after install so the
 running agent process loads the plugin.
+
+For OpenClaw, `install openclaw` writes the HM-Arch memory plugin registration
+and sidecar wiring under `$OPENCLAW_HOME` (or the platform default). Restart the
+OpenClaw gateway after install so the running process loads the plugin.
 
 Flags: `--global` / `-g`, `--help` / `-h`.
 
@@ -155,10 +167,13 @@ node dist/cli.js doctor
 
 ### postinstall is intentionally a no-op
 
-`npm install` does **not** modify Codex, Claude Code, or Hermes configuration.
+`npm install` does **not** modify Codex, Claude Code, Hermes, or OpenClaw
+configuration.
 Run `hm-arch-install install <agent>` explicitly after environment checks pass.
 For Hermes, run `hm-arch-install install hermes`, restart Hermes, then validate
 with `hm-arch-install status hermes` and `hm-arch-install doctor hermes`.
+For OpenClaw, run `hm-arch-install install openclaw`, restart the gateway, then
+validate with `hm-arch-install status openclaw` and `hm-arch-install doctor openclaw`.
 
 ## CI verification
 

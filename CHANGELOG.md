@@ -11,7 +11,21 @@ publication steps and maintainer approval rules.
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- OpenClaw integration documentation: [docs/agents/openclaw.md](docs/agents/openclaw.md)
+  (memory plugin, persistent sidecar, install/uninstall/status/doctor).
+- Cross-agent memory benchmark methodology:
+  [docs/cross-agent-benchmarks.md](docs/cross-agent-benchmarks.md) (LoCoMo,
+  tau2-bench, HotpotQA; agent × memory-backend matrix; metrics and result schema).
+- README install/uninstall tables and memory-mode distinction for no-memory,
+  native memory, HM-Arch, Mem0, and OpenViking.
+
+### Cross-agent benchmark results (pending execution)
+
+Final accuracy, query-time, and token numbers will be added after benchmark runs
+(HM-75, HM-76, HM-77) produce checked-in artifacts. Until then, release notes
+must not claim cross-agent performance outcomes.
 
 ## [2.0.4] - 2026-06-14
 

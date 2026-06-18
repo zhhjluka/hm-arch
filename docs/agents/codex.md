@@ -147,5 +147,6 @@ Portable example scripts (not auto-installed) live under
 
 - [Claude Code setup](claude-code.md)
 - [Hermes setup](hermes.md)
+- [OpenClaw setup](openclaw.md)
 - [Integration CLI smoke tests](../integration-cli-smoke.md)
 - [PyPI clean-install verification](../pypi-clean-install.md)
