@@ -600,6 +600,22 @@ def _plugin_entrypoint_path(plugin_dir: Path) -> Path:
 
 def _plugin_runtime_ready(plugin_dir: Path) -> bool:
     """Return True when the plugin entrypoint is loadable (not a management stub)."""
+    package_json = plugin_dir / "package.json"
+    if package_json.exists():
+        try:
+            payload = json.loads(package_json.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            payload = {}
+        extensions = payload.get("openclaw", {}).get("extensions", [])
+        if isinstance(extensions, list):
+            for entry in extensions:
+                if not isinstance(entry, str):
+                    continue
+                candidate = plugin_dir / entry.removeprefix("./")
+                if candidate.exists() and _PLUGIN_RUNTIME_STUB_MARKER not in candidate.read_text(
+                    encoding="utf-8"
+                ):
+                    return True
     entrypoint = _plugin_entrypoint_path(plugin_dir)
     if not entrypoint.exists():
         return False
@@ -618,9 +634,34 @@ def _plugin_manifest_path(config_root: Path) -> Path:
     return _plugin_extension_dir(config_root) / "openclaw.plugin.json"
 
 
-def _write_plugin_extension(config_root: Path) -> Path:
-    plugin_dir = _plugin_extension_dir(config_root)
-    plugin_dir.mkdir(parents=True, exist_ok=True)
+def _plugin_source_dir() -> Path | None:
+    """Return the repository-local OpenClaw plugin package when available."""
+    repo_root = Path(__file__).resolve().parents[4]
+    candidate = repo_root / "packages" / "openclaw-plugin"
+    dist_entry = candidate / "dist" / "index.js"
+    manifest = candidate / "openclaw.plugin.json"
+    if dist_entry.exists() and manifest.exists():
+        return candidate
+    return None
+
+
+def _copy_plugin_runtime(plugin_dir: Path, source_dir: Path) -> None:
+    """Copy the built HM-Arch OpenClaw plugin runtime into an extension directory."""
+    shutil.copy2(source_dir / "openclaw.plugin.json", plugin_dir / "openclaw.plugin.json")
+    package_json = source_dir / "package.json"
+    if package_json.exists():
+        shutil.copy2(package_json, plugin_dir / "package.json")
+    dist_src = source_dir / "dist"
+    dist_dest = plugin_dir / "dist"
+    if dist_dest.exists():
+        shutil.rmtree(dist_dest)
+    shutil.copytree(dist_src, dist_dest)
+    legacy_entry = plugin_dir / "index.mjs"
+    if legacy_entry.exists():
+        legacy_entry.unlink()
+
+
+def _write_plugin_stub(plugin_dir: Path) -> None:
     manifest_path = plugin_dir / "openclaw.plugin.json"
     manifest_path.write_text(
         json.dumps(
@@ -643,6 +684,7 @@ def _write_plugin_extension(config_root: Path) -> Path:
                         "autoCapture": {"type": "boolean"},
                         "topK": {"type": "integer"},
                         "maxContextChars": {"type": "integer"},
+                        "consolidateOnSessionEnd": {"type": "boolean"},
                     },
                 },
             },
@@ -674,7 +716,17 @@ def _write_plugin_extension(config_root: Path) -> Path:
         "}\n",
         encoding="utf-8",
     )
-    return manifest_path
+
+
+def _write_plugin_extension(config_root: Path) -> Path:
+    plugin_dir = _plugin_extension_dir(config_root)
+    plugin_dir.mkdir(parents=True, exist_ok=True)
+    source_dir = _plugin_source_dir()
+    if source_dir is not None:
+        _copy_plugin_runtime(plugin_dir, source_dir)
+    else:
+        _write_plugin_stub(plugin_dir)
+    return plugin_dir / "openclaw.plugin.json"
 
 
 def _remove_hm_arch_config(config: dict[str, object]) -> bool:

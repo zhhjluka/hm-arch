@@ -11,6 +11,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+!packages/openclaw-plugin/dist/
 downloads/
 eggs/
 .eggs/
@@ -235,6 +236,7 @@ __marimo__/
 
 # npm (@hm-arch/installer)
 packages/installer/node_modules/
+packages/openclaw-plugin/node_modules/
 packages/installer/dist/
 
 # npm installer managed runtime (local overrides)
