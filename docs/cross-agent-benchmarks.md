@@ -25,10 +25,13 @@ agents and memory providers. The PRD-scale HM-Arch benchmarks live in
 
 | Agent | Status in repo | Notes |
 |-------|----------------|-------|
-| `openclaw` | Synthetic offline runner | Replace with real adapter when available |
-| `hermes` | Synthetic offline runner | Replace with real adapter when available |
-| `claude_code` | Synthetic offline runner | Replace with real adapter when available |
-| `codex` | Synthetic offline runner | Replace with real adapter when available |
+| `openclaw` | Production CLI runner | Invokes `openclaw` boundary; use `use_mock_agent=True` for offline harness tests |
+| `hermes` | Production CLI runner | Invokes `hermes` boundary with isolated `HERMES_HOME` |
+| `claude_code` | Production CLI runner | Invokes `claude` boundary with isolated config dir |
+| `codex` | Production CLI runner | Invokes `codex` boundary with isolated `CODEX_HOME` |
+
+See [benchmark compatibility matrix](agents/benchmark-compatibility-matrix.md) for the full
+agent × backend grid (`real`, `unsupported`, `mock_only`).
 
 ## Lifecycle phases
 
@@ -102,7 +105,7 @@ uv run python scripts/run_cross_agent_benchmark.py \
   --family hotpotqa --agent hermes --backend no_memory --seed 1
 
 # Offline tests (included in default pytest suite)
-uv run pytest tests/test_cross_agent_benchmark.py -v
+uv run pytest tests/test_cross_agent_benchmark.py tests/test_cross_agent_agent_runners.py -v
 ```
 
 ## Extending adapters

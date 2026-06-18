@@ -46,6 +46,15 @@ class AgentRunner(Protocol):
 
     kind: str
 
+    def open(self) -> None:
+        """Prepare isolated agent home and integration hooks for this run."""
+
+    def close(self) -> None:
+        """Release agent resources for this run."""
+
+    def reset_session(self) -> None:
+        """Reset agent session state between benchmark phases."""
+
     def answer(
         self,
         query: BenchmarkQuery,

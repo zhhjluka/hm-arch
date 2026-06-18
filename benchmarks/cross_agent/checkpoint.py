@@ -28,6 +28,7 @@ def write_checkpoint(
         "queries": [q.to_dict() for q in queries],
     }
     path = checkpoint_path(storage_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 

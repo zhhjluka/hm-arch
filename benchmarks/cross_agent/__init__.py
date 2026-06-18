@@ -4,6 +4,12 @@ Reproducible evaluation of LoCoMo, tau2-bench, and HotpotQA across agents and
 memory backends. See ``docs/cross-agent-benchmarks.md``.
 """
 
+from .compatibility import (
+    CellImplementation,
+    compatibility_snapshot,
+    lookup_matrix_cell,
+    smoke_matrix_configs,
+)
 from .protocol import AgentRunner, MemoryBackend
 from .runner import CrossAgentBenchmarkHarness, run_cross_agent_benchmark
 from .types import (
@@ -22,10 +28,14 @@ __all__ = [
     "BenchmarkFamily",
     "BenchmarkRunConfig",
     "BenchmarkRunResult",
+    "CellImplementation",
     "CrossAgentBenchmarkHarness",
     "MemoryBackend",
     "MemoryBackendKind",
     "QueryRecord",
     "RunPhase",
+    "compatibility_snapshot",
+    "lookup_matrix_cell",
     "run_cross_agent_benchmark",
+    "smoke_matrix_configs",
 ]

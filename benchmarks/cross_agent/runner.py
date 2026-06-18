@@ -9,8 +9,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .agents.registry import create_agent_runner
+from .agents.cli_runner import AgentRunnerContext
+from .agents.registry import create_agent_runner, is_supported_coordinate
+from .agents.workspace import AgentWorkspace
 from .backends.registry import create_memory_backend
+from .compatibility import compatibility_snapshot, lookup_matrix_cell
 from .checkpoint import (
     load_checkpoint,
     mark_phase,
@@ -89,11 +92,27 @@ class CrossAgentBenchmarkHarness:
         run_id = resolve_run_id(config)
         fixture = get_synthetic_fixture(config.family)
         paths = default_output_paths(self.output_root, run_id)
-        storage_dir = paths["run_dir"] / "storage"
+        workspace = AgentWorkspace.create(
+            config.agent,
+            run_id=run_id,
+            parent=paths["run_dir"],
+        )
+        storage_dir = workspace.storage_dir
         storage_dir.mkdir(parents=True, exist_ok=True)
 
+        matrix_cell = lookup_matrix_cell(config.agent, config.backend)
+        supported, support_rationale = is_supported_coordinate(config)
+        agent_context = AgentRunnerContext(
+            workspace=workspace,
+            config=config,
+            executable=config.agent_executable,
+            metadata={
+                "matrix_implementation": matrix_cell.implementation.value,
+                "matrix_rationale": matrix_cell.rationale,
+            },
+        )
         backend = self._backend or create_memory_backend(config.backend)
-        agent = self._agent or create_agent_runner(config.agent)
+        agent = self._agent or create_agent_runner(config.agent, context=agent_context)
 
         phases_completed: list[str] = []
         completed_query_ids: list[str] = []
@@ -110,9 +129,63 @@ class CrossAgentBenchmarkHarness:
                 ]
 
         environment = collect_environment()
+        agent_metadata: dict[str, Any] = {
+            "matrix_implementation": matrix_cell.implementation.value,
+            "matrix_rationale": matrix_cell.rationale,
+            "support_rationale": support_rationale,
+            "supported": supported,
+            "agent_home": str(workspace.agent_home),
+            "workspace_root": str(workspace.root),
+        }
+
+        if not supported:
+            aggregates = aggregate_query_records([])
+            result = BenchmarkRunResult(
+                run_id=run_id,
+                config=config,
+                storage_dir=str(storage_dir),
+                phases_completed=[RunPhase.SETUP.value],
+                queries=[],
+                aggregates=aggregates,
+                environment=environment,
+                agent_metadata={
+                    **agent_metadata,
+                    "error": support_rationale,
+                    "status": "unsupported",
+                },
+                compatibility=compatibility_snapshot(),
+            )
+            write_summary_json(paths["summary_json"], result)
+            write_queries_csv(paths["queries_csv"], result)
+            workspace.cleanup()
+            return result
 
         if not phase_done(phases_completed, RunPhase.SETUP):
-            backend.open(storage_dir, config)
+            try:
+                agent.open()
+                backend.open(storage_dir, config)
+            except NotImplementedError as exc:
+                aggregates = aggregate_query_records([])
+                result = BenchmarkRunResult(
+                    run_id=run_id,
+                    config=config,
+                    storage_dir=str(storage_dir),
+                    phases_completed=[RunPhase.SETUP.value],
+                    queries=[],
+                    aggregates=aggregates,
+                    environment=environment,
+                    agent_metadata={
+                        **agent_metadata,
+                        "error": str(exc),
+                        "status": "unsupported",
+                    },
+                    compatibility=compatibility_snapshot(),
+                )
+                write_summary_json(paths["summary_json"], result)
+                write_queries_csv(paths["queries_csv"], result)
+                agent.close()
+                workspace.cleanup()
+                return result
             mark_phase(phases_completed, RunPhase.SETUP)
             write_checkpoint(
                 storage_dir,
@@ -181,6 +254,7 @@ class CrossAgentBenchmarkHarness:
 
         if not phase_done(phases_completed, RunPhase.TEARDOWN):
             backend.close()
+            agent.close()
             mark_phase(phases_completed, RunPhase.TEARDOWN)
 
         aggregates = aggregate_query_records(query_records)
@@ -192,6 +266,8 @@ class CrossAgentBenchmarkHarness:
             queries=query_records,
             aggregates=aggregates,
             environment=environment,
+            agent_metadata=agent_metadata,
+            compatibility=compatibility_snapshot(),
         )
 
         mark_phase(phases_completed, RunPhase.CHECKPOINT)
@@ -284,6 +360,7 @@ def run_synthetic_matrix(
             backend=MemoryBackendKind.HM_ARCH,
             seed=0,
             resume=False,
+            use_mock_agent=True,
         )
         results.append(harness.run(config))
     return results

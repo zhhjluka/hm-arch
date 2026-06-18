@@ -1,22 +1,40 @@
-"""Offline synthetic agent that answers from recalled context."""
+"""Offline mock agent runner (explicit test double only)."""
 
 from __future__ import annotations
 
 import re
 import time
 
+from ..compatibility import CellImplementation
 from ..metrics import approximate_token_count, normalize_answer
-from ..types import AgentOutcome, BenchmarkQuery
+from ..types import AgentOutcome, BenchmarkQuery, BenchmarkRunConfig
+from .workspace import AgentWorkspace
 
 
-class SyntheticAgentRunner:
-    """Deterministic offline agent for harness lifecycle tests.
+class MockSyntheticAgentRunner:
+    """Deterministic offline mock for harness lifecycle tests.
 
-  Real OpenClaw/Hermes/Claude Code/Codex adapters register via
-  :func:`~benchmarks.cross_agent.agents.register_agent_runner`.
+    This is **not** a production OpenClaw/Hermes/Claude Code/Codex adapter.
+    Register production CLI runners via
+    :func:`~benchmarks.cross_agent.agents.registry.create_agent_runner`.
     """
 
-    kind = "synthetic"
+    kind = "mock-synthetic"
+    implementation = CellImplementation.MOCK_ONLY
+
+    def __init__(self, workspace: AgentWorkspace | None = None, config: BenchmarkRunConfig | None = None) -> None:
+        self._workspace = workspace
+        self._config = config
+        self._opened = False
+
+    def open(self) -> None:
+        self._opened = True
+
+    def close(self) -> None:
+        self._opened = False
+
+    def reset_session(self) -> None:
+        return None
 
     def answer(
         self,
@@ -39,12 +57,21 @@ class SyntheticAgentRunner:
             task_success = normalize_answer(query.task_success_criteria) in haystack
 
         elapsed = (time.perf_counter() - t0) * 1000.0
+        metadata = {
+            "runner_mode": self.implementation.value,
+            "backend": self._config.backend.value if self._config else None,
+        }
+        if self._config is not None:
+            metadata["memory_mode"] = self._config.backend.value
+        if self._workspace is not None:
+            metadata["agent_home"] = str(self._workspace.agent_home)
         return AgentOutcome(
             answer=answer,
             task_success=task_success,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             agent_time_ms=elapsed,
+            metadata=metadata,
         )
 
     def _extract_answer(self, query: BenchmarkQuery, context: str) -> str:
@@ -62,7 +89,6 @@ class SyntheticAgentRunner:
             if "failed" in context.lower():
                 return "failed"
 
-        # HotpotQA multi-hop: pick a capitalized place name when present.
         for token in re.findall(r"\b([A-Z][a-z]+)\b", context):
             if token in {"Dr", "The", "Nova", "Science", "Prize", "Orion", "Telescope"}:
                 continue
@@ -70,3 +96,7 @@ class SyntheticAgentRunner:
                 return token
 
         return "unknown"
+
+
+# Backward-compatible alias used by existing harness tests.
+SyntheticAgentRunner = MockSyntheticAgentRunner

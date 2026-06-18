@@ -37,6 +37,7 @@ def test_synthetic_fixture_lifecycle(tmp_path: Path, family: BenchmarkFamily) ->
         backend=MemoryBackendKind.HM_ARCH,
         seed=0,
         resume=False,
+        use_mock_agent=True,
     )
     result = run_cross_agent_benchmark(config, output_root=tmp_path)
 
@@ -59,7 +60,7 @@ def test_synthetic_fixture_lifecycle(tmp_path: Path, family: BenchmarkFamily) ->
     assert (run_dir / "summary.json").is_file()
     assert (run_dir / "queries.csv").is_file()
     assert (run_dir / "queries.jsonl").is_file()
-    assert (run_dir / "storage" / "checkpoint.json").is_file()
+    assert (run_dir / "agent_workspace" / "storage" / "checkpoint.json").is_file()
 
 
 def test_deterministic_run_id() -> None:
@@ -92,6 +93,7 @@ def test_hm_arch_retrieval_beats_no_memory_baseline(tmp_path: Path) -> None:
         backend=MemoryBackendKind.HM_ARCH,
         seed=0,
         resume=False,
+        use_mock_agent=True,
     )
     hm_result = run_cross_agent_benchmark(config, output_root=tmp_path / "hm")
 
@@ -101,6 +103,7 @@ def test_hm_arch_retrieval_beats_no_memory_baseline(tmp_path: Path) -> None:
         backend=MemoryBackendKind.NO_MEMORY,
         seed=0,
         resume=False,
+        use_mock_agent=True,
     )
     baseline = run_cross_agent_benchmark(no_mem_config, output_root=tmp_path / "none")
 
@@ -118,6 +121,7 @@ def test_checkpoint_resume_skips_completed_queries(tmp_path: Path) -> None:
         backend=MemoryBackendKind.HM_ARCH,
         seed=0,
         resume=True,
+        use_mock_agent=True,
     )
     harness = CrossAgentBenchmarkHarness(output_root=tmp_path)
     first = harness.run(config)
@@ -146,10 +150,13 @@ def test_stub_backends_raise_until_registered() -> None:
             ))
 
 
-def test_all_agents_use_synthetic_runner() -> None:
+def test_all_agents_use_mock_runner_by_default() -> None:
+    from benchmarks.cross_agent.agents.synthetic import MockSyntheticAgentRunner
+
     for kind in AgentKind:
         runner = create_agent_runner(kind)
         assert isinstance(runner, AgentRunner)
+        assert isinstance(runner, MockSyntheticAgentRunner)
 
 
 def test_metric_helpers() -> None:

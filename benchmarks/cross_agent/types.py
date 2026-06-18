@@ -90,6 +90,9 @@ class BenchmarkRunConfig:
     run_id: str | None = None
     top_k: int = 5
     resume: bool = True
+    use_mock_agent: bool = False
+    agent_executable: str | None = None
+    agent_timeout_s: float = 120.0
 
 
 @dataclass
@@ -114,6 +117,7 @@ class AgentOutcome:
     agent_time_ms: float
     failure_count: int = 0
     error: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -170,6 +174,8 @@ class BenchmarkRunResult:
     queries: list[QueryRecord]
     aggregates: AggregateMetrics
     environment: dict[str, Any] = field(default_factory=dict)
+    agent_metadata: dict[str, Any] = field(default_factory=dict)
+    compatibility: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -180,10 +186,13 @@ class BenchmarkRunResult:
                 "backend": self.config.backend.value,
                 "seed": self.config.seed,
                 "top_k": self.config.top_k,
+                "use_mock_agent": self.config.use_mock_agent,
             },
             "storage_dir": self.storage_dir,
             "phases_completed": self.phases_completed,
             "queries": [q.to_dict() for q in self.queries],
             "aggregates": self.aggregates.to_dict(),
             "environment": self.environment,
+            "agent_metadata": self.agent_metadata,
+            "compatibility": self.compatibility,
         }
