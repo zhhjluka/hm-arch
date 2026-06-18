@@ -1,0 +1,12 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-search-001",
+  "operation": "search",
+  "timeout_ms": 5000,
+  "params": {
+    "query": "preferred programming language",
+    "top_k": 3,
+    "session_id": "sess-abc",
+    "max_context_chars": 4000
+  }
+}

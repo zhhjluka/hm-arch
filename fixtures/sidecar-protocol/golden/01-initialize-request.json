@@ -1,0 +1,13 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-init-001",
+  "operation": "initialize",
+  "timeout_ms": 10000,
+  "params": {
+    "db_path": "/tmp/hm-arch-sidecar.db",
+    "client_capabilities": ["telemetry.v1", "forget.by_query.v1"],
+    "config": {
+      "preset": "code_agent"
+    }
+  }
+}

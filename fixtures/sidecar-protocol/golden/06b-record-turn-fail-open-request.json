@@ -1,0 +1,9 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-turn-002",
+  "operation": "record_turn",
+  "params": {
+    "user_message": "capture failure path",
+    "agent_message": "should not block host"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-search-002",
+  "operation": "search",
+  "ok": false,
+  "result": {
+    "context": "",
+    "hits": [],
+    "result_count": 0,
+    "truncated": false
+  },
+  "telemetry": {
+    "query_latency_ms": 2.1,
+    "hit_count": 0,
+    "returned_characters": 0,
+    "returned_tokens": 0
+  },
+  "error": {
+    "code": "STORAGE_ERROR",
+    "message": "database is locked",
+    "retryable": true,
+    "details": {
+      "sqlite_code": "SQLITE_BUSY"
+    }
+  }
+}

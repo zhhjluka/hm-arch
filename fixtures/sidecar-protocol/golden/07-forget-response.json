@@ -1,0 +1,12 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-forget-001",
+  "operation": "forget",
+  "ok": true,
+  "result": {
+    "forgotten_count": 2,
+    "memory_ids": ["mem-episodic-042", "mem-semantic-001"]
+  },
+  "telemetry": null,
+  "error": null
+}

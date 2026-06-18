@@ -1,0 +1,11 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-shutdown-001",
+  "operation": "shutdown",
+  "ok": true,
+  "result": {
+    "shutdown_ack": true
+  },
+  "telemetry": null,
+  "error": null
+}

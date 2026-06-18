@@ -1,0 +1,15 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-init-001",
+  "operation": "initialize",
+  "ok": true,
+  "result": {
+    "ready": true,
+    "negotiated_protocol_version": "1.0",
+    "server_capabilities": ["telemetry.v1", "forget.by_query.v1", "health.deep.v1"],
+    "negotiated_capabilities": ["telemetry.v1", "forget.by_query.v1"],
+    "db_path": "/tmp/hm-arch-sidecar.db"
+  },
+  "telemetry": null,
+  "error": null
+}

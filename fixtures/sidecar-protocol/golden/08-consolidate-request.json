@@ -1,0 +1,10 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-consolidate-001",
+  "operation": "consolidate",
+  "timeout_ms": 60000,
+  "params": {
+    "force": false,
+    "session_id": "sess-abc"
+  }
+}

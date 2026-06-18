@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "description": "Golden sidecar protocol fixtures for cross-language contract tests",
+  "fixtures": [
+  {
+    "id": "initialize-success",
+    "request": "golden/01-initialize-request.json",
+    "response": "golden/01-initialize-response.json"
+  },
+  {
+    "id": "health-shallow",
+    "request": "golden/02-health-request.json",
+    "response": "golden/02-health-response.json"
+  },
+  {
+    "id": "search-hit",
+    "request": "golden/03-search-request.json",
+    "response": "golden/03-search-response.json"
+  },
+  {
+    "id": "search-fail-open",
+    "request": "golden/04-search-fail-open-request.json",
+    "response": "golden/04-search-fail-open-response.json"
+  },
+  {
+    "id": "remember-success",
+    "request": "golden/05-remember-request.json",
+    "response": "golden/05-remember-response.json"
+  },
+  {
+    "id": "remember-fail-open",
+    "request": "golden/05b-remember-fail-open-request.json",
+    "response": "golden/05b-remember-fail-open-response.json"
+  },
+  {
+    "id": "record-turn-success",
+    "request": "golden/06-record-turn-request.json",
+    "response": "golden/06-record-turn-response.json"
+  },
+  {
+    "id": "record-turn-fail-open",
+    "request": "golden/06b-record-turn-fail-open-request.json",
+    "response": "golden/06b-record-turn-fail-open-response.json"
+  },
+  {
+    "id": "forget-by-ids",
+    "request": "golden/07-forget-request.json",
+    "response": "golden/07-forget-response.json"
+  },
+  {
+    "id": "consolidate-success",
+    "request": "golden/08-consolidate-request.json",
+    "response": "golden/08-consolidate-response.json"
+  },
+  {
+    "id": "shutdown-success",
+    "request": "golden/09-shutdown-request.json",
+    "response": "golden/09-shutdown-response.json"
+  },
+  {
+    "id": "validation-error",
+    "request": "golden/10-validation-error-request.json",
+    "response": "golden/10-validation-error-response.json",
+    "invalid_request": true
+  }
+  ],
+  "transcript": "golden/full-session.jsonl"
+}

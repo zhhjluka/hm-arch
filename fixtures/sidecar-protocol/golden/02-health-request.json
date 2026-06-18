@@ -1,0 +1,6 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-health-001",
+  "operation": "health",
+  "params": {}
+}

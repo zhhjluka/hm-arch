@@ -1,0 +1,15 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-remember-001",
+  "operation": "remember",
+  "timeout_ms": 5000,
+  "params": {
+    "content": "User prefers uv for Python tooling",
+    "event_type": "conversation",
+    "importance": 0.7,
+    "session_id": "sess-abc",
+    "metadata": {
+      "source": "openclaw-plugin"
+    }
+  }
+}

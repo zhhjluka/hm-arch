@@ -1,0 +1,18 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-turn-002",
+  "operation": "record_turn",
+  "ok": false,
+  "result": {
+    "memory_ids": [],
+    "recorded_count": 0
+  },
+  "telemetry": {
+    "storage_latency_ms": 0.9
+  },
+  "error": {
+    "code": "STORAGE_ERROR",
+    "message": "write failed",
+    "retryable": true
+  }
+}

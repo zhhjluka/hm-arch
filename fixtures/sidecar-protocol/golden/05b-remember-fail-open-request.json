@@ -1,0 +1,8 @@
+{
+  "protocol_version": "1.0",
+  "correlation_id": "req-remember-002",
+  "operation": "remember",
+  "params": {
+    "content": "disk full write attempt"
+  }
+}
