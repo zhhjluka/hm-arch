@@ -1,5 +1,5 @@
 /** Supported agent identifiers (mirrors Python ``ALL_AGENTS``). */
-export const SUPPORTED_AGENTS = ["codex", "claude-code", "hermes"] as const;
+export const SUPPORTED_AGENTS = ["codex", "claude-code", "hermes", "openclaw"] as const;
 
 export type SupportedAgent = (typeof SUPPORTED_AGENTS)[number];
 
