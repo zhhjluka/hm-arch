@@ -11,7 +11,31 @@ publication steps and maintainer approval rules.
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- [docs/agents/openclaw.md](docs/agents/openclaw.md) — OpenClaw memory plugin
+  install/status/doctor, sidecar protocol links, `partial` runtime-stub behavior,
+  and provider conflict handling.
+- [docs/cross-agent-benchmarks.md](docs/cross-agent-benchmarks.md) — LoCoMo /
+  tau2-bench / HotpotQA methodology, agent × memory-backend matrix,
+  `real` / `mock-only` / `unavailable` / `unsupported` reporting rules, commands,
+  and result JSON schema.
+
+### Changed
+
+- README — OpenClaw Python CLI install/uninstall, five memory-mode table, npm
+  OpenClaw commands gated pending MEM-74, cross-agent benchmark entry point.
+- [docs/agents/compatibility-matrix.md](docs/agents/compatibility-matrix.md) —
+  OpenClaw row and memory-backend comparison table.
+- [docs/npm-installer.md](docs/npm-installer.md), [docs/integration-cli-smoke.md](docs/integration-cli-smoke.md),
+  [docs/agents/README.md](docs/agents/README.md), [docs/benchmarks.md](docs/benchmarks.md) —
+  synchronized OpenClaw and cross-agent documentation links.
+
+### Pending
+
+- Cross-agent benchmark headline numbers (awaiting reproducible result artifacts
+  after HM-71 harness execution).
+- `npx @hm-arch/installer install openclaw` (awaiting MEM-74 npm release).
 
 ## [2.0.4] - 2026-06-14
 

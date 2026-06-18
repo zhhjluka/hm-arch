@@ -117,6 +117,9 @@ npx @hm-arch/installer install hermes
 npx @hm-arch/installer status hermes
 npx @hm-arch/installer doctor hermes
 
+# OpenClaw: pending next @hm-arch/installer release (MEM-74).
+# Use `hm-arch install openclaw` via the Python CLI today.
+
 # Global CLI after npm install -g
 npm install -g @hm-arch/installer
 hm-arch-install doctor
@@ -127,7 +130,10 @@ hm-arch-install upgrade
 hm-arch-install uninstall codex
 ```
 
-Supported agents: `codex`, `claude-code`, `hermes`.
+Supported agents: `codex`, `claude-code`, `hermes`. OpenClaw (`openclaw`) is
+registered in the Python CLI and will ship in the next coordinated npm release
+(MEM-74); do not document `hm-arch-install install openclaw` as available until
+that release is published.
 
 Supported subcommands: `install`, `status`, `doctor`, `upgrade`, `uninstall`.
 For Hermes, `install hermes` writes the HM-Arch provider config and plugin bridge
@@ -155,7 +161,8 @@ node dist/cli.js doctor
 
 ### postinstall is intentionally a no-op
 
-`npm install` does **not** modify Codex, Claude Code, or Hermes configuration.
+`npm install` does **not** modify Codex, Claude Code, Hermes, or OpenClaw
+configuration.
 Run `hm-arch-install install <agent>` explicitly after environment checks pass.
 For Hermes, run `hm-arch-install install hermes`, restart Hermes, then validate
 with `hm-arch-install status hermes` and `hm-arch-install doctor hermes`.

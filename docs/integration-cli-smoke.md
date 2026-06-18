@@ -68,8 +68,29 @@ Expected: install writes the HM-Arch provider config and plugin bridge,
 doctor initializes the SQLite schema, and uninstall removes HM-Arch-owned
 config/bridge files while preserving the memory database.
 
+## OpenClaw (memory plugin config)
+
+```bash
+export OPENCLAW_HOME=/tmp/hm-arch-smoke-openclaw
+mkdir -p "$OPENCLAW_HOME"
+hm-arch install openclaw
+hm-arch status openclaw
+hm-arch doctor openclaw   # exits 1 while runtime stub is present
+hm-arch uninstall openclaw
+```
+
+Expected today:
+
+- `install` exits `0` and prints `openclaw (project): partial`
+- `status` reports `plugins.slots.memory is set to 'memory-hm-arch'`
+- `doctor` exits `1` with `management-stage stub` warning until the loadable
+  plugin runtime ships
+- `uninstall` removes HM-Arch config and plugin files; database is preserved
+
+See [agents/openclaw.md](agents/openclaw.md) for full setup and exit behavior.
+
 ## Automated offline tests
 
 ```bash
-pytest tests/test_integrations_cli_manage.py tests/test_codex_installer.py tests/test_claude_code_installer.py -q
+pytest tests/test_integrations_cli_manage.py tests/test_codex_installer.py tests/test_claude_code_installer.py tests/test_integrations_openclaw_manage.py -q
 ```
