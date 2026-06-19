@@ -78,6 +78,10 @@ _MUTATING_WRITE_OPERATIONS = frozenset(
     }
 )
 
+# Cap stuck timed-write workers: additional lane swaps reuse this pool instead of
+# spawning one new executor thread per timeout.
+MAX_WRITE_WORKER_THREADS = 2
+
 
 class _MemoryAccessLock:
     """Serialize access to a single in-process :class:`~hm_arch.core.HMArch` instance."""
@@ -93,22 +97,15 @@ class _MemoryAccessLock:
 
 @dataclass
 class _RuntimeLane:
-    """Isolated runtime lane with its own memory handle, locks, and write executor."""
+    """Isolated runtime lane with its own memory handle and locks."""
 
     generation: int
     memory: HMArch | None
     memory_lock: _MemoryAccessLock = field(default_factory=_MemoryAccessLock)
     write_lock: threading.Lock = field(default_factory=threading.Lock)
     retired: threading.Event = field(default_factory=threading.Event)
-    write_executor: ThreadPoolExecutor = field(
-        default_factory=lambda: ThreadPoolExecutor(
-            max_workers=1,
-            thread_name_prefix="hm-arch-sidecar-write",
-        ),
-        repr=False,
-    )
 
-    def close(self, *, shutdown_executor: bool = True) -> None:
+    def close(self) -> None:
         self.retired.set()
         memory = self.memory
         if isinstance(memory, _TimeoutGuardedMemory):
@@ -119,8 +116,6 @@ class _RuntimeLane:
                 memory.close()
             except Exception:  # noqa: BLE001 — best-effort teardown
                 pass
-        if shutdown_executor:
-            self.write_executor.shutdown(wait=False, cancel_futures=True)
 
 
 @dataclass
@@ -136,6 +131,19 @@ class SidecarServer:
     _lane_generation: int = field(default=0, repr=False)
     _lane: _RuntimeLane = field(default_factory=lambda: _RuntimeLane(generation=0, memory=None), repr=False)
     _lane_swap_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _write_executor: ThreadPoolExecutor = field(
+        default_factory=lambda: ThreadPoolExecutor(
+            max_workers=MAX_WRITE_WORKER_THREADS,
+            thread_name_prefix="hm-arch-sidecar-write",
+        ),
+        repr=False,
+    )
+    _degraded_inline_mode: bool = field(default=False, repr=False)
+    _stuck_write_workers: int = field(default=0, repr=False)
+    _stuck_write_workers_lock: threading.Lock = field(
+        default_factory=threading.Lock,
+        repr=False,
+    )
     _shutdown_requested: bool = field(default=False, repr=False)
 
     @property
@@ -147,6 +155,7 @@ class SidecarServer:
             lane = self._lane
             self._lane = _RuntimeLane(generation=lane.generation + 1, memory=None)
         lane.close()
+        self._write_executor.shutdown(wait=False, cancel_futures=True)
 
     def handle_line(self, line: str) -> str:
         """Parse one JSONL request line and return a serialized response line."""
@@ -164,10 +173,10 @@ class SidecarServer:
             timeout_s = request.timeout_ms / 1000.0
 
         lane = self._current_lane()
-        if (
-            request.operation in _WRITE_OPERATIONS
-            and timeout_s is not None
-        ):
+        if self._degraded_inline_mode:
+            return self._handle_request_degraded(lane, request, timeout_s)
+
+        if request.operation in _WRITE_OPERATIONS and timeout_s is not None:
             return self._execute_write_with_timeout(lane, request, timeout_s)
 
         return self._submit_lane_work(
@@ -176,6 +185,21 @@ class SidecarServer:
             request,
             timeout_s,
         )
+
+    def _handle_request_degraded(
+        self,
+        lane: _RuntimeLane,
+        request: SidecarRequest,
+        timeout_s: float | None,
+    ) -> SidecarResponse:
+        """Serve requests on the stdio thread after a timed write retires a lane."""
+        if request.operation in _WRITE_OPERATIONS and timeout_s is not None:
+            self._retire_lane(lane)
+            return self._timeout_response(request)
+        try:
+            return self._run_lane_operation(lane, request)
+        except Exception as exc:  # noqa: BLE001 — isolate per-request failures
+            return self._internal_error_response(request, exc)
 
     def _run_lane_operation(
         self,
@@ -225,7 +249,7 @@ class SidecarServer:
         request: SidecarRequest,
         timeout_s: float | None,
     ) -> SidecarResponse:
-        future = lane.write_executor.submit(operation)
+        future = self._write_executor.submit(operation)
         try:
             if timeout_s is None:
                 return future.result()
@@ -243,8 +267,12 @@ class SidecarServer:
         request: SidecarRequest,
         timeout_s: float,
     ) -> SidecarResponse:
+        if self._write_worker_capacity_exhausted():
+            self._retire_lane(lane)
+            return self._timeout_response(request)
+
         cancel = threading.Event()
-        future = lane.write_executor.submit(
+        future = self._write_executor.submit(
             self._run_lane_operation,
             lane,
             request,
@@ -254,12 +282,30 @@ class SidecarServer:
             return future.result(timeout=timeout_s)
         except FuturesTimeoutError:
             cancel.set()
+            future.cancel()
+            future.add_done_callback(
+                lambda _future: self._release_stuck_write_worker(),
+            )
+            self._register_stuck_write_worker()
             self._retire_lane(lane)
             return self._timeout_response(request)
         except _WriteAborted:
             return self._timeout_response(request)
         except Exception as exc:  # noqa: BLE001
             return self._internal_error_response(request, exc)
+
+    def _write_worker_capacity_exhausted(self) -> bool:
+        with self._stuck_write_workers_lock:
+            return self._stuck_write_workers >= MAX_WRITE_WORKER_THREADS
+
+    def _register_stuck_write_worker(self) -> None:
+        with self._stuck_write_workers_lock:
+            self._stuck_write_workers += 1
+
+    def _release_stuck_write_worker(self) -> None:
+        with self._stuck_write_workers_lock:
+            if self._stuck_write_workers > 0:
+                self._stuck_write_workers -= 1
 
     def _dispatch_request(
         self,
@@ -308,14 +354,9 @@ class SidecarServer:
             )
             memory_config = _memory_config_from_initialize(params)
             old_lane = lane
-            old_lane.close(shutdown_executor=False)
+            old_lane.close()
             memory = HMArch(config=memory_config)
             new_lane = self._install_lane(memory)
-            threading.Thread(
-                target=old_lane.close,
-                name="hm-arch-sidecar-lane-retire",
-                daemon=True,
-            ).start()
             self._memory_config = memory_config
             self.negotiated_protocol_version = negotiated
             self.negotiated_capabilities = negotiated_caps
@@ -842,7 +883,10 @@ class SidecarServer:
             self._lane_generation += 1
             lane = _RuntimeLane(generation=self._lane_generation, memory=None)
             self._lane = lane
-        lane.write_executor.submit(self._open_lane_memory, lane).result(timeout=30.0)
+        if self._degraded_inline_mode:
+            self._open_lane_memory(lane)
+        else:
+            self._write_executor.submit(self._open_lane_memory, lane).result(timeout=30.0)
 
     def _retire_lane(self, retired_lane: _RuntimeLane) -> None:
         with self._lane_swap_lock:
@@ -852,20 +896,10 @@ class SidecarServer:
             new_lane = _RuntimeLane(generation=self._lane_generation, memory=None)
             retired_lane.retired.set()
             self._lane = new_lane
-        retired_lane.close(shutdown_executor=False)
+        retired_lane.close()
+        self._degraded_inline_mode = True
         if self._memory_config is not None:
-            new_lane.write_executor.submit(self._open_lane_memory, new_lane).result(
-                timeout=30.0,
-            )
-        threading.Thread(
-            target=self._finalize_retired_lane,
-            args=(retired_lane,),
-            name="hm-arch-sidecar-lane-finalize",
-            daemon=True,
-        ).start()
-
-    def _finalize_retired_lane(self, retired_lane: _RuntimeLane) -> None:
-        retired_lane.close(shutdown_executor=True)
+            self._open_lane_memory(new_lane)
 
     def _open_lane_memory(self, lane: _RuntimeLane) -> None:
         if self._memory_config is None or lane.memory is not None:
