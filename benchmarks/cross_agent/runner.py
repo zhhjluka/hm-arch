@@ -21,13 +21,15 @@ from .checkpoint import (
     write_checkpoint,
 )
 from .compatibility import compatibility_snapshot, lookup_matrix_cell
-from .fixtures.synthetic import get_synthetic_fixture
 from .failure_provenance import build_query_failure_provenance
+from .fixtures.resolve import resolve_fixture
 from .metrics import (
+    aggregate_by_category,
     aggregate_query_records,
     exact_match_accuracy,
     hotpotqa_exact_match_accuracy,
     retrieval_hit_rate,
+    timing_aggregates,
 )
 from .output import (
     append_query_jsonl,
@@ -39,6 +41,7 @@ from .output import (
 )
 from .protocol import AgentRunner, MemoryBackend
 from .run_id import resolve_run_id
+from .fixtures.locomo.loader import get_dataset_manifest
 from .types import (
     AgentOutcome,
     BenchmarkFamily,
@@ -117,7 +120,8 @@ class CrossAgentBenchmarkHarness:
 
     def run(self, config: BenchmarkRunConfig) -> BenchmarkRunResult:
         run_id = resolve_run_id(config)
-        fixture = get_synthetic_fixture(config.family)
+        fixture = resolve_fixture(config)
+        dataset_meta = self._dataset_metadata(config)
         output_root = self.output_root.resolve()
         paths = default_output_paths(output_root, run_id)
         prepare_run_directory(paths, resume=config.resume)
@@ -200,6 +204,7 @@ class CrossAgentBenchmarkHarness:
                     "status": "unsupported",
                 },
                 compatibility=compatibility_snapshot(),
+                dataset=dataset_meta,
             )
             write_summary_json(paths["summary_json"], result)
             write_queries_csv(paths["queries_csv"], result)
@@ -234,6 +239,7 @@ class CrossAgentBenchmarkHarness:
                             "status": "unsupported",
                         },
                         compatibility=compatibility_snapshot(),
+                        dataset=dataset_meta,
                     )
                     write_summary_json(paths["summary_json"], result)
                     write_queries_csv(paths["queries_csv"], result)
@@ -352,6 +358,11 @@ class CrossAgentBenchmarkHarness:
             environment=environment,
             agent_metadata=agent_metadata,
             compatibility=compatibility_snapshot(),
+            dataset=dataset_meta,
+            category_aggregates=aggregate_by_category(query_records, fixture.queries)
+            if fixture.family is BenchmarkFamily.LOCOMO and fixture.queries
+            else {},
+            timing_aggregates=timing_aggregates(query_records),
         )
 
         mark_phase(phases_completed, RunPhase.CHECKPOINT)
@@ -397,6 +408,16 @@ class CrossAgentBenchmarkHarness:
     def _run_ingest(self, backend: MemoryBackend, fixture: SyntheticFixture) -> None:
         for item in fixture.ingest_items:
             backend.ingest(item)
+
+    @staticmethod
+    def _dataset_metadata(config: BenchmarkRunConfig) -> dict[str, Any]:
+        if not config.dataset_id:
+            return {}
+        manifest = get_dataset_manifest(config.dataset_id)
+        return {
+            **manifest.to_dict(),
+            "max_conversations": config.max_conversations,
+        }
 
     def _run_query(
         self,
