@@ -1,0 +1,107 @@
+{
+  "run_id": "tau2_bench-hermes-no_memory-s0-k5-633d5c04da7f3e90",
+  "status": "completed",
+  "error": null,
+  "config": {
+    "family": "tau2_bench",
+    "agent": "hermes",
+    "backend": "no_memory",
+    "seed": 0,
+    "run_id": null,
+    "top_k": 5,
+    "resume": false,
+    "use_mock_agent": true,
+    "agent_executable": null,
+    "agent_timeout_s": 120.0
+  },
+  "phases_completed": [
+    "setup",
+    "ingest",
+    "query",
+    "evaluate",
+    "teardown",
+    "checkpoint"
+  ],
+  "completed_query_ids": [
+    "retail-q1",
+    "retail-q2",
+    "retail-q3"
+  ],
+  "queries": [
+    {
+      "query_id": "retail-q1",
+      "family": "tau2_bench",
+      "question": "Did the return initiation for order ORD-4821 succeed?",
+      "expected_answer": "yes",
+      "prediction": "unknown",
+      "accuracy": 0.0,
+      "task_success": false,
+      "retrieval_hit_rate": 0.0,
+      "recall_time_ms": 0.00018200080376118422,
+      "agent_time_ms": 0.020031999156344682,
+      "query_time_ms": 0.034249998861923814,
+      "input_tokens": 9,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "retail-task-2"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": false
+    },
+    {
+      "query_id": "retail-q2",
+      "family": "tau2_bench",
+      "question": "What was the failure reason for the refund task?",
+      "expected_answer": "payment gateway timeout",
+      "prediction": "unknown",
+      "accuracy": 0.0,
+      "task_success": false,
+      "retrieval_hit_rate": 0.0,
+      "recall_time_ms": 0.00015700061339884996,
+      "agent_time_ms": 0.009035997209139168,
+      "query_time_ms": 0.015169003745540977,
+      "input_tokens": 10,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "retail-task-3"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": false
+    },
+    {
+      "query_id": "retail-q3",
+      "family": "tau2_bench",
+      "question": "What shipping address was applied to order ORD-5102?",
+      "expected_answer": "221B Baker Street",
+      "prediction": "unknown",
+      "accuracy": 0.0,
+      "task_success": false,
+      "retrieval_hit_rate": 0.0,
+      "recall_time_ms": 0.00012200325727462769,
+      "agent_time_ms": 0.008439004886895418,
+      "query_time_ms": 0.014335993910208344,
+      "input_tokens": 9,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "retail-task-4"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": false
+    }
+  ]
+}

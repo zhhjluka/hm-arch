@@ -1,0 +1,107 @@
+{
+  "run_id": "tau2_bench-hermes-no_memory-s1-k5-c7ad6f382c38b1cc",
+  "status": "completed",
+  "error": null,
+  "config": {
+    "family": "tau2_bench",
+    "agent": "hermes",
+    "backend": "no_memory",
+    "seed": 1,
+    "run_id": null,
+    "top_k": 5,
+    "resume": false,
+    "use_mock_agent": true,
+    "agent_executable": null,
+    "agent_timeout_s": 120.0
+  },
+  "phases_completed": [
+    "setup",
+    "ingest",
+    "query",
+    "evaluate",
+    "teardown",
+    "checkpoint"
+  ],
+  "completed_query_ids": [
+    "airline-q1",
+    "airline-q2",
+    "airline-q3"
+  ],
+  "queries": [
+    {
+      "query_id": "airline-q1",
+      "family": "tau2_bench",
+      "question": "Was the flight change for AA204 completed successfully?",
+      "expected_answer": "yes",
+      "prediction": "unknown",
+      "accuracy": 0.0,
+      "task_success": false,
+      "retrieval_hit_rate": 0.0,
+      "recall_time_ms": 0.0001320004230365157,
+      "agent_time_ms": 0.01213900395669043,
+      "query_time_ms": 0.019921993953175843,
+      "input_tokens": 9,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "airline-task-1"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": false
+    },
+    {
+      "query_id": "airline-q2",
+      "family": "tau2_bench",
+      "question": "What seat was confirmed on flight AA204?",
+      "expected_answer": "14C",
+      "prediction": "unknown",
+      "accuracy": 0.0,
+      "task_success": false,
+      "retrieval_hit_rate": 0.0,
+      "recall_time_ms": 0.0001410007826052606,
+      "agent_time_ms": 0.007679002010263503,
+      "query_time_ms": 0.013185002899263054,
+      "input_tokens": 8,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "airline-task-2"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": false
+    },
+    {
+      "query_id": "airline-q3",
+      "family": "tau2_bench",
+      "question": "Why did the booking cancellation fail?",
+      "expected_answer": "non-refundable fare without travel insurance",
+      "prediction": "unknown",
+      "accuracy": 0.0,
+      "task_success": false,
+      "retrieval_hit_rate": 0.0,
+      "recall_time_ms": 0.0001860025804489851,
+      "agent_time_ms": 0.012275995686650276,
+      "query_time_ms": 0.020177001715637743,
+      "input_tokens": 7,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "airline-task-3"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": false
+    }
+  ]
+}

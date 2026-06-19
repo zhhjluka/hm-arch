@@ -1,0 +1,147 @@
+{
+  "run_id": "tau2_bench-hermes-no_memory-s1-k5-c7ad6f382c38b1cc",
+  "config": {
+    "family": "tau2_bench",
+    "agent": "hermes",
+    "backend": "no_memory",
+    "seed": 1,
+    "run_id": null,
+    "top_k": 5,
+    "resume": false,
+    "use_mock_agent": true,
+    "agent_executable": null,
+    "agent_timeout_s": 120.0
+  },
+  "storage_dir": "benchmark-results/tau2-comparison/runs/tau2_bench-hermes-no_memory-s1-k5-c7ad6f382c38b1cc/storage",
+  "phases_completed": [
+    "setup",
+    "ingest",
+    "query",
+    "evaluate",
+    "teardown",
+    "checkpoint"
+  ],
+  "queries": [
+    {
+      "query_id": "airline-q1",
+      "family": "tau2_bench",
+      "question": "Was the flight change for AA204 completed successfully?",
+      "expected_answer": "yes",
+      "prediction": "unknown",
+      "accuracy": 0.0,
+      "task_success": false,
+      "retrieval_hit_rate": 0.0,
+      "recall_time_ms": 0.0001320004230365157,
+      "agent_time_ms": 0.01213900395669043,
+      "query_time_ms": 0.019921993953175843,
+      "input_tokens": 9,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "airline-task-1"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": false
+    },
+    {
+      "query_id": "airline-q2",
+      "family": "tau2_bench",
+      "question": "What seat was confirmed on flight AA204?",
+      "expected_answer": "14C",
+      "prediction": "unknown",
+      "accuracy": 0.0,
+      "task_success": false,
+      "retrieval_hit_rate": 0.0,
+      "recall_time_ms": 0.0001410007826052606,
+      "agent_time_ms": 0.007679002010263503,
+      "query_time_ms": 0.013185002899263054,
+      "input_tokens": 8,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "airline-task-2"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": false
+    },
+    {
+      "query_id": "airline-q3",
+      "family": "tau2_bench",
+      "question": "Why did the booking cancellation fail?",
+      "expected_answer": "non-refundable fare without travel insurance",
+      "prediction": "unknown",
+      "accuracy": 0.0,
+      "task_success": false,
+      "retrieval_hit_rate": 0.0,
+      "recall_time_ms": 0.0001860025804489851,
+      "agent_time_ms": 0.012275995686650276,
+      "query_time_ms": 0.020177001715637743,
+      "input_tokens": 7,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "airline-task-3"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": false
+    }
+  ],
+  "aggregates": {
+    "query_count": 3,
+    "completed_query_count": 3,
+    "mean_accuracy": 0.0,
+    "task_success_rate": 0.0,
+    "mean_retrieval_hit_rate": 0.0,
+    "mean_query_time_ms": 0.017761332856025547,
+    "total_input_tokens": 24,
+    "total_output_tokens": 3,
+    "total_failure_count": 0
+  },
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
+    "timestamp_utc": "2026-06-19T14:41:30.006084+00:00"
+  },
+  "agent_metadata": {
+    "matrix_implementation": "real",
+    "matrix_rationale": "Invoke hermes CLI in isolated HERMES_HOME without durable memory provider.",
+    "support_rationale": "mock runner enabled for offline harness tests",
+    "supported": true,
+    "use_mock_agent": true,
+    "storage_dir": "benchmark-results/tau2-comparison/runs/tau2_bench-hermes-no_memory-s1-k5-c7ad6f382c38b1cc/storage"
+  },
+  "compatibility": {
+    "codex|no_memory": "real",
+    "codex|native_memory": "unsupported",
+    "codex|hm_arch": "real",
+    "codex|mem0": "unsupported",
+    "codex|openviking": "unsupported",
+    "claude_code|no_memory": "real",
+    "claude_code|native_memory": "unsupported",
+    "claude_code|hm_arch": "real",
+    "claude_code|mem0": "unsupported",
+    "claude_code|openviking": "unsupported",
+    "hermes|no_memory": "real",
+    "hermes|native_memory": "unsupported",
+    "hermes|hm_arch": "real",
+    "hermes|mem0": "unsupported",
+    "hermes|openviking": "unsupported",
+    "openclaw|no_memory": "real",
+    "openclaw|native_memory": "unsupported",
+    "openclaw|hm_arch": "real",
+    "openclaw|mem0": "unsupported",
+    "openclaw|openviking": "unsupported"
+  }
+}

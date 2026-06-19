@@ -1,0 +1,233 @@
+[
+  {
+    "agent": "claude_code",
+    "backend": "hm_arch",
+    "status": "completed",
+    "rationale": "mock runner enabled for offline harness tests",
+    "domains": {
+      "retail": {
+        "run_id": "tau2_bench-claude_code-hm_arch-s0-k5-36d8af1ad079b55e",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-hm_arch-s0-k5-36d8af1ad079b55e.jsonl",
+        "error": null,
+        "task_success_rate": 1.0
+      },
+      "airline": {
+        "run_id": "tau2_bench-claude_code-hm_arch-s1-k5-0af1db786f3f4354",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-hm_arch-s1-k5-0af1db786f3f4354.jsonl",
+        "error": null,
+        "task_success_rate": 1.0
+      }
+    }
+  },
+  {
+    "agent": "claude_code",
+    "backend": "mem0",
+    "status": "unsupported",
+    "rationale": "Claude Code has no Mem0 hook or memory provider slot.",
+    "domains": {}
+  },
+  {
+    "agent": "claude_code",
+    "backend": "native_memory",
+    "status": "unsupported",
+    "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+    "domains": {}
+  },
+  {
+    "agent": "claude_code",
+    "backend": "no_memory",
+    "status": "completed",
+    "rationale": "mock runner enabled for offline harness tests",
+    "domains": {
+      "retail": {
+        "run_id": "tau2_bench-claude_code-no_memory-s0-k5-303a0c197b7d8074",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-no_memory-s0-k5-303a0c197b7d8074.jsonl",
+        "error": null,
+        "task_success_rate": 0.0
+      },
+      "airline": {
+        "run_id": "tau2_bench-claude_code-no_memory-s1-k5-e9d5e1cfb31e2aea",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-no_memory-s1-k5-e9d5e1cfb31e2aea.jsonl",
+        "error": null,
+        "task_success_rate": 0.0
+      }
+    }
+  },
+  {
+    "agent": "claude_code",
+    "backend": "openviking",
+    "status": "unsupported",
+    "rationale": "Claude Code has no OpenViking hook integration.",
+    "domains": {}
+  },
+  {
+    "agent": "codex",
+    "backend": "hm_arch",
+    "status": "completed",
+    "rationale": "mock runner enabled for offline harness tests",
+    "domains": {
+      "retail": {
+        "run_id": "tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1.jsonl",
+        "error": null,
+        "task_success_rate": 1.0
+      },
+      "airline": {
+        "run_id": "tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3.jsonl",
+        "error": null,
+        "task_success_rate": 1.0
+      }
+    }
+  },
+  {
+    "agent": "codex",
+    "backend": "mem0",
+    "status": "unsupported",
+    "rationale": "Codex has no Mem0 hook or memory provider slot.",
+    "domains": {}
+  },
+  {
+    "agent": "codex",
+    "backend": "native_memory",
+    "status": "unsupported",
+    "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+    "domains": {}
+  },
+  {
+    "agent": "codex",
+    "backend": "no_memory",
+    "status": "completed",
+    "rationale": "mock runner enabled for offline harness tests",
+    "domains": {
+      "retail": {
+        "run_id": "tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7.jsonl",
+        "error": null,
+        "task_success_rate": 0.0
+      },
+      "airline": {
+        "run_id": "tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf.jsonl",
+        "error": null,
+        "task_success_rate": 0.0
+      }
+    }
+  },
+  {
+    "agent": "codex",
+    "backend": "openviking",
+    "status": "unsupported",
+    "rationale": "Codex has no OpenViking hook integration.",
+    "domains": {}
+  },
+  {
+    "agent": "hermes",
+    "backend": "hm_arch",
+    "status": "completed",
+    "rationale": "mock runner enabled for offline harness tests",
+    "domains": {
+      "retail": {
+        "run_id": "tau2_bench-hermes-hm_arch-s0-k5-6f2f11f4a36d898a",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-hm_arch-s0-k5-6f2f11f4a36d898a.jsonl",
+        "error": null,
+        "task_success_rate": 1.0
+      },
+      "airline": {
+        "run_id": "tau2_bench-hermes-hm_arch-s1-k5-f71ecd9ced1a1ca9",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-hm_arch-s1-k5-f71ecd9ced1a1ca9.jsonl",
+        "error": null,
+        "task_success_rate": 1.0
+      }
+    }
+  },
+  {
+    "agent": "hermes",
+    "backend": "mem0",
+    "status": "completed",
+    "rationale": "mock runner enabled for offline harness tests",
+    "domains": {
+      "retail": {
+        "run_id": "tau2_bench-hermes-mem0-s0-k5-000856f48fbb19f3",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-mem0-s0-k5-000856f48fbb19f3.jsonl",
+        "error": null,
+        "task_success_rate": 1.0
+      },
+      "airline": {
+        "run_id": "tau2_bench-hermes-mem0-s1-k5-af90971ce495285b",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-mem0-s1-k5-af90971ce495285b.jsonl",
+        "error": null,
+        "task_success_rate": 1.0
+      }
+    }
+  },
+  {
+    "agent": "hermes",
+    "backend": "native_memory",
+    "status": "unsupported",
+    "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+    "domains": {}
+  },
+  {
+    "agent": "hermes",
+    "backend": "no_memory",
+    "status": "completed",
+    "rationale": "mock runner enabled for offline harness tests",
+    "domains": {
+      "retail": {
+        "run_id": "tau2_bench-hermes-no_memory-s0-k5-633d5c04da7f3e90",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-no_memory-s0-k5-633d5c04da7f3e90.jsonl",
+        "error": null,
+        "task_success_rate": 0.0
+      },
+      "airline": {
+        "run_id": "tau2_bench-hermes-no_memory-s1-k5-c7ad6f382c38b1cc",
+        "trajectory_path": "benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-no_memory-s1-k5-c7ad6f382c38b1cc.jsonl",
+        "error": null,
+        "task_success_rate": 0.0
+      }
+    }
+  },
+  {
+    "agent": "hermes",
+    "backend": "openviking",
+    "status": "unsupported",
+    "rationale": "Hermes has no packaged OpenViking memory provider.",
+    "domains": {}
+  },
+  {
+    "agent": "openclaw",
+    "backend": "hm_arch",
+    "status": "pending_mem75",
+    "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+    "domains": {}
+  },
+  {
+    "agent": "openclaw",
+    "backend": "mem0",
+    "status": "pending_mem75",
+    "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+    "domains": {}
+  },
+  {
+    "agent": "openclaw",
+    "backend": "native_memory",
+    "status": "pending_mem75",
+    "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+    "domains": {}
+  },
+  {
+    "agent": "openclaw",
+    "backend": "no_memory",
+    "status": "pending_mem75",
+    "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+    "domains": {}
+  },
+  {
+    "agent": "openclaw",
+    "backend": "openviking",
+    "status": "pending_mem75",
+    "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+    "domains": {}
+  }
+]
