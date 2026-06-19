@@ -31,7 +31,7 @@ def _sidecar_write_threads() -> list[threading.Thread]:
     return [
         thread
         for thread in threading.enumerate()
-        if thread.name.startswith("hm-arch-sidecar-write")
+        if thread.name.startswith("hm-arch-sidecar-lane")
     ]
 
 
@@ -622,6 +622,73 @@ class TestSidecarServerInProcess:
             )
         )
         assert follow_up["ok"] is True
+
+        gate.set()
+
+    def test_timed_write_recovers_after_timeout_with_timeout_ms(
+        self, sidecar_db: str
+    ) -> None:
+        """Follow-up writes with timeout_ms must succeed after a prior timed timeout."""
+        server = SidecarServer()
+        server.handle_line(json.dumps(_initialize(sidecar_db), ensure_ascii=False))
+        assert server.memory is not None
+
+        gate = threading.Event()
+        original_add = HMArch.add
+
+        def blocked_add(self: HMArch, content: str, **kwargs: Any) -> Any:
+            gate.wait()
+            return original_add(self, content, **kwargs)
+
+        with patch.object(HMArch, "add", blocked_add):
+            timeout_response = json.loads(
+                server.handle_line(
+                    json.dumps(
+                        _request(
+                            "remember",
+                            {"content": "blocked timed write"},
+                            correlation_id="blocked-timed-write",
+                            timeout_ms=100,
+                        ),
+                        ensure_ascii=False,
+                    )
+                )
+            )
+        assert timeout_response["ok"] is False
+        assert timeout_response["error"]["code"] == "TIMEOUT"
+        assert server._stuck_write_workers == 1
+
+        follow_up = json.loads(
+            server.handle_line(
+                json.dumps(
+                    _request(
+                        "remember",
+                        {"content": "recovered timed write with timeout_ms"},
+                        correlation_id="follow-up-timed-write",
+                        timeout_ms=1000,
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+        )
+        assert follow_up["ok"] is True
+        assert follow_up["result"]["recorded"] is True
+
+        search = json.loads(
+            server.handle_line(
+                json.dumps(
+                    _request(
+                        "search",
+                        {"query": "recovered timed write"},
+                        correlation_id="search-after-timed-recovery",
+                        timeout_ms=1000,
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+        )
+        assert search["ok"] is True
+        assert search["result"]["result_count"] >= 1
 
         gate.set()
 
