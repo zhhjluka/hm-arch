@@ -28,15 +28,20 @@ Each real runner:
 
 1. Creates an isolated temporary home (`CODEX_HOME`, `CLAUDE_CONFIG_DIR`, `HERMES_HOME`, `OPENCLAW_STATE_DIR`)
 2. Installs HM-Arch hooks/providers when the backend is `hm_arch`
-3. Invokes the agent executable with a benchmark prompt payload
-4. Captures wall-clock time, stdout, stderr, exit status, and token usage (`exact` when CLI JSON exposes usage, else `estimated`)
-5. Records `runner_mode=real`, `backend=<backend>`, and `input_token_source` / `output_token_source` in result metadata
+3. Probes CLI capabilities once during `open()` and caches `real` vs benchmark mode
+4. Invokes the agent executable with a benchmark prompt payload
+5. Captures wall-clock time, stdout, stderr, exit status, and token usage (`exact` when CLI JSON exposes usage, else `estimated`)
+6. Records `runner_mode=real`, `backend=<backend>`, and `input_token_source` / `output_token_source` in result metadata
+
+HM-Arch hook mode uses a **single retrieval path**: the harness skips
+`backend.recall()` and leaves injection to installed hooks; `retrieval_hit_rate`
+is `null` and `query_time_ms` equals `agent_time_ms`.
 
 Agent CLIs use real one-shot boundaries when available:
 
 | Agent | Production invocation |
 |-------|----------------------|
-| Codex | `codex exec --json --disable memories <prompt>` |
+| Codex | `codex exec --json [--disable memories] <prompt>` — `--disable memories` is omitted only for unsupported `native_memory` cells |
 | Claude Code | `claude -p <prompt> --output-format json` |
 | Hermes | `hermes -z <prompt>` |
 | OpenClaw | `openclaw agent --agent main --local --json --message <prompt>` |

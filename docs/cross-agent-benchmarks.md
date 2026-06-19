@@ -19,7 +19,7 @@ agents and memory providers. The PRD-scale HM-Arch benchmarks live in
 |----------------|----------------|-------|
 | `no_memory` | Implemented | Empty-recall baseline |
 | `hm_arch` | Implemented | SQLite-isolated HM-Arch adapter |
-| `native_memory` | Implemented | Agent-owned memory via optional `AgentNativeMemoryBridge` |
+| `native_memory` | Unsupported | Requires agent-specific `AgentNativeMemoryBridge`; no production bridge wired |
 | `openviking` | Implemented | Requires `openviking` package (no silent fallback) |
 | `mem0` | Implemented | Requires `mem0ai` package (no silent fallback) |
 
@@ -49,7 +49,7 @@ not silently substitute another provider.
 |---------|:--------:|:------:|:-----------:|:-----:|
 | `no_memory` | Yes | Yes | Yes | Yes |
 | `hm_arch` | Yes | Yes | Yes | Yes |
-| `native_memory` | Yes | Yes | Yes | Yes |
+| `native_memory` | No | No | No | No |
 | `mem0` | Yes* | Yes* | No | No |
 | `openviking` | Yes* | No | No | No |
 
@@ -79,13 +79,13 @@ phase offline without API keys.
 |--------|------------|-----------------|
 | `accuracy` | `1.0` when normalized prediction equals normalized `expected_answer`, else `0.0`; `null` when no ground-truth answer | Computed after agent step |
 | `task_success` | Agent-reported success for tau2-style tasks; `null` when not applicable | Agent step only |
-| `retrieval_hit_rate` | Fraction of `expected_memory_ids` present in `retrieved_ids`; `null` when fixture provides none | Recall step only |
+| `retrieval_hit_rate` | Fraction of `expected_memory_ids` present in `retrieved_ids`; `null` when fixture provides none or when HM-Arch hooks own recall | Recall step only (skipped when hook-managed) |
 | `recall_time_ms` | Wall time inside `backend.recall()` | Recall start → recall return |
 | `recall_context_chars` | Length of recalled context string | Recall step only |
 | `recall_hit_count` | Provider-reported hit count from recall | Recall step only |
 | `agent_managed` | `true` when native-memory mode delegates to the agent | Recall step only |
 | `agent_time_ms` | Wall time inside `agent.answer()` | Agent start → agent return |
-| `query_time_ms` | Wall time for recall **and** agent answer for one query | Before recall → after agent return |
+| `query_time_ms` | Wall time for recall **and** agent answer for one query; equals `agent_time_ms` when HM-Arch hooks own recall | Before recall → after agent return (recall skipped when hook-managed) |
 | `input_tokens` | CLI-reported usage when available, else whitespace token estimate of prompt passed to agent | Agent step |
 | `output_tokens` | CLI-reported usage when available, else whitespace token estimate of agent answer | Agent step |
 | `input_token_source` / `output_token_source` | `exact` when parsed from CLI JSON/JSONL usage; `estimated` otherwise | Agent step |
@@ -173,10 +173,18 @@ uv run pytest tests/test_cross_agent_benchmark.py tests/test_cross_agent_memory_
 
 **Native memory**
 
+- All agent × `native_memory` cells are **unsupported** until an agent-specific
+  bridge can drive the shared ingest lifecycle.
 - Supply an `AgentNativeMemoryBridge` to `NativeMemoryBackend(..., bridge=...)`
-  when the agent runner owns recall/ingest. Without a bridge the backend reports
-  `agent_managed=True` and returns empty context so benchmarks can distinguish
-  the mode from `no_memory`.
+  in custom integrations; the harness does not run production cells without one.
+
+## CLI capability detection
+
+Production CLI runners probe executable capabilities once during `open()` and
+cache the resolved mode (`real` vs `hm-arch-benchmark` test double). Unsupported
+executables raise `NotImplementedError` at setup time instead of failing every
+query. Malformed JSON from Claude Code or OpenClaw `--json` output is counted as
+an agent failure, not accepted as raw text.
 
 ## Extending adapters
 

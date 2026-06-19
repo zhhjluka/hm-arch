@@ -141,9 +141,6 @@ class CrossAgentBenchmarkHarness:
             },
         )
 
-        backend = self._backend or create_memory_backend(config.backend, agent=config.agent)
-        agent = self._agent or create_agent_runner(config.agent, context=agent_context)
-
         phases_completed: list[str] = []
         completed_query_ids: list[str] = []
         query_records: list[QueryRecord] = []
@@ -200,6 +197,9 @@ class CrossAgentBenchmarkHarness:
             if workspace is not None:
                 workspace.cleanup()
             return result
+
+        backend = self._backend or create_memory_backend(config.backend, agent=config.agent)
+        agent = self._agent or create_agent_runner(config.agent, context=agent_context)
 
         try:
             if not phase_done(phases_completed, RunPhase.SETUP):
@@ -397,20 +397,42 @@ class CrossAgentBenchmarkHarness:
         agent: AgentRunner,
         query: BenchmarkQuery,
     ) -> QueryRecord:
+        hook_managed = self._agent_hook_managed_recall(agent, config)
         t0 = time.perf_counter()
-        recall = self._safe_recall(backend, query, top_k=config.top_k)
-        prompt_context = agent_prompt_context(config, recall.context)
+        if hook_managed:
+            recall = RecallOutcome(
+                context="",
+                retrieved_ids=(),
+                recall_time_ms=0.0,
+                context_chars=0,
+                hit_count=0,
+                agent_managed=True,
+            )
+        else:
+            recall = self._safe_recall(backend, query, top_k=config.top_k)
+
+        prompt_context = agent_prompt_context(
+            config,
+            recall.context,
+            hook_managed=hook_managed,
+        )
         agent_out = self._safe_answer(
             agent,
             query,
             prompt_context,
             seed=config.seed,
         )
-        total_ms = (time.perf_counter() - t0) * 1000.0
+        if hook_managed:
+            total_ms = agent_out.agent_time_ms
+        else:
+            total_ms = (time.perf_counter() - t0) * 1000.0
         accuracy = exact_match_accuracy(query.expected_answer, agent_out.answer)
-        hit_rate = retrieval_hit_rate(recall.retrieved_ids, query.expected_memory_ids)
+        hit_rate = (
+            None
+            if hook_managed
+            else retrieval_hit_rate(recall.retrieved_ids, query.expected_memory_ids)
+        )
         failure_count = recall.failure_count + agent_out.failure_count
-        hook_managed = agent_uses_hook_recall(config)
 
         return QueryRecord(
             query_id=query.query_id,
@@ -435,6 +457,15 @@ class CrossAgentBenchmarkHarness:
             recall_hit_count=recall.hit_count,
             agent_managed=hook_managed or recall.agent_managed,
         )
+
+    @staticmethod
+    def _agent_hook_managed_recall(agent: AgentRunner, config: BenchmarkRunConfig) -> bool:
+        if config.use_mock_agent:
+            return False
+        hook_managed = getattr(agent, "hook_managed_recall", None)
+        if callable(hook_managed):
+            return bool(hook_managed())
+        return agent_uses_hook_recall(config)
 
     def _safe_recall(
         self,

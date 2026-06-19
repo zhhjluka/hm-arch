@@ -165,6 +165,7 @@ def test_cli_runner_captures_exit_status_and_stderr(tmp_path: Path) -> None:
     bad_cli = tmp_path / "bad-cli"
     bad_cli.write_text(
         "#!/bin/sh\n"
+        'if [ "$1" = "exec" ] && [ "$2" = "--help" ]; then exit 0; fi\n'
         "echo 'boom' 1>&2\n"
         "exit 7\n",
         encoding="utf-8",

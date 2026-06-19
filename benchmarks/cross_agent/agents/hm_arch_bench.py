@@ -10,16 +10,25 @@ from ..types import AgentKind, BenchmarkRunConfig, MemoryBackendKind
 
 
 def agent_uses_hook_recall(config: BenchmarkRunConfig) -> bool:
-    """Return whether the agent CLI owns recall via installed HM-Arch hooks."""
+    """Return whether the agent CLI owns recall via installed HM-Arch hooks.
+
+    Deprecated for harness timing — prefer :meth:`CliAgentRunner.hook_managed_recall`
+    which distinguishes real CLI hook injection from benchmark test doubles.
+    """
     return (
         not config.use_mock_agent
         and config.backend is MemoryBackendKind.HM_ARCH
     )
 
 
-def agent_prompt_context(config: BenchmarkRunConfig, recalled_context: str) -> str:
+def agent_prompt_context(
+    config: BenchmarkRunConfig,
+    recalled_context: str,
+    *,
+    hook_managed: bool = False,
+) -> str:
     """Return prompt context for the agent step (empty when hooks inject memory)."""
-    if agent_uses_hook_recall(config):
+    if hook_managed:
         return ""
     return recalled_context
 

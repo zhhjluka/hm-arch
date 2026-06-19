@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from benchmarks.cross_agent.agents.registry import is_supported_coordinate
 from benchmarks.cross_agent.backends.mem0 import Mem0Backend, OfflineMem0Client
 from benchmarks.cross_agent.backends.native_memory import NativeMemoryBackend
 from benchmarks.cross_agent.backends.openviking import (
@@ -101,8 +102,9 @@ def test_backend_lifecycle_contract(
     if backend in {
         MemoryBackendKind.NO_MEMORY,
         MemoryBackendKind.HM_ARCH,
-        MemoryBackendKind.NATIVE_MEMORY,
     }:
+        agent = AgentKind.CODEX
+    if backend is MemoryBackendKind.NATIVE_MEMORY:
         agent = AgentKind.CODEX
 
     config = _config(tmp_path, backend, agent, seed=hash(backend.value) % 1000)
@@ -114,6 +116,8 @@ def test_backend_lifecycle_contract(
     elif backend is MemoryBackendKind.OPENVIKING:
         kwargs["client"] = OfflineOpenVikingClient(namespace=namespace)
         instance = OpenVikingBackend(**kwargs)
+    elif backend is MemoryBackendKind.NATIVE_MEMORY:
+        instance = NativeMemoryBackend()
     else:
         instance = create_memory_backend(backend, agent=agent)
 
@@ -171,7 +175,7 @@ def test_hm_arch_backend_uses_isolated_database(
 
 def test_native_memory_marks_agent_managed_without_bridge(tmp_path: Path) -> None:
     config = _config(tmp_path, MemoryBackendKind.NATIVE_MEMORY, AgentKind.HERMES)
-    backend = create_memory_backend(MemoryBackendKind.NATIVE_MEMORY, agent=AgentKind.HERMES)
+    backend = NativeMemoryBackend()
     storage_dir = tmp_path / "native"
     backend.open(storage_dir, config)
     try:
@@ -253,6 +257,24 @@ def test_mem0_and_openviking_offline_clients_are_isolated(
 def test_assert_supported_does_not_substitute_unsupported_provider() -> None:
     with pytest.raises(UnsupportedCombinationError):
         assert_supported(MemoryBackendKind.MEM0, AgentKind.CODEX)
+
+
+def test_native_memory_coordinate_is_unsupported_in_harness(tmp_path: Path) -> None:
+    config = BenchmarkRunConfig(
+        family=BenchmarkFamily.LOCOMO,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.NATIVE_MEMORY,
+        seed=0,
+        resume=False,
+        use_mock_agent=False,
+    )
+    supported, rationale = is_supported_coordinate(config)
+    assert supported is False
+    assert "bridge" in rationale.lower() or "native" in rationale.lower()
+
+    result = CrossAgentBenchmarkHarness(output_root=tmp_path).run(config)
+    assert result.agent_metadata.get("status") == "unsupported"
+    assert result.queries == []
 
 
 def test_mem0_backend_requires_package_when_no_client_injected(tmp_path: Path) -> None:

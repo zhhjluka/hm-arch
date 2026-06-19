@@ -172,7 +172,7 @@ def test_hook_recall_skips_prompt_injection_for_hm_arch_cli() -> None:
         use_mock_agent=False,
     )
     assert agent_uses_hook_recall(config) is True
-    assert agent_prompt_context(config, "injected context") == ""
+    assert agent_prompt_context(config, "injected context", hook_managed=True) == ""
 
     mock_config = BenchmarkRunConfig(
         family=BenchmarkFamily.LOCOMO,
@@ -181,7 +181,10 @@ def test_hook_recall_skips_prompt_injection_for_hm_arch_cli() -> None:
         use_mock_agent=True,
     )
     assert agent_uses_hook_recall(mock_config) is False
-    assert agent_prompt_context(mock_config, "injected context") == "injected context"
+    assert (
+        agent_prompt_context(mock_config, "injected context", hook_managed=False)
+        == "injected context"
+    )
 
 
 def test_hm_arch_cli_run_records_token_sources(
@@ -200,5 +203,106 @@ def test_hm_arch_cli_run_records_token_sources(
     result = CrossAgentBenchmarkHarness(output_root=tmp_path).run(config)
     assert result.aggregates.total_failure_count == 0
     assert all(q.input_token_source == "exact" for q in result.queries)
+    assert all(q.agent_managed is True for q in result.queries)
+    assert all(q.retrieval_hit_rate is None for q in result.queries)
+    assert all(q.recall_time_ms == 0.0 for q in result.queries)
     summary = json.loads((tmp_path / result.run_id / "summary.json").read_text())
     assert summary["agent_metadata"]["storage_dir"].endswith("/storage")
+
+
+def test_parse_claude_malformed_json_raises() -> None:
+    with pytest.raises((json.JSONDecodeError, ValueError)):
+        parse_claude_json_output("not-json", prompt_text="ignored")
+
+
+def test_parse_openclaw_malformed_json_raises() -> None:
+    with pytest.raises((json.JSONDecodeError, ValueError)):
+        parse_openclaw_agent_json("{broken", prompt_text="ignored")
+
+
+@pytest.mark.parametrize(
+    ("runner_cls", "bad_stdout", "help_script"),
+    [
+        (
+            ClaudeCodeCliAgentRunner,
+            "not valid json",
+            '#!/bin/sh\nif [ "$1" = "--help" ]; then echo "--output-format json"; exit 0; fi\nprintf "%s" "not valid json"\n',
+        ),
+        (
+            OpenClawCliAgentRunner,
+            "not valid json",
+            '#!/bin/sh\nif [ "$1" = "agent" ] && [ "$2" = "--help" ]; then echo "--message"; exit 0; fi\nprintf "%s" "not valid json"\n',
+        ),
+    ],
+)
+def test_malformed_cli_json_is_query_failure(
+    tmp_path: Path,
+    runner_cls: type,
+    bad_stdout: str,
+    help_script: str,
+) -> None:
+    bad_cli = tmp_path / f"bad-json-cli-{runner_cls.agent.value}"
+    bad_cli.write_text(help_script, encoding="utf-8")
+    bad_cli.chmod(bad_cli.stat().st_mode | stat.S_IEXEC)
+
+    workspace = AgentWorkspace.create(runner_cls.agent, parent=tmp_path)
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir()
+    config = BenchmarkRunConfig(
+        family=BenchmarkFamily.LOCOMO,
+        agent=runner_cls.agent,
+        backend=MemoryBackendKind.NO_MEMORY,
+        use_mock_agent=False,
+        agent_executable=str(bad_cli),
+    )
+    runner = runner_cls(
+        AgentRunnerContext(
+            workspace=workspace,
+            config=config,
+            storage_dir=storage_dir,
+            executable=str(bad_cli),
+        )
+    )
+    try:
+        runner.open()
+        outcome = runner.answer(
+            locomo_fixture().queries[0],
+            recalled_context="context",
+            seed=0,
+        )
+    finally:
+        runner.close()
+        workspace.cleanup()
+
+    assert outcome.failure_count == 1
+    assert outcome.error
+
+
+def test_unsupported_cli_executable_fails_at_open(tmp_path: Path) -> None:
+    bad_cli = tmp_path / "unsupported-cli"
+    bad_cli.write_text("#!/bin/sh\nexit 2\n", encoding="utf-8")
+    bad_cli.chmod(bad_cli.stat().st_mode | stat.S_IEXEC)
+
+    workspace = AgentWorkspace.create(AgentKind.CODEX, parent=tmp_path)
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir()
+    config = BenchmarkRunConfig(
+        family=BenchmarkFamily.LOCOMO,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.NO_MEMORY,
+        use_mock_agent=False,
+        agent_executable=str(bad_cli),
+    )
+    runner = CodexCliAgentRunner(
+        AgentRunnerContext(
+            workspace=workspace,
+            config=config,
+            storage_dir=storage_dir,
+            executable=str(bad_cli),
+        )
+    )
+    try:
+        with pytest.raises(NotImplementedError, match="CLI boundary is unavailable"):
+            runner.open()
+    finally:
+        workspace.cleanup()

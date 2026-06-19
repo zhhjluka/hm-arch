@@ -61,7 +61,13 @@ _BACKEND_COMPATIBILITY: dict[tuple[MemoryBackendKind, AgentKind], CompatibilityC
         for agent in _all_agents()
     },
     **{
-        (MemoryBackendKind.NATIVE_MEMORY, agent): CompatibilityCell(supported=True)
+        (MemoryBackendKind.NATIVE_MEMORY, agent): CompatibilityCell(
+            supported=False,
+            reason=(
+                "Native memory requires an agent-specific bridge for the shared "
+                "ingest lifecycle; no production bridge is wired yet."
+            ),
+        )
         for agent in _all_agents()
     },
     (MemoryBackendKind.MEM0, AgentKind.HERMES): CompatibilityCell(
