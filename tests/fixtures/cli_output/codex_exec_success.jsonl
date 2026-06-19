@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"bench-thread-001"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"Seattle"}}
+{"type":"turn.completed","usage":{"input_tokens":128,"cached_input_tokens":64,"output_tokens":4,"reasoning_output_tokens":0}}

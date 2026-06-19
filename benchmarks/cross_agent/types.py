@@ -149,6 +149,8 @@ class AgentOutcome:
     agent_time_ms: float
     failure_count: int = 0
     error: str | None = None
+    input_token_source: str = "estimated"
+    output_token_source: str = "estimated"
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -170,6 +172,8 @@ class QueryRecord:
     input_tokens: int
     output_tokens: int
     failure_count: int
+    input_token_source: str = "estimated"
+    output_token_source: str = "estimated"
     retrieved_ids: tuple[str, ...] = ()
     expected_memory_ids: tuple[str, ...] = ()
     recall_context_chars: int = 0

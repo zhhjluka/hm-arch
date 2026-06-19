@@ -172,6 +172,8 @@ def test_cli_runner_captures_exit_status_and_stderr(tmp_path: Path) -> None:
     bad_cli.chmod(bad_cli.stat().st_mode | stat.S_IEXEC)
 
     workspace = AgentWorkspace.create(AgentKind.CODEX, parent=tmp_path)
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir()
     config = BenchmarkRunConfig(
         family=BenchmarkFamily.LOCOMO,
         agent=AgentKind.CODEX,
@@ -183,7 +185,12 @@ def test_cli_runner_captures_exit_status_and_stderr(tmp_path: Path) -> None:
     from benchmarks.cross_agent.agents.cli_runner import AgentRunnerContext, CodexCliAgentRunner
 
     runner = CodexCliAgentRunner(
-        AgentRunnerContext(workspace=workspace, config=context_config, executable=str(bad_cli))
+        AgentRunnerContext(
+            workspace=workspace,
+            config=context_config,
+            storage_dir=storage_dir,
+            executable=str(bad_cli),
+        )
     )
     try:
         runner.open()

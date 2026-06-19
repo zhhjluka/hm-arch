@@ -12,6 +12,7 @@ from hm_arch.types import EventType
 
 from ..protocol import MemoryBackend
 from ..types import BenchmarkQuery, BenchmarkRunConfig, IngestItem, RecallOutcome
+from .hm_arch_paths import hm_arch_db_path
 
 
 class HmArchBackend:
@@ -27,7 +28,7 @@ class HmArchBackend:
         _ = config
         self._memory = HMArch(
             config=MemoryConfig(
-                db_path=str(storage_dir / "hm_arch.db"),
+                db_path=str(hm_arch_db_path(storage_dir)),
                 archive_root=str(storage_dir / "archives"),
                 auto_consolidate=False,
             )

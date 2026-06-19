@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .agents.cli_runner import AgentRunnerContext
+from .agents.hm_arch_bench import agent_prompt_context, agent_uses_hook_recall
 from .agents.registry import create_agent_runner, is_supported_coordinate
 from .agents.workspace import AgentWorkspace
 from .backends.registry import create_memory_backend
@@ -72,6 +73,8 @@ def _query_record_from_checkpoint(row: dict[str, Any]) -> QueryRecord:
         query_time_ms=float(row["query_time_ms"]),
         input_tokens=int(row["input_tokens"]),
         output_tokens=int(row["output_tokens"]),
+        input_token_source=str(row.get("input_token_source", "estimated")),
+        output_token_source=str(row.get("output_token_source", "estimated")),
         failure_count=int(row["failure_count"]),
         retrieved_ids=tuple(row.get("retrieved_ids", ())),
         expected_memory_ids=tuple(row.get("expected_memory_ids", ())),
@@ -109,6 +112,8 @@ class CrossAgentBenchmarkHarness:
         fixture = get_synthetic_fixture(config.family)
         paths = default_output_paths(self.output_root, run_id)
         prepare_run_directory(paths, resume=config.resume)
+        storage_dir = paths["run_dir"] / "storage"
+        storage_dir.mkdir(parents=True, exist_ok=True)
 
         matrix_cell = lookup_matrix_cell(config.agent, config.backend)
         supported, support_rationale = is_supported_coordinate(config)
@@ -120,11 +125,6 @@ class CrossAgentBenchmarkHarness:
                 run_id=run_id,
                 parent=paths["run_dir"],
             )
-            storage_dir = workspace.storage_dir
-        else:
-            storage_dir = paths["run_dir"] / "storage"
-
-        storage_dir.mkdir(parents=True, exist_ok=True)
 
         agent_context = AgentRunnerContext(
             workspace=workspace or AgentWorkspace.create(
@@ -133,6 +133,7 @@ class CrossAgentBenchmarkHarness:
                 parent=paths["run_dir"],
             ),
             config=config,
+            storage_dir=storage_dir,
             executable=config.agent_executable,
             metadata={
                 "matrix_implementation": matrix_cell.implementation.value,
@@ -175,6 +176,7 @@ class CrossAgentBenchmarkHarness:
         if workspace is not None:
             agent_metadata["agent_home"] = str(workspace.agent_home)
             agent_metadata["workspace_root"] = str(workspace.root)
+        agent_metadata["storage_dir"] = str(storage_dir)
 
         if not supported:
             aggregates = aggregate_query_records([])
@@ -397,11 +399,18 @@ class CrossAgentBenchmarkHarness:
     ) -> QueryRecord:
         t0 = time.perf_counter()
         recall = self._safe_recall(backend, query, top_k=config.top_k)
-        agent_out = self._safe_answer(agent, query, recall, seed=config.seed)
+        prompt_context = agent_prompt_context(config, recall.context)
+        agent_out = self._safe_answer(
+            agent,
+            query,
+            prompt_context,
+            seed=config.seed,
+        )
         total_ms = (time.perf_counter() - t0) * 1000.0
         accuracy = exact_match_accuracy(query.expected_answer, agent_out.answer)
         hit_rate = retrieval_hit_rate(recall.retrieved_ids, query.expected_memory_ids)
         failure_count = recall.failure_count + agent_out.failure_count
+        hook_managed = agent_uses_hook_recall(config)
 
         return QueryRecord(
             query_id=query.query_id,
@@ -417,12 +426,14 @@ class CrossAgentBenchmarkHarness:
             query_time_ms=total_ms,
             input_tokens=agent_out.input_tokens,
             output_tokens=agent_out.output_tokens,
+            input_token_source=agent_out.input_token_source,
+            output_token_source=agent_out.output_token_source,
             failure_count=failure_count,
             retrieved_ids=recall.retrieved_ids,
             expected_memory_ids=query.expected_memory_ids,
             recall_context_chars=recall.context_chars,
             recall_hit_count=recall.hit_count,
-            agent_managed=recall.agent_managed,
+            agent_managed=hook_managed or recall.agent_managed,
         )
 
     def _safe_recall(
@@ -449,7 +460,7 @@ class CrossAgentBenchmarkHarness:
         self,
         agent: AgentRunner,
         query: BenchmarkQuery,
-        recall: RecallOutcome,
+        recalled_context: str,
         *,
         seed: int,
     ) -> AgentOutcome:
@@ -457,7 +468,7 @@ class CrossAgentBenchmarkHarness:
         try:
             return agent.answer(
                 query,
-                recalled_context=recall.context,
+                recalled_context=recalled_context,
                 seed=seed,
             )
         except Exception as exc:  # noqa: BLE001 — count adapter failures per query

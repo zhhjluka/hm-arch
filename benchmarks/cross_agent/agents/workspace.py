@@ -30,7 +30,6 @@ class AgentWorkspace:
     root: Path
     workspace: Path
     agent_home: Path
-    storage_dir: Path
     _previous_env: dict[str, str | None] = field(default_factory=dict, repr=False)
     _active: bool = False
 
@@ -53,17 +52,14 @@ class AgentWorkspace:
             root = Path(tempfile.mkdtemp(prefix=prefix))
         workspace = root / "workspace"
         agent_home = root / "agent_home"
-        storage_dir = root / "storage"
         workspace.mkdir()
         agent_home.mkdir()
-        storage_dir.mkdir()
         return cls(
             agent=agent,
             run_id=run,
             root=root,
             workspace=workspace,
             agent_home=agent_home,
-            storage_dir=storage_dir,
         )
 
     def agent_home_env_var(self) -> str:

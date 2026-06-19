@@ -29,8 +29,19 @@ Each real runner:
 1. Creates an isolated temporary home (`CODEX_HOME`, `CLAUDE_CONFIG_DIR`, `HERMES_HOME`, `OPENCLAW_STATE_DIR`)
 2. Installs HM-Arch hooks/providers when the backend is `hm_arch`
 3. Invokes the agent executable with a benchmark prompt payload
-4. Captures wall-clock time, stdout, stderr, exit status, and token estimates
-5. Records `runner_mode=real` and `backend=<backend>` in result metadata
+4. Captures wall-clock time, stdout, stderr, exit status, and token usage (`exact` when CLI JSON exposes usage, else `estimated`)
+5. Records `runner_mode=real`, `backend=<backend>`, and `input_token_source` / `output_token_source` in result metadata
+
+Agent CLIs use real one-shot boundaries when available:
+
+| Agent | Production invocation |
+|-------|----------------------|
+| Codex | `codex exec --json --disable memories <prompt>` |
+| Claude Code | `claude -p <prompt> --output-format json` |
+| Hermes | `hermes -z <prompt>` |
+| OpenClaw | `openclaw agent --agent main --local --json --message <prompt>` |
+
+Offline smoke tests may override executables with `tests/fixtures/fake_agent_cli.py`, which implements the same CLI shapes plus the legacy `hm-arch-benchmark answer` test double.
 
 Override the executable in tests or CI with:
 
@@ -43,7 +54,7 @@ export HM_ARCH_BENCH_CODEX_EXECUTABLE=/path/to/fake-codex
 
 Shared smoke fixture: `cross-agent-smoke-v1` in `benchmarks/cross_agent/fixtures/smoke.py`.
 
-Offline smoke tests use `tests/fixtures/fake_agent_cli.py` as a deterministic CLI double implementing the `hm-arch-benchmark answer` contract.
+Offline smoke tests use `tests/fixtures/fake_agent_cli.py` as a deterministic CLI double implementing the real one-shot CLI shapes (Codex JSONL, Claude JSON, Hermes `-z`, OpenClaw `agent --json`) and the legacy `hm-arch-benchmark answer` contract.
 
 ## Related docs
 

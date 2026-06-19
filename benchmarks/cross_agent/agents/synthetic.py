@@ -74,6 +74,8 @@ class MockSyntheticAgentRunner:
             task_success=task_success,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
+            input_token_source="estimated",
+            output_token_source="estimated",
             agent_time_ms=elapsed,
             metadata=metadata,
         )

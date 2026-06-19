@@ -86,8 +86,9 @@ phase offline without API keys.
 | `agent_managed` | `true` when native-memory mode delegates to the agent | Recall step only |
 | `agent_time_ms` | Wall time inside `agent.answer()` | Agent start → agent return |
 | `query_time_ms` | Wall time for recall **and** agent answer for one query | Before recall → after agent return |
-| `input_tokens` | Whitespace token estimate of prompt passed to agent (offline approximation) | Agent step |
-| `output_tokens` | Whitespace token estimate of agent answer | Agent step |
+| `input_tokens` | CLI-reported usage when available, else whitespace token estimate of prompt passed to agent | Agent step |
+| `output_tokens` | CLI-reported usage when available, else whitespace token estimate of agent answer | Agent step |
+| `input_token_source` / `output_token_source` | `exact` when parsed from CLI JSON/JSONL usage; `estimated` otherwise | Agent step |
 | `failure_count` | Sum of recall and agent failures for the query | Recall + agent steps |
 
 ## Result schema
@@ -97,7 +98,8 @@ Each run writes under ``<output-dir>/<run_id>/``:
 - `queries.jsonl` — one JSON object per query (streamed during the run)
 - `queries.csv` — tabular roll-up of all query metrics
 - `summary.json` — run config, aggregates, environment metadata
-- `storage/` — isolated backend state and `checkpoint.json`
+- `storage/` — isolated backend state and `checkpoint.json` (persists across agent workspace teardown)
+- `agent_workspace/` — disposable per-run agent home and project workspace (removed after successful CLI runs)
 
 `summary.json` aggregates:
 

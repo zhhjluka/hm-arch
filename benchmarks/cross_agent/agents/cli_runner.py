@@ -6,13 +6,17 @@ import json
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
-
-from hm_arch.integrations.executable import resolve_hm_arch_command_prefix
 
 from ..compatibility import CellImplementation, lookup_matrix_cell
 from ..metrics import approximate_token_count
 from ..types import AgentKind, AgentOutcome, BenchmarkQuery, BenchmarkRunConfig, MemoryBackendKind
+from .cli_parsers import (
+    parse_claude_json_output,
+    parse_codex_exec_jsonl,
+    parse_openclaw_agent_json,
+)
 from .cli_process import (
     CliInvocationError,
     CliInvocationResult,
@@ -20,6 +24,7 @@ from .cli_process import (
     resolve_agent_executable,
     run_cli,
 )
+from .hm_arch_bench import configure_hm_arch_agent_install, hm_arch_cli_env
 from .workspace import AgentWorkspace
 
 
@@ -29,6 +34,7 @@ class AgentRunnerContext:
 
     workspace: AgentWorkspace
     config: BenchmarkRunConfig
+    storage_dir: Path
     executable: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -54,6 +60,10 @@ class CliAgentRunner(ABC):
     @property
     def config(self) -> BenchmarkRunConfig:
         return self._context.config
+
+    @property
+    def storage_dir(self) -> Path:
+        return self._context.storage_dir
 
     def open(self) -> None:
         cell = lookup_matrix_cell(self.config.agent, self.config.backend)
@@ -125,11 +135,13 @@ class CliAgentRunner(ABC):
             "query_id": query.query_id,
         }
         argv = self._build_argv(executable, prompt_payload)
+        cli_env = hm_arch_cli_env(self.storage_dir, self.config)
         t0 = time.perf_counter()
         try:
             result = run_cli(
                 argv,
                 cwd=self.workspace.workspace,
+                env=cli_env or None,
                 timeout_s=self.config.agent_timeout_s,
             )
             self._last_invocation = result
@@ -157,15 +169,26 @@ class CliAgentRunner(ABC):
             )
 
         elapsed = (time.perf_counter() - t0) * 1000.0
-        input_tokens = int(parsed.get("input_tokens", approximate_token_count(
-            f"{recalled_context}\n{query.question}"
-        )))
-        output_tokens = int(parsed.get("output_tokens", approximate_token_count(parsed.get("answer", ""))))
+        prompt_text = self._format_prompt(prompt_payload)
+        input_tokens = int(
+            parsed.get(
+                "input_tokens",
+                approximate_token_count(prompt_text),
+            )
+        )
+        output_tokens = int(
+            parsed.get(
+                "output_tokens",
+                approximate_token_count(parsed.get("answer", "")),
+            )
+        )
         return AgentOutcome(
             answer=str(parsed.get("answer", "")),
             task_success=parsed.get("task_success"),
             input_tokens=input_tokens,
             output_tokens=output_tokens,
+            input_token_source=str(parsed.get("input_token_source", "estimated")),
+            output_token_source=str(parsed.get("output_token_source", "estimated")),
             agent_time_ms=elapsed,
             failure_count=0,
             metadata=self._outcome_metadata(result, prompt_payload, parsed),
@@ -216,6 +239,9 @@ class CliAgentRunner(ABC):
             "memory_mode": self.config.backend.value,
             "agent_home": str(self.workspace.agent_home),
             "workspace_root": str(self.workspace.root),
+            "hm_arch_db_path": str(self.storage_dir / "hm_arch.db")
+            if self.config.backend is MemoryBackendKind.HM_ARCH
+            else None,
             "session_id": self._session_id,
             "prompt_payload_keys": sorted(prompt_payload),
         }
@@ -226,6 +252,9 @@ class CliAgentRunner(ABC):
                 metadata["stderr"] = result.stderr
         if parsed is not None and parsed.get("runner"):
             metadata["cli_runner"] = parsed["runner"]
+        if parsed is not None:
+            metadata["input_token_source"] = parsed.get("input_token_source", "estimated")
+            metadata["output_token_source"] = parsed.get("output_token_source", "estimated")
         return metadata
 
     def _build_benchmark_argv(
@@ -233,7 +262,7 @@ class CliAgentRunner(ABC):
         executable: str,
         prompt_payload: dict[str, Any],
     ) -> list[str]:
-        """Default argv for fake/offline benchmark CLIs."""
+        """Argv for offline benchmark CLI doubles used in tests."""
         return [
             executable,
             "hm-arch-benchmark",
@@ -243,7 +272,51 @@ class CliAgentRunner(ABC):
         ]
 
     def _parse_benchmark_response(self, result: CliInvocationResult) -> dict[str, Any]:
-        return parse_benchmark_json(result.stdout)
+        parsed = parse_benchmark_json(result.stdout)
+        parsed.setdefault("input_token_source", "exact")
+        parsed.setdefault("output_token_source", "exact")
+        return parsed
+
+    def _format_prompt(self, payload: dict[str, Any]) -> str:
+        context = str(payload.get("context", "")).strip()
+        question = str(payload.get("question", "")).strip()
+        if context:
+            return f"{context}\n\nQuestion: {question}"
+        return question
+
+    def _cli_boundary_available(self) -> bool:
+        """Return whether a real or test-double CLI boundary is available."""
+        executable = resolve_agent_executable(
+            self.agent.value,
+            override=self._context.executable,
+            default_names=self.default_executable_names,
+        )
+        if executable is None:
+            return False
+        return self._supports_real_cli(executable) or self._supports_benchmark_subcommand(
+            executable
+        )
+
+    def _unsupported_cli_message(self) -> str:
+        return (
+            f"{self.agent.value} production CLI boundary is unavailable: "
+            "no supported one-shot invocation or hm-arch-benchmark test double."
+        )
+
+    def _supports_benchmark_subcommand(self, executable: str) -> bool:
+        try:
+            result = run_cli(
+                [executable, "hm-arch-benchmark", "--help"],
+                cwd=self.workspace.workspace,
+                timeout_s=5.0,
+            )
+        except CliInvocationError:
+            return False
+        return result.exit_code == 0
+
+    @abstractmethod
+    def _supports_real_cli(self, executable: str) -> bool:
+        """Return whether the installed executable supports the real CLI path."""
 
     @abstractmethod
     def _build_argv(self, executable: str, prompt_payload: dict[str, Any]) -> list[str]:
@@ -260,32 +333,12 @@ class CliAgentRunner(ABC):
     def _prepare_agent_home(self) -> None:
         """Install hooks or provider config when backend requires external memory."""
         if self.config.backend is MemoryBackendKind.HM_ARCH:
-            self._install_hm_arch_integration()
-
-    def _install_hm_arch_integration(self) -> None:
-        prefix = resolve_hm_arch_command_prefix()
-        if self.agent is AgentKind.CODEX:
-            from hm_arch.integrations.codex.installer import InstallScope, install_codex
-
-            install_codex(InstallScope.PROJECT, project_root=self.workspace.workspace)
-        elif self.agent is AgentKind.CLAUDE_CODE:
-            from hm_arch.integrations.claude_code.installer import (
-                InstallScope,
-                install_claude_code,
+            configure_hm_arch_agent_install(
+                self.agent,
+                storage_dir=self.storage_dir,
+                workspace=self.workspace.workspace,
+                agent_home=self.workspace.agent_home,
             )
-
-            install_claude_code(InstallScope.PROJECT, project_root=self.workspace.workspace)
-        elif self.agent is AgentKind.HERMES:
-            from hm_arch.integrations.management.hermes import HermesAgentHandler
-
-            HermesAgentHandler().install(global_install=False)
-        elif self.agent is AgentKind.OPENCLAW:
-            from hm_arch.integrations.management.openclaw import OpenClawAgentHandler
-
-            OpenClawAgentHandler().install(global_install=False)
-        else:
-            raise ValueError(f"unsupported agent for HM-Arch install: {self.agent}")
-        _ = prefix
 
     def _on_reset_session(self) -> None:
         return None
@@ -299,11 +352,20 @@ class CodexCliAgentRunner(CliAgentRunner):
     kind = "codex-cli"
     default_executable_names = ("codex",)
 
+    def _supports_real_cli(self, executable: str) -> bool:
+        try:
+            result = run_cli(
+                [executable, "exec", "--help"],
+                cwd=self.workspace.workspace,
+                timeout_s=5.0,
+            )
+        except CliInvocationError:
+            return False
+        return result.exit_code == 0
+
     def _build_argv(self, executable: str, prompt_payload: dict[str, Any]) -> list[str]:
-        if self._supports_benchmark_subcommand(executable):
-            return self._build_benchmark_argv(executable, prompt_payload)
         prompt = self._format_prompt(prompt_payload)
-        return [
+        real_argv = [
             executable,
             "exec",
             "--json",
@@ -311,24 +373,11 @@ class CodexCliAgentRunner(CliAgentRunner):
             "memories",
             prompt,
         ]
-
-    def _supports_benchmark_subcommand(self, executable: str) -> bool:
-        try:
-            result = run_cli(
-                [executable, "hm-arch-benchmark", "--help"],
-                cwd=self.workspace.workspace,
-                timeout_s=5.0,
-            )
-        except CliInvocationError:
-            return False
-        return result.exit_code == 0
-
-    def _format_prompt(self, payload: dict[str, Any]) -> str:
-        context = str(payload.get("context", "")).strip()
-        question = str(payload.get("question", "")).strip()
-        if context:
-            return f"{context}\n\nQuestion: {question}"
-        return question
+        if self._supports_real_cli(executable):
+            return real_argv
+        if self._supports_benchmark_subcommand(executable):
+            return self._build_benchmark_argv(executable, prompt_payload)
+        return real_argv
 
     def _parse_response(
         self,
@@ -337,21 +386,10 @@ class CodexCliAgentRunner(CliAgentRunner):
     ) -> dict[str, Any]:
         if "hm-arch-benchmark" in result.argv:
             return self._parse_benchmark_response(result)
-        text = result.stdout.strip()
-        try:
-            payload = json.loads(text)
-            if isinstance(payload, dict) and "answer" in payload:
-                return payload
-        except json.JSONDecodeError:
-            pass
-        return {
-            "answer": text,
-            "input_tokens": approximate_token_count(
-                f"{prompt_payload.get('context', '')}\n{prompt_payload.get('question', '')}"
-            ),
-            "output_tokens": approximate_token_count(text),
-            "runner": "codex-exec",
-        }
+        return parse_codex_exec_jsonl(
+            result.stdout,
+            prompt_text=self._format_prompt(prompt_payload),
+        )
 
 
 class ClaudeCodeCliAgentRunner(CliAgentRunner):
@@ -359,35 +397,84 @@ class ClaudeCodeCliAgentRunner(CliAgentRunner):
     kind = "claude-code-cli"
     default_executable_names = ("claude",)
 
+    def _supports_real_cli(self, executable: str) -> bool:
+        try:
+            result = run_cli(
+                [executable, "--help"],
+                cwd=self.workspace.workspace,
+                timeout_s=5.0,
+            )
+        except CliInvocationError:
+            return False
+        combined = f"{result.stdout}\n{result.stderr}"
+        return result.exit_code == 0 and "--output-format" in combined
+
     def _build_argv(self, executable: str, prompt_payload: dict[str, Any]) -> list[str]:
-        if self._supports_benchmark_subcommand(executable):
-            return self._build_benchmark_argv(executable, prompt_payload)
         prompt = self._format_prompt(prompt_payload)
-        return [
+        real_argv = [
             executable,
             "-p",
             prompt,
             "--output-format",
             "json",
         ]
+        if self._supports_real_cli(executable):
+            return real_argv
+        if self._supports_benchmark_subcommand(executable):
+            return self._build_benchmark_argv(executable, prompt_payload)
+        return real_argv
 
-    def _supports_benchmark_subcommand(self, executable: str) -> bool:
+    def _parse_response(
+        self,
+        result: CliInvocationResult,
+        prompt_payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        if "hm-arch-benchmark" in result.argv:
+            return self._parse_benchmark_response(result)
+        try:
+            return parse_claude_json_output(
+                result.stdout,
+                prompt_text=self._format_prompt(prompt_payload),
+            )
+        except (json.JSONDecodeError, ValueError):
+            text = result.stdout.strip()
+            return {
+                "answer": text,
+                "input_tokens": approximate_token_count(
+                    self._format_prompt(prompt_payload)
+                ),
+                "output_tokens": approximate_token_count(text),
+                "input_token_source": "estimated",
+                "output_token_source": "estimated",
+                "runner": "claude-text",
+            }
+
+
+class HermesCliAgentRunner(CliAgentRunner):
+    agent = AgentKind.HERMES
+    kind = "hermes-cli"
+    default_executable_names = ("hermes",)
+
+    def _supports_real_cli(self, executable: str) -> bool:
         try:
             result = run_cli(
-                [executable, "hm-arch-benchmark", "--help"],
+                [executable, "--help"],
                 cwd=self.workspace.workspace,
                 timeout_s=5.0,
             )
         except CliInvocationError:
             return False
-        return result.exit_code == 0
+        combined = f"{result.stdout}\n{result.stderr}"
+        return result.exit_code == 0 and ("-z" in combined or "--oneshot" in combined)
 
-    def _format_prompt(self, payload: dict[str, Any]) -> str:
-        context = str(payload.get("context", "")).strip()
-        question = str(payload.get("question", "")).strip()
-        if context:
-            return f"{context}\n\nQuestion: {question}"
-        return question
+    def _build_argv(self, executable: str, prompt_payload: dict[str, Any]) -> list[str]:
+        prompt = self._format_prompt(prompt_payload)
+        real_argv = [executable, "-z", prompt]
+        if self._supports_real_cli(executable):
+            return real_argv
+        if self._supports_benchmark_subcommand(executable):
+            return self._build_benchmark_argv(executable, prompt_payload)
+        return real_argv
 
     def _parse_response(
         self,
@@ -397,35 +484,14 @@ class ClaudeCodeCliAgentRunner(CliAgentRunner):
         if "hm-arch-benchmark" in result.argv:
             return self._parse_benchmark_response(result)
         text = result.stdout.strip()
-        try:
-            payload = json.loads(text)
-            if isinstance(payload, dict):
-                answer = payload.get("result") or payload.get("answer") or text
-                return {
-                    "answer": str(answer),
-                    "input_tokens": payload.get("input_tokens"),
-                    "output_tokens": payload.get("output_tokens"),
-                    "runner": "claude-json",
-                }
-        except json.JSONDecodeError:
-            pass
         return {
             "answer": text,
-            "input_tokens": approximate_token_count(
-                f"{prompt_payload.get('context', '')}\n{prompt_payload.get('question', '')}"
-            ),
+            "input_tokens": approximate_token_count(self._format_prompt(prompt_payload)),
             "output_tokens": approximate_token_count(text),
-            "runner": "claude-text",
+            "input_token_source": "estimated",
+            "output_token_source": "estimated",
+            "runner": "hermes-oneshot",
         }
-
-
-class HermesCliAgentRunner(CliAgentRunner):
-    agent = AgentKind.HERMES
-    kind = "hermes-cli"
-    default_executable_names = ("hermes",)
-
-    def _build_argv(self, executable: str, prompt_payload: dict[str, Any]) -> list[str]:
-        return self._build_benchmark_argv(executable, prompt_payload)
 
 
 class OpenClawCliAgentRunner(CliAgentRunner):
@@ -433,8 +499,62 @@ class OpenClawCliAgentRunner(CliAgentRunner):
     kind = "openclaw-cli"
     default_executable_names = ("openclaw",)
 
+    def _supports_real_cli(self, executable: str) -> bool:
+        try:
+            result = run_cli(
+                [executable, "agent", "--help"],
+                cwd=self.workspace.workspace,
+                timeout_s=5.0,
+            )
+        except CliInvocationError:
+            return False
+        combined = f"{result.stdout}\n{result.stderr}"
+        return result.exit_code == 0 and "--message" in combined
+
     def _build_argv(self, executable: str, prompt_payload: dict[str, Any]) -> list[str]:
-        return self._build_benchmark_argv(executable, prompt_payload)
+        prompt = self._format_prompt(prompt_payload)
+        real_argv = [
+            executable,
+            "agent",
+            "--agent",
+            "main",
+            "--session-key",
+            self._session_id,
+            "--message",
+            prompt,
+            "--local",
+            "--json",
+        ]
+        if self._supports_real_cli(executable):
+            return real_argv
+        if self._supports_benchmark_subcommand(executable):
+            return self._build_benchmark_argv(executable, prompt_payload)
+        return real_argv
+
+    def _parse_response(
+        self,
+        result: CliInvocationResult,
+        prompt_payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        if "hm-arch-benchmark" in result.argv:
+            return self._parse_benchmark_response(result)
+        try:
+            return parse_openclaw_agent_json(
+                result.stdout,
+                prompt_text=self._format_prompt(prompt_payload),
+            )
+        except (json.JSONDecodeError, ValueError):
+            text = result.stdout.strip()
+            return {
+                "answer": text,
+                "input_tokens": approximate_token_count(
+                    self._format_prompt(prompt_payload)
+                ),
+                "output_tokens": approximate_token_count(text),
+                "input_token_source": "estimated",
+                "output_token_source": "estimated",
+                "runner": "openclaw-agent-text",
+            }
 
     def _prepare_agent_home(self) -> None:
         config_path = self.workspace.workspace / ".openclaw" / "openclaw.json"
