@@ -14,6 +14,8 @@ from unittest.mock import patch
 
 import pytest
 
+from hm_arch import HMArch
+from hm_arch.integrations.common import run_idle_consolidation
 from hm_arch.integrations.openclaw.sidecar import SidecarServer, run_stdio_server
 from hm_arch.integrations.sidecar.protocol import (
     CURRENT_PROTOCOL_VERSION,
@@ -398,6 +400,296 @@ class TestSidecarServerInProcess:
             )
         )
         assert follow_up["ok"] is True
+
+    def test_forget_timeout_is_mutation_safe(self, sidecar_db: str) -> None:
+        server = SidecarServer()
+        server.handle_line(json.dumps(_initialize(sidecar_db), ensure_ascii=False))
+        assert server.memory is not None
+
+        remember = json.loads(
+            server.handle_line(
+                json.dumps(
+                    _request(
+                        "remember",
+                        {"content": "forget-timeout-target", "importance": 0.9},
+                        correlation_id="remember-for-forget",
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+        )
+        memory_id = remember["result"]["memory_id"]
+
+        started = threading.Event()
+        release = threading.Event()
+        original_forget = HMArch.forget
+
+        def slow_forget(self: HMArch, target_id: str, **kwargs: Any) -> Any:
+            started.set()
+            if not release.wait(timeout=2.0):
+                raise TimeoutError("slow_forget blocked too long")
+            return original_forget(self, target_id, **kwargs)
+
+        response_holder: dict[str, Any] = {}
+
+        def run_timed_forget() -> None:
+            with patch.object(HMArch, "forget", slow_forget):
+                line = server.handle_line(
+                    json.dumps(
+                        _request(
+                            "forget",
+                            {"memory_ids": [memory_id]},
+                            correlation_id="forget-timeout",
+                            timeout_ms=100,
+                        ),
+                        ensure_ascii=False,
+                    )
+                )
+            response_holder["payload"] = json.loads(line)
+
+        worker = threading.Thread(target=run_timed_forget)
+        worker.start()
+        assert started.wait(timeout=2.0)
+        worker.join(timeout=5.0)
+        assert "payload" in response_holder
+        timeout_response = response_holder["payload"]
+        assert timeout_response["ok"] is False
+        assert timeout_response["error"]["code"] == "TIMEOUT"
+
+        release.set()
+        time.sleep(0.2)
+
+        search_after = json.loads(
+            server.handle_line(
+                json.dumps(
+                    _request(
+                        "search",
+                        {"query": "forget-timeout-target", "top_k": 10},
+                        correlation_id="search-after-forget-timeout",
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+        )
+        assert search_after["ok"] is True
+        assert any(hit["memory_id"] == memory_id for hit in search_after["result"]["hits"])
+
+        with patch.object(HMArch, "forget", autospec=True) as forced_forget:
+            forced_forget.side_effect = lambda self, memory_id, **kwargs: original_forget(
+                self,
+                memory_id,
+                force=True,
+                **kwargs,
+            )
+            second_forget = json.loads(
+                server.handle_line(
+                    json.dumps(
+                        _request(
+                            "forget",
+                            {"memory_ids": [memory_id]},
+                            correlation_id="forget-after-timeout",
+                        ),
+                        ensure_ascii=False,
+                    )
+                )
+            )
+        assert second_forget["ok"] is True
+        assert second_forget["result"]["forgotten_count"] == 1
+
+    def test_consolidate_timeout_is_mutation_safe(self, sidecar_db: str) -> None:
+        server = SidecarServer()
+        server.handle_line(json.dumps(_initialize(sidecar_db), ensure_ascii=False))
+        server.handle_line(
+            json.dumps(
+                _request(
+                    "remember",
+                    {"content": "consolidate timeout seed"},
+                    correlation_id="seed-consolidate",
+                ),
+                ensure_ascii=False,
+            )
+        )
+        assert server.memory is not None
+
+        started = threading.Event()
+        release = threading.Event()
+
+        def slow_consolidate(memory: Any) -> Any:
+            started.set()
+            if not release.wait(timeout=2.0):
+                raise TimeoutError("slow_consolidate blocked too long")
+            return run_idle_consolidation(memory)
+
+        response_holder: dict[str, Any] = {}
+
+        def run_timed_consolidate() -> None:
+            with patch(
+                "hm_arch.integrations.openclaw.sidecar.run_idle_consolidation",
+                side_effect=slow_consolidate,
+            ):
+                line = server.handle_line(
+                    json.dumps(
+                        _request(
+                            "consolidate",
+                            {},
+                            correlation_id="consolidate-timeout",
+                            timeout_ms=100,
+                        ),
+                        ensure_ascii=False,
+                    )
+                )
+            response_holder["payload"] = json.loads(line)
+
+        worker = threading.Thread(target=run_timed_consolidate)
+        worker.start()
+        assert started.wait(timeout=2.0)
+        worker.join(timeout=5.0)
+        assert "payload" in response_holder
+        timeout_response = response_holder["payload"]
+        assert timeout_response["ok"] is False
+        assert timeout_response["error"]["code"] == "TIMEOUT"
+
+        baseline_search = json.loads(
+            server.handle_line(
+                json.dumps(
+                    _request(
+                        "search",
+                        {"query": "consolidate timeout seed", "top_k": 10},
+                        correlation_id="search-after-timeout-before-release",
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+        )
+        baseline_count = baseline_search["result"]["result_count"]
+
+        release.set()
+        time.sleep(0.2)
+
+        after_search = json.loads(
+            server.handle_line(
+                json.dumps(
+                    _request(
+                        "search",
+                        {"query": "consolidate timeout seed", "top_k": 10},
+                        correlation_id="search-after-consolidate-timeout",
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+        )
+        assert after_search["ok"] is True
+        assert after_search["result"]["result_count"] == baseline_count
+
+        health = json.loads(
+            server.handle_line(
+                json.dumps(
+                    _request("health", {"deep": True}, correlation_id="health-after-consolidate-timeout"),
+                    ensure_ascii=False,
+                )
+            )
+        )
+        assert health["ok"] is True
+
+    def test_permanently_blocked_write_recovers_via_lane_swap(self, sidecar_db: str) -> None:
+        server = SidecarServer()
+        server.handle_line(json.dumps(_initialize(sidecar_db), ensure_ascii=False))
+        assert server.memory is not None
+
+        gate = threading.Event()
+        original_add = HMArch.add
+
+        def blocked_add(self: HMArch, content: str, **kwargs: Any) -> Any:
+            gate.wait()
+            return original_add(self, content, **kwargs)
+
+        response_holder: dict[str, Any] = {}
+
+        def run_timed_remember() -> None:
+            with patch.object(HMArch, "add", blocked_add):
+                line = server.handle_line(
+                    json.dumps(
+                        _request(
+                            "remember",
+                            {"content": "permanently blocked"},
+                            correlation_id="blocked-write",
+                            timeout_ms=100,
+                        ),
+                        ensure_ascii=False,
+                    )
+                )
+            response_holder["payload"] = json.loads(line)
+
+        worker = threading.Thread(target=run_timed_remember)
+        worker.start()
+        worker.join(timeout=5.0)
+        assert response_holder["payload"]["error"]["code"] == "TIMEOUT"
+
+        follow_up = json.loads(
+            server.handle_line(
+                json.dumps(
+                    _request(
+                        "remember",
+                        {"content": "recovered after blocked write"},
+                        correlation_id="follow-up-after-blocked",
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+        )
+        assert follow_up["ok"] is True
+
+        gate.set()
+        worker.join(timeout=5.0)
+
+    def test_repeated_timeouts_do_not_grow_blocked_threads(self, sidecar_db: str) -> None:
+        server = SidecarServer()
+        server.handle_line(json.dumps(_initialize(sidecar_db), ensure_ascii=False))
+        assert server.memory is not None
+
+        gate = threading.Event()
+        baseline = threading.active_count()
+        original_add = HMArch.add
+
+        def blocked_add(self: HMArch, content: str, **kwargs: Any) -> Any:
+            gate.wait()
+            return original_add(self, content, **kwargs)
+
+        with patch.object(HMArch, "add", blocked_add):
+            for index in range(3):
+                response = json.loads(
+                    server.handle_line(
+                        json.dumps(
+                            _request(
+                                "remember",
+                                {"content": f"blocked-{index}"},
+                                correlation_id=f"blocked-{index}",
+                                timeout_ms=50,
+                            ),
+                            ensure_ascii=False,
+                        )
+                    )
+                )
+                assert response["error"]["code"] == "TIMEOUT"
+
+        for index in range(5):
+            ok = json.loads(
+                server.handle_line(
+                    json.dumps(
+                        _request(
+                            "remember",
+                            {"content": f"quick-{index}"},
+                            correlation_id=f"quick-{index}",
+                        ),
+                        ensure_ascii=False,
+                    )
+                )
+            )
+            assert ok["ok"] is True
+
+        gate.set()
+        time.sleep(0.3)
+        assert threading.active_count() <= baseline + 4
 
     def test_initialize_reopen_closes_previous_memory(self, sidecar_db: str) -> None:
         server = SidecarServer()

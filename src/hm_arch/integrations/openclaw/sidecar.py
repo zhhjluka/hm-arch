@@ -8,10 +8,9 @@ import signal
 import sys
 import threading
 import time
-from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from queue import Empty, Queue
 from datetime import datetime
 from typing import Any, Iterator, TextIO
 
@@ -80,12 +79,6 @@ _MUTATING_WRITE_OPERATIONS = frozenset(
 )
 
 
-@dataclass
-class _InflightWrite:
-    cancel: threading.Event
-    thread: threading.Thread
-
-
 class _MemoryAccessLock:
     """Serialize access to a single in-process :class:`~hm_arch.core.HMArch` instance."""
 
@@ -99,31 +92,61 @@ class _MemoryAccessLock:
 
 
 @dataclass
+class _RuntimeLane:
+    """Isolated runtime lane with its own memory handle, locks, and write executor."""
+
+    generation: int
+    memory: HMArch | None
+    memory_lock: _MemoryAccessLock = field(default_factory=_MemoryAccessLock)
+    write_lock: threading.Lock = field(default_factory=threading.Lock)
+    retired: threading.Event = field(default_factory=threading.Event)
+    write_executor: ThreadPoolExecutor = field(
+        default_factory=lambda: ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix="hm-arch-sidecar-write",
+        ),
+        repr=False,
+    )
+
+    def close(self, *, shutdown_executor: bool = True) -> None:
+        self.retired.set()
+        memory = self.memory
+        if isinstance(memory, _TimeoutGuardedMemory):
+            memory = memory._memory
+        self.memory = None
+        if memory is not None:
+            try:
+                memory.close()
+            except Exception:  # noqa: BLE001 — best-effort teardown
+                pass
+        if shutdown_executor:
+            self.write_executor.shutdown(wait=False, cancel_futures=True)
+
+
+@dataclass
 class SidecarServer:
     """In-process HM-Arch sidecar request dispatcher."""
 
-    memory: HMArch | None = None
     negotiated_protocol_version: str = CURRENT_PROTOCOL_VERSION
     negotiated_capabilities: tuple[str, ...] = ()
     db_path: str | None = None
     recall_top_k: int = 5
     max_context_chars: int = 8000
     _memory_config: MemoryConfig | None = field(default=None, repr=False)
-    _memory_lock: _MemoryAccessLock = field(default_factory=_MemoryAccessLock, repr=False)
-    _write_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
-    _inflight_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
-    _inflight_write: _InflightWrite | None = field(default=None, repr=False)
-    _memory_poisoned: bool = field(default=False, repr=False)
+    _lane_generation: int = field(default=0, repr=False)
+    _lane: _RuntimeLane = field(default_factory=lambda: _RuntimeLane(generation=0, memory=None), repr=False)
+    _lane_swap_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     _shutdown_requested: bool = field(default=False, repr=False)
-    _read_executor: ThreadPoolExecutor = field(
-        default_factory=lambda: ThreadPoolExecutor(max_workers=4, thread_name_prefix="hm-arch-sidecar"),
-        repr=False,
-    )
+
+    @property
+    def memory(self) -> HMArch | None:
+        return self._current_lane().memory
 
     def close(self) -> None:
-        self._abandon_inflight_write()
-        self._read_executor.shutdown(wait=False, cancel_futures=True)
-        self._close_memory()
+        with self._lane_swap_lock:
+            lane = self._lane
+            self._lane = _RuntimeLane(generation=lane.generation + 1, memory=None)
+        lane.close()
 
     def handle_line(self, line: str) -> str:
         """Parse one JSONL request line and return a serialized response line."""
@@ -136,122 +159,145 @@ class SidecarServer:
 
     def handle_request(self, request: SidecarRequest) -> SidecarResponse:
         """Dispatch one sidecar request with optional timeout enforcement."""
-        self._reset_memory_if_poisoned()
         timeout_s = None
         if request.timeout_ms is not None:
             timeout_s = request.timeout_ms / 1000.0
 
-        if request.operation in _WRITE_OPERATIONS:
-            return self._execute_write(request, timeout_s)
+        lane = self._current_lane()
+        if (
+            request.operation in _WRITE_OPERATIONS
+            and timeout_s is not None
+        ):
+            return self._execute_write_with_timeout(lane, request, timeout_s)
 
-        if timeout_s is None:
-            with self._memory_lock.exclusive():
-                return self._dispatch_request(request)
-
-        future: Future[SidecarResponse] = self._read_executor.submit(
-            self._execute_read,
+        return self._submit_lane_work(
+            lane,
+            lambda: self._run_lane_operation(lane, request),
             request,
+            timeout_s,
         )
+
+    def _run_lane_operation(
+        self,
+        lane: _RuntimeLane,
+        request: SidecarRequest,
+        *,
+        cancel: threading.Event | None = None,
+    ) -> SidecarResponse:
+        if request.operation in _WRITE_OPERATIONS:
+            with lane.write_lock:
+                if lane.retired.is_set() or (cancel is not None and cancel.is_set()):
+                    raise _WriteAborted()
+                with lane.memory_lock.exclusive():
+                    if lane.retired.is_set() or (cancel is not None and cancel.is_set()):
+                        raise _WriteAborted()
+                    real_memory = lane.memory
+                    if (
+                        real_memory is None
+                        and request.operation
+                        not in {SidecarOperation.INITIALIZE, SidecarOperation.SHUTDOWN}
+                    ):
+                        return self._not_initialized_response(request)
+                    guarded_memory = real_memory
+                    if cancel is not None:
+                        guarded_memory = _TimeoutGuardedMemory(
+                            real_memory,
+                            lane,
+                            cancel,
+                        )
+                        lane.memory = guarded_memory
+                    try:
+                        response = self._dispatch_request(lane, request, cancel=cancel)
+                    finally:
+                        if cancel is not None:
+                            lane.memory = real_memory
+                    if cancel is not None and cancel.is_set():
+                        self._rollback_timed_out_write(lane, request, response)
+                        raise _WriteAborted()
+                    return response
+        with lane.memory_lock.exclusive():
+            return self._dispatch_request(lane, request, cancel=cancel)
+
+    def _submit_lane_work(
+        self,
+        lane: _RuntimeLane,
+        operation: Any,
+        request: SidecarRequest,
+        timeout_s: float | None,
+    ) -> SidecarResponse:
+        future = lane.write_executor.submit(operation)
         try:
+            if timeout_s is None:
+                return future.result()
             return future.result(timeout=timeout_s)
         except FuturesTimeoutError:
-            future.cancel()
+            return self._timeout_response(request)
+        except _WriteAborted:
             return self._timeout_response(request)
         except Exception as exc:  # noqa: BLE001 — isolate per-request failures
             return self._internal_error_response(request, exc)
 
-    def _execute_read(self, request: SidecarRequest) -> SidecarResponse:
-        with self._memory_lock.exclusive():
-            return self._dispatch_request(request)
-
-    def _execute_write(
-        self,
-        request: SidecarRequest,
-        timeout_s: float | None,
-    ) -> SidecarResponse:
-        if timeout_s is None:
-            with self._write_lock:
-                with self._memory_lock.exclusive():
-                    return self._dispatch_request(request)
-        return self._execute_write_with_timeout(request, timeout_s)
-
     def _execute_write_with_timeout(
         self,
+        lane: _RuntimeLane,
         request: SidecarRequest,
         timeout_s: float,
     ) -> SidecarResponse:
         cancel = threading.Event()
-        result_queue: Queue[SidecarResponse | Exception | None] = Queue(maxsize=1)
-
-        def worker() -> None:
-            try:
-                with self._write_lock:
-                    if cancel.is_set():
-                        return
-                    with self._memory_lock.exclusive():
-                        if cancel.is_set():
-                            return
-                        response = self._dispatch_request(request)
-                        if cancel.is_set():
-                            self._rollback_timed_out_write(request, response)
-                            return
-                        result_queue.put(response)
-            except Exception as exc:  # noqa: BLE001
-                if not cancel.is_set():
-                    result_queue.put(exc)
-            finally:
-                with self._inflight_lock:
-                    if self._inflight_write is not None and self._inflight_write.cancel is cancel:
-                        self._inflight_write = None
-
-        with self._inflight_lock:
-            self._abandon_inflight_write_unlocked()
-            thread = threading.Thread(
-                target=worker,
-                name="hm-arch-sidecar-write",
-                daemon=True,
-            )
-            self._inflight_write = _InflightWrite(cancel=cancel, thread=thread)
-            thread.start()
-
+        future = lane.write_executor.submit(
+            self._run_lane_operation,
+            lane,
+            request,
+            cancel=cancel,
+        )
         try:
-            item = result_queue.get(timeout=timeout_s)
-        except Empty:
+            return future.result(timeout=timeout_s)
+        except FuturesTimeoutError:
             cancel.set()
-            self._recover_after_abandoned_write()
+            self._retire_lane(lane)
             return self._timeout_response(request)
-
-        if item is None:
+        except _WriteAborted:
             return self._timeout_response(request)
-        if isinstance(item, Exception):
-            return self._internal_error_response(request, item)
-        return item
+        except Exception as exc:  # noqa: BLE001
+            return self._internal_error_response(request, exc)
 
-    def _dispatch_request(self, request: SidecarRequest) -> SidecarResponse:
+    def _dispatch_request(
+        self,
+        lane: _RuntimeLane,
+        request: SidecarRequest,
+        *,
+        cancel: threading.Event | None = None,
+    ) -> SidecarResponse:
         if request.operation is SidecarOperation.INITIALIZE:
-            return self._handle_initialize(request)
+            return self._handle_initialize(lane, request)
         if request.operation is SidecarOperation.SHUTDOWN:
-            return self._handle_shutdown(request)
-        if self.memory is None:
+            return self._handle_shutdown(lane, request)
+        if lane.memory is None:
             return self._not_initialized_response(request)
-        return self._route_operation(request)
+        return self._route_operation(lane, request, cancel=cancel)
 
-    def _route_operation(self, request: SidecarRequest) -> SidecarResponse:
+    def _route_operation(
+        self,
+        lane: _RuntimeLane,
+        request: SidecarRequest,
+        *,
+        cancel: threading.Event | None = None,
+    ) -> SidecarResponse:
         if request.operation is SidecarOperation.HEALTH:
-            return self._handle_health(request)
+            return self._handle_health(lane, request)
         if request.operation is SidecarOperation.SEARCH:
-            return self._handle_search(request)
+            return self._handle_search(lane, request)
         if request.operation is SidecarOperation.REMEMBER:
-            return self._handle_remember(request)
+            return self._handle_remember(lane, request)
         if request.operation is SidecarOperation.FORGET:
-            return self._handle_forget(request)
+            return self._handle_forget(lane, request, cancel=cancel)
         if request.operation is SidecarOperation.RECORD_TURN:
-            return self._handle_record_turn(request)
+            return self._handle_record_turn(lane, request)
         if request.operation is SidecarOperation.CONSOLIDATE:
-            return self._handle_consolidate(request)
+            return self._handle_consolidate(lane, request, cancel=cancel)
         return self._unsupported_operation_response(request)
 
-    def _handle_initialize(self, request: SidecarRequest) -> SidecarResponse:
+    def _handle_initialize(self, lane: _RuntimeLane, request: SidecarRequest) -> SidecarResponse:
         assert isinstance(request.params, InitializeParams)
         params = request.params
         previous_config = self._memory_config
@@ -261,8 +307,15 @@ class SidecarServer:
                 list(params.client_capabilities)
             )
             memory_config = _memory_config_from_initialize(params)
-            self._close_memory()
-            self.memory = HMArch(config=memory_config)
+            old_lane = lane
+            old_lane.close(shutdown_executor=False)
+            memory = HMArch(config=memory_config)
+            new_lane = self._install_lane(memory)
+            threading.Thread(
+                target=old_lane.close,
+                name="hm-arch-sidecar-lane-retire",
+                daemon=True,
+            ).start()
             self._memory_config = memory_config
             self.negotiated_protocol_version = negotiated
             self.negotiated_capabilities = negotiated_caps
@@ -275,6 +328,7 @@ class SidecarServer:
             )
             if isinstance(raw_max_chars, int) and raw_max_chars >= 1:
                 self.max_context_chars = raw_max_chars
+            _ = new_lane
             return SidecarResponse(
                 protocol_version=negotiated,
                 correlation_id=request.correlation_id,
@@ -289,9 +343,8 @@ class SidecarServer:
                 ),
             )
         except ProtocolValidationError as exc:
-            self._close_memory()
             self._memory_config = previous_config
-            self._reopen_memory_if_configured()
+            self._reopen_lane_if_configured()
             return self._error_response(
                 request,
                 code="UNSUPPORTED_VERSION",
@@ -299,9 +352,8 @@ class SidecarServer:
                 retryable=False,
             )
         except Exception as exc:  # noqa: BLE001
-            self._close_memory()
             self._memory_config = previous_config
-            self._reopen_memory_if_configured()
+            self._reopen_lane_if_configured()
             return self._error_response(
                 request,
                 code="STORAGE_ERROR",
@@ -309,10 +361,10 @@ class SidecarServer:
                 retryable=True,
             )
 
-    def _handle_health(self, request: SidecarRequest) -> SidecarResponse:
+    def _handle_health(self, lane: _RuntimeLane, request: SidecarRequest) -> SidecarResponse:
         assert isinstance(request.params, HealthParams)
         deep = request.params.deep
-        memory = self.memory
+        memory = lane.memory
         assert memory is not None
         try:
             stats_payload: dict[str, Any] = {}
@@ -339,10 +391,10 @@ class SidecarServer:
                 retryable=True,
             )
 
-    def _handle_search(self, request: SidecarRequest) -> SidecarResponse:
+    def _handle_search(self, lane: _RuntimeLane, request: SidecarRequest) -> SidecarResponse:
         assert isinstance(request.params, SearchParams)
         params = request.params
-        memory = self.memory
+        memory = lane.memory
         assert memory is not None
         started = time.perf_counter()
         try:
@@ -401,10 +453,10 @@ class SidecarServer:
                 ),
             )
 
-    def _handle_remember(self, request: SidecarRequest) -> SidecarResponse:
+    def _handle_remember(self, lane: _RuntimeLane, request: SidecarRequest) -> SidecarResponse:
         assert isinstance(request.params, RememberParams)
         params = request.params
-        memory = self.memory
+        memory = lane.memory
         assert memory is not None
         started = time.perf_counter()
         try:
@@ -433,10 +485,10 @@ class SidecarServer:
                 telemetry=SidecarTelemetry(storage_latency_ms=latency_ms),
             )
 
-    def _handle_record_turn(self, request: SidecarRequest) -> SidecarResponse:
+    def _handle_record_turn(self, lane: _RuntimeLane, request: SidecarRequest) -> SidecarResponse:
         assert isinstance(request.params, RecordTurnParams)
         params = request.params
-        memory = self.memory
+        memory = lane.memory
         assert memory is not None
         started = time.perf_counter()
         try:
@@ -466,15 +518,23 @@ class SidecarServer:
                 telemetry=SidecarTelemetry(storage_latency_ms=latency_ms),
             )
 
-    def _handle_forget(self, request: SidecarRequest) -> SidecarResponse:
+    def _handle_forget(
+        self,
+        lane: _RuntimeLane,
+        request: SidecarRequest,
+        *,
+        cancel: threading.Event | None = None,
+    ) -> SidecarResponse:
         assert isinstance(request.params, ForgetParams)
         params = request.params
-        memory = self.memory
+        memory = lane.memory
         assert memory is not None
         try:
             forgotten_ids: list[str] = []
             if params.memory_ids:
                 for memory_id in params.memory_ids:
+                    if cancel is not None and cancel.is_set():
+                        raise _WriteAborted()
                     result = memory.forget(memory_id)
                     if result.forgotten_count > 0 or result.archived_count > 0:
                         forgotten_ids.append(memory_id)
@@ -486,11 +546,17 @@ class SidecarServer:
                         message="forget by query requires forget.by_query.v1 capability",
                         retryable=False,
                     )
+                if cancel is not None and cancel.is_set():
+                    return self._timeout_response(request)
                 hits = memory.search(params.query, top_k=100)
                 for item in hits.results:
+                    if cancel is not None and cancel.is_set():
+                        raise _WriteAborted()
                     result = memory.forget(item.memory_id)
                     if result.forgotten_count > 0 or result.archived_count > 0:
                         forgotten_ids.append(item.memory_id)
+            if cancel is not None and cancel.is_set():
+                raise _WriteAborted()
             return SidecarResponse(
                 protocol_version=self.negotiated_protocol_version,
                 correlation_id=request.correlation_id,
@@ -509,12 +575,22 @@ class SidecarServer:
                 retryable=True,
             )
 
-    def _handle_consolidate(self, request: SidecarRequest) -> SidecarResponse:
+    def _handle_consolidate(
+        self,
+        lane: _RuntimeLane,
+        request: SidecarRequest,
+        *,
+        cancel: threading.Event | None = None,
+    ) -> SidecarResponse:
         assert isinstance(request.params, ConsolidateParams)
-        memory = self.memory
+        memory = lane.memory
         assert memory is not None
+        if cancel is not None and cancel.is_set():
+            raise _WriteAborted()
         try:
             report = run_idle_consolidation(memory)
+            if cancel is not None and cancel.is_set():
+                raise _WriteAborted()
             return SidecarResponse(
                 protocol_version=self.negotiated_protocol_version,
                 correlation_id=request.correlation_id,
@@ -535,10 +611,12 @@ class SidecarServer:
                 retryable=True,
             )
 
-    def _handle_shutdown(self, request: SidecarRequest) -> SidecarResponse:
+    def _handle_shutdown(self, lane: _RuntimeLane, request: SidecarRequest) -> SidecarResponse:
         self._shutdown_requested = True
-        self._abandon_inflight_write()
-        self._close_memory()
+        with self._lane_swap_lock:
+            active_lane = self._lane
+            self._lane = _RuntimeLane(generation=active_lane.generation + 1, memory=None)
+        active_lane.close()
         self._memory_config = None
         return SidecarResponse(
             protocol_version=self.negotiated_protocol_version,
@@ -744,69 +822,66 @@ class SidecarServer:
             error=structured_error(code, message, retryable=retryable),
         )
 
-    def _close_memory(self) -> None:
-        memory = self.memory
-        self.memory = None
-        if memory is not None:
-            try:
-                memory.close()
-            except Exception:  # noqa: BLE001 — best-effort teardown
-                pass
+    def _current_lane(self) -> _RuntimeLane:
+        with self._lane_swap_lock:
+            return self._lane
 
-    def _reopen_memory_if_configured(self) -> None:
-        if self._memory_config is None or self.memory is not None:
+    def _install_lane(self, memory: HMArch) -> _RuntimeLane:
+        with self._lane_swap_lock:
+            self._lane_generation += 1
+            lane = _RuntimeLane(generation=self._lane_generation, memory=memory)
+            self._lane = lane
+            return lane
+
+    def _reopen_lane_if_configured(self) -> None:
+        if self._memory_config is None:
             return
-        self.memory = HMArch(config=self._memory_config)
-
-    def _abandon_inflight_write(self) -> None:
-        with self._inflight_lock:
-            self._abandon_inflight_write_unlocked()
-
-    def _abandon_inflight_write_unlocked(self) -> None:
-        inflight = self._inflight_write
-        if inflight is None:
-            return
-        inflight.cancel.set()
-
-    def _recover_after_abandoned_write(self) -> None:
-        def recover() -> None:
-            inflight: _InflightWrite | None
-            with self._inflight_lock:
-                inflight = self._inflight_write
-            if inflight is None:
+        with self._lane_swap_lock:
+            if self._lane.memory is not None:
                 return
-            inflight.thread.join(timeout=30.0)
-            if inflight.thread.is_alive():
-                self._memory_poisoned = True
+            self._lane_generation += 1
+            lane = _RuntimeLane(generation=self._lane_generation, memory=None)
+            self._lane = lane
+        lane.write_executor.submit(self._open_lane_memory, lane).result(timeout=30.0)
 
+    def _retire_lane(self, retired_lane: _RuntimeLane) -> None:
+        with self._lane_swap_lock:
+            if self._lane is not retired_lane:
+                return
+            self._lane_generation += 1
+            new_lane = _RuntimeLane(generation=self._lane_generation, memory=None)
+            retired_lane.retired.set()
+            self._lane = new_lane
+        retired_lane.close(shutdown_executor=False)
+        if self._memory_config is not None:
+            new_lane.write_executor.submit(self._open_lane_memory, new_lane).result(
+                timeout=30.0,
+            )
         threading.Thread(
-            target=recover,
-            name="hm-arch-sidecar-write-recover",
+            target=self._finalize_retired_lane,
+            args=(retired_lane,),
+            name="hm-arch-sidecar-lane-finalize",
             daemon=True,
         ).start()
 
-    def _reset_memory_if_poisoned(self) -> None:
-        if not self._memory_poisoned:
+    def _finalize_retired_lane(self, retired_lane: _RuntimeLane) -> None:
+        retired_lane.close(shutdown_executor=True)
+
+    def _open_lane_memory(self, lane: _RuntimeLane) -> None:
+        if self._memory_config is None or lane.memory is not None:
             return
-        acquired = self._write_lock.acquire(timeout=0)
-        if not acquired:
-            return
-        try:
-            self._memory_poisoned = False
-            self._close_memory()
-            self._reopen_memory_if_configured()
-        finally:
-            self._write_lock.release()
+        lane.memory = HMArch(config=self._memory_config)
 
     def _rollback_timed_out_write(
         self,
+        lane: _RuntimeLane,
         request: SidecarRequest,
         response: SidecarResponse,
     ) -> None:
         if request.operation not in _MUTATING_WRITE_OPERATIONS or not response.ok:
             return
-        memory = self.memory
-        if memory is None:
+        memory = lane.memory
+        if memory is None or lane.retired.is_set():
             return
         try:
             if request.operation is SidecarOperation.REMEMBER:
@@ -817,8 +892,61 @@ class SidecarServer:
                 assert isinstance(response.result, RecordTurnResult)
                 for memory_id in response.result.memory_ids:
                     memory.forget(memory_id)
+            elif request.operation is SidecarOperation.CONSOLIDATE:
+                pass
         except Exception:  # noqa: BLE001 — rollback is best-effort
             pass
+
+
+class _WriteAborted(Exception):
+    """Internal signal that a timed write was cancelled or its lane retired."""
+
+
+class _TimeoutGuardedMemory:
+    """Reject mutating calls once a timed write is cancelled or its lane retired."""
+
+    def __init__(
+        self,
+        memory: HMArch,
+        lane: _RuntimeLane,
+        cancel: threading.Event | None,
+    ) -> None:
+        self._memory = memory
+        self._lane = lane
+        self._cancel = cancel
+
+    def _check_mutation_allowed(self) -> None:
+        if self._lane.retired.is_set():
+            raise _WriteAborted()
+        if self._cancel is not None and self._cancel.is_set():
+            raise _WriteAborted()
+
+    def add(self, *args: Any, **kwargs: Any) -> Any:
+        self._check_mutation_allowed()
+        try:
+            return self._memory.add(*args, **kwargs)
+        finally:
+            self._check_mutation_allowed()
+
+    def forget(self, *args: Any, **kwargs: Any) -> Any:
+        self._check_mutation_allowed()
+        try:
+            return self._memory.forget(*args, **kwargs)
+        finally:
+            self._check_mutation_allowed()
+
+    def consolidate(self, *args: Any, **kwargs: Any) -> Any:
+        self._check_mutation_allowed()
+        try:
+            return self._memory.consolidate(*args, **kwargs)
+        finally:
+            self._check_mutation_allowed()
+
+    def close(self, *args: Any, **kwargs: Any) -> Any:
+        return self._memory.close(*args, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._memory, name)
 
 
 def run_stdio_server(
