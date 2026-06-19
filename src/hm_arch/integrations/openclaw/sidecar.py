@@ -11,6 +11,7 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from queue import Empty, Queue
 from datetime import datetime
 from typing import Any, Iterator, TextIO
 
@@ -69,6 +70,21 @@ _WRITE_OPERATIONS = frozenset(
     }
 )
 
+_MUTATING_WRITE_OPERATIONS = frozenset(
+    {
+        SidecarOperation.REMEMBER,
+        SidecarOperation.FORGET,
+        SidecarOperation.RECORD_TURN,
+        SidecarOperation.CONSOLIDATE,
+    }
+)
+
+
+@dataclass
+class _InflightWrite:
+    cancel: threading.Event
+    thread: threading.Thread
+
 
 class _MemoryAccessLock:
     """Serialize access to a single in-process :class:`~hm_arch.core.HMArch` instance."""
@@ -92,17 +108,22 @@ class SidecarServer:
     db_path: str | None = None
     recall_top_k: int = 5
     max_context_chars: int = 8000
+    _memory_config: MemoryConfig | None = field(default=None, repr=False)
     _memory_lock: _MemoryAccessLock = field(default_factory=_MemoryAccessLock, repr=False)
     _write_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _inflight_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _inflight_write: _InflightWrite | None = field(default=None, repr=False)
+    _memory_poisoned: bool = field(default=False, repr=False)
     _shutdown_requested: bool = field(default=False, repr=False)
-    _executor: ThreadPoolExecutor = field(
+    _read_executor: ThreadPoolExecutor = field(
         default_factory=lambda: ThreadPoolExecutor(max_workers=4, thread_name_prefix="hm-arch-sidecar"),
         repr=False,
     )
 
     def close(self) -> None:
-        self._executor.shutdown(wait=False, cancel_futures=True)
-        self.memory = None
+        self._abandon_inflight_write()
+        self._read_executor.shutdown(wait=False, cancel_futures=True)
+        self._close_memory()
 
     def handle_line(self, line: str) -> str:
         """Parse one JSONL request line and return a serialized response line."""
@@ -115,23 +136,96 @@ class SidecarServer:
 
     def handle_request(self, request: SidecarRequest) -> SidecarResponse:
         """Dispatch one sidecar request with optional timeout enforcement."""
+        self._reset_memory_if_poisoned()
         timeout_s = None
         if request.timeout_ms is not None:
             timeout_s = request.timeout_ms / 1000.0
 
-        future: Future[SidecarResponse] = self._executor.submit(
-            self._dispatch_request,
+        if request.operation in _WRITE_OPERATIONS:
+            return self._execute_write(request, timeout_s)
+
+        if timeout_s is None:
+            with self._memory_lock.exclusive():
+                return self._dispatch_request(request)
+
+        future: Future[SidecarResponse] = self._read_executor.submit(
+            self._execute_read,
             request,
         )
         try:
-            if timeout_s is None:
-                return future.result()
             return future.result(timeout=timeout_s)
         except FuturesTimeoutError:
             future.cancel()
             return self._timeout_response(request)
         except Exception as exc:  # noqa: BLE001 — isolate per-request failures
             return self._internal_error_response(request, exc)
+
+    def _execute_read(self, request: SidecarRequest) -> SidecarResponse:
+        with self._memory_lock.exclusive():
+            return self._dispatch_request(request)
+
+    def _execute_write(
+        self,
+        request: SidecarRequest,
+        timeout_s: float | None,
+    ) -> SidecarResponse:
+        if timeout_s is None:
+            with self._write_lock:
+                with self._memory_lock.exclusive():
+                    return self._dispatch_request(request)
+        return self._execute_write_with_timeout(request, timeout_s)
+
+    def _execute_write_with_timeout(
+        self,
+        request: SidecarRequest,
+        timeout_s: float,
+    ) -> SidecarResponse:
+        cancel = threading.Event()
+        result_queue: Queue[SidecarResponse | Exception | None] = Queue(maxsize=1)
+
+        def worker() -> None:
+            try:
+                with self._write_lock:
+                    if cancel.is_set():
+                        return
+                    with self._memory_lock.exclusive():
+                        if cancel.is_set():
+                            return
+                        response = self._dispatch_request(request)
+                        if cancel.is_set():
+                            self._rollback_timed_out_write(request, response)
+                            return
+                        result_queue.put(response)
+            except Exception as exc:  # noqa: BLE001
+                if not cancel.is_set():
+                    result_queue.put(exc)
+            finally:
+                with self._inflight_lock:
+                    if self._inflight_write is not None and self._inflight_write.cancel is cancel:
+                        self._inflight_write = None
+
+        with self._inflight_lock:
+            self._abandon_inflight_write_unlocked()
+            thread = threading.Thread(
+                target=worker,
+                name="hm-arch-sidecar-write",
+                daemon=True,
+            )
+            self._inflight_write = _InflightWrite(cancel=cancel, thread=thread)
+            thread.start()
+
+        try:
+            item = result_queue.get(timeout=timeout_s)
+        except Empty:
+            cancel.set()
+            self._recover_after_abandoned_write()
+            return self._timeout_response(request)
+
+        if item is None:
+            return self._timeout_response(request)
+        if isinstance(item, Exception):
+            return self._internal_error_response(request, item)
+        return item
 
     def _dispatch_request(self, request: SidecarRequest) -> SidecarResponse:
         if request.operation is SidecarOperation.INITIALIZE:
@@ -140,13 +234,7 @@ class SidecarServer:
             return self._handle_shutdown(request)
         if self.memory is None:
             return self._not_initialized_response(request)
-
-        if request.operation in _WRITE_OPERATIONS:
-            with self._write_lock:
-                with self._memory_lock.exclusive():
-                    return self._route_operation(request)
-        with self._memory_lock.exclusive():
-            return self._route_operation(request)
+        return self._route_operation(request)
 
     def _route_operation(self, request: SidecarRequest) -> SidecarResponse:
         if request.operation is SidecarOperation.HEALTH:
@@ -166,13 +254,16 @@ class SidecarServer:
     def _handle_initialize(self, request: SidecarRequest) -> SidecarResponse:
         assert isinstance(request.params, InitializeParams)
         params = request.params
+        previous_config = self._memory_config
         try:
             negotiated = negotiate_protocol_version(request.protocol_version)
             server_caps, negotiated_caps = negotiate_capabilities(
                 list(params.client_capabilities)
             )
             memory_config = _memory_config_from_initialize(params)
+            self._close_memory()
             self.memory = HMArch(config=memory_config)
+            self._memory_config = memory_config
             self.negotiated_protocol_version = negotiated
             self.negotiated_capabilities = negotiated_caps
             self.db_path = params.db_path
@@ -198,6 +289,9 @@ class SidecarServer:
                 ),
             )
         except ProtocolValidationError as exc:
+            self._close_memory()
+            self._memory_config = previous_config
+            self._reopen_memory_if_configured()
             return self._error_response(
                 request,
                 code="UNSUPPORTED_VERSION",
@@ -205,6 +299,9 @@ class SidecarServer:
                 retryable=False,
             )
         except Exception as exc:  # noqa: BLE001
+            self._close_memory()
+            self._memory_config = previous_config
+            self._reopen_memory_if_configured()
             return self._error_response(
                 request,
                 code="STORAGE_ERROR",
@@ -440,7 +537,9 @@ class SidecarServer:
 
     def _handle_shutdown(self, request: SidecarRequest) -> SidecarResponse:
         self._shutdown_requested = True
-        self.memory = None
+        self._abandon_inflight_write()
+        self._close_memory()
+        self._memory_config = None
         return SidecarResponse(
             protocol_version=self.negotiated_protocol_version,
             correlation_id=request.correlation_id,
@@ -644,6 +743,82 @@ class SidecarServer:
             result=result or {},
             error=structured_error(code, message, retryable=retryable),
         )
+
+    def _close_memory(self) -> None:
+        memory = self.memory
+        self.memory = None
+        if memory is not None:
+            try:
+                memory.close()
+            except Exception:  # noqa: BLE001 — best-effort teardown
+                pass
+
+    def _reopen_memory_if_configured(self) -> None:
+        if self._memory_config is None or self.memory is not None:
+            return
+        self.memory = HMArch(config=self._memory_config)
+
+    def _abandon_inflight_write(self) -> None:
+        with self._inflight_lock:
+            self._abandon_inflight_write_unlocked()
+
+    def _abandon_inflight_write_unlocked(self) -> None:
+        inflight = self._inflight_write
+        if inflight is None:
+            return
+        inflight.cancel.set()
+
+    def _recover_after_abandoned_write(self) -> None:
+        def recover() -> None:
+            inflight: _InflightWrite | None
+            with self._inflight_lock:
+                inflight = self._inflight_write
+            if inflight is None:
+                return
+            inflight.thread.join(timeout=30.0)
+            if inflight.thread.is_alive():
+                self._memory_poisoned = True
+
+        threading.Thread(
+            target=recover,
+            name="hm-arch-sidecar-write-recover",
+            daemon=True,
+        ).start()
+
+    def _reset_memory_if_poisoned(self) -> None:
+        if not self._memory_poisoned:
+            return
+        acquired = self._write_lock.acquire(timeout=0)
+        if not acquired:
+            return
+        try:
+            self._memory_poisoned = False
+            self._close_memory()
+            self._reopen_memory_if_configured()
+        finally:
+            self._write_lock.release()
+
+    def _rollback_timed_out_write(
+        self,
+        request: SidecarRequest,
+        response: SidecarResponse,
+    ) -> None:
+        if request.operation not in _MUTATING_WRITE_OPERATIONS or not response.ok:
+            return
+        memory = self.memory
+        if memory is None:
+            return
+        try:
+            if request.operation is SidecarOperation.REMEMBER:
+                assert isinstance(response.result, RememberResult)
+                if response.result.memory_id:
+                    memory.forget(response.result.memory_id)
+            elif request.operation is SidecarOperation.RECORD_TURN:
+                assert isinstance(response.result, RecordTurnResult)
+                for memory_id in response.result.memory_ids:
+                    memory.forget(memory_id)
+        except Exception:  # noqa: BLE001 — rollback is best-effort
+            pass
 
 
 def run_stdio_server(

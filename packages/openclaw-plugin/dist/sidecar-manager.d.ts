@@ -22,6 +22,7 @@ export declare class SidecarManager {
     private started;
     private stopping;
     private restartAttempts;
+    private startupPromise;
     private readonly spawnFn;
     constructor(options: SidecarManagerOptions);
     start(): Promise<void>;
@@ -56,6 +57,7 @@ export declare class SidecarManager {
         sessionId?: string;
     }): Promise<SidecarResponse>;
     private ensureClient;
+    private tearDownProcess;
     private spawnProcess;
     private scheduleRestart;
 }

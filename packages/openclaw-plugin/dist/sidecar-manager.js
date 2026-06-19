@@ -37,6 +37,7 @@ export class SidecarManager {
     started = false;
     stopping = false;
     restartAttempts = 0;
+    startupPromise = null;
     spawnFn;
     constructor(options) {
         this.options = options;
@@ -53,6 +54,7 @@ export class SidecarManager {
     async stop() {
         this.stopping = true;
         this.started = false;
+        this.startupPromise = null;
         if (this.client) {
             try {
                 await this.request("shutdown", {}, { timeoutMs: this.options.requestTimeoutMs });
@@ -63,14 +65,7 @@ export class SidecarManager {
             await this.client.close();
             this.client = null;
         }
-        if (this.child && !this.child.killed) {
-            this.child.kill();
-            await Promise.race([
-                once(this.child, "close"),
-                new Promise((resolve) => setTimeout(resolve, 50)),
-            ]);
-        }
-        this.child = null;
+        await this.tearDownProcess();
     }
     async request(operation, params, options) {
         const timeoutMs = options?.timeoutMs ?? this.options.requestTimeoutMs;
@@ -125,13 +120,44 @@ export class SidecarManager {
         if (this.client) {
             return this.client;
         }
-        await this.spawnProcess();
+        if (!this.startupPromise) {
+            this.startupPromise = this.spawnProcess().finally(() => {
+                this.startupPromise = null;
+            });
+        }
+        try {
+            await this.startupPromise;
+        }
+        catch (error) {
+            await this.tearDownProcess();
+            throw error;
+        }
         if (!this.client) {
             throw new Error("sidecar client failed to initialize");
         }
         return this.client;
     }
+    async tearDownProcess() {
+        if (this.client) {
+            try {
+                await this.client.close();
+            }
+            catch {
+                // Best-effort client teardown.
+            }
+            this.client = null;
+        }
+        if (this.child && !this.child.killed) {
+            this.child.kill();
+            await Promise.race([
+                once(this.child, "close"),
+                new Promise((resolve) => setTimeout(resolve, 50)),
+            ]);
+        }
+        this.child = null;
+    }
     async spawnProcess() {
+        await this.tearDownProcess();
         const [command, ...args] = this.options.command;
         if (!command) {
             throw new Error("sidecar command is empty");
@@ -154,21 +180,28 @@ export class SidecarManager {
             }
             this.client = null;
             this.child = null;
+            this.startupPromise = null;
             this.options.logger?.warn?.(`memory-hm-arch: sidecar exited with code ${String(code)}; scheduling restart`);
             void this.scheduleRestart();
         });
-        const initResponse = await client.request("initialize", {
-            db_path: this.options.dbPath,
-            client_capabilities: ["telemetry.v1", "forget.by_query.v1", "health.deep.v1"],
-        }, { timeoutMs: this.options.startupTimeoutMs });
-        if (!initResponse.ok) {
-            throw new Error(initResponse.error?.message ?? "sidecar initialize failed");
+        try {
+            const initResponse = await client.request("initialize", {
+                db_path: this.options.dbPath,
+                client_capabilities: ["telemetry.v1", "forget.by_query.v1", "health.deep.v1"],
+            }, { timeoutMs: this.options.startupTimeoutMs });
+            if (!initResponse.ok) {
+                throw new Error(initResponse.error?.message ?? "sidecar initialize failed");
+            }
+            const negotiated = initResponse.result.negotiated_protocol_version;
+            if (typeof negotiated === "string" && negotiated !== CURRENT_PROTOCOL_VERSION) {
+                this.options.logger?.info?.(`memory-hm-arch: negotiated sidecar protocol ${negotiated}`);
+            }
+            this.restartAttempts = 0;
         }
-        const negotiated = initResponse.result.negotiated_protocol_version;
-        if (typeof negotiated === "string" && negotiated !== CURRENT_PROTOCOL_VERSION) {
-            this.options.logger?.info?.(`memory-hm-arch: negotiated sidecar protocol ${negotiated}`);
+        catch (error) {
+            await this.tearDownProcess();
+            throw error;
         }
-        this.restartAttempts = 0;
     }
     async scheduleRestart() {
         if (!this.started || this.stopping) {
@@ -181,7 +214,12 @@ export class SidecarManager {
             return;
         }
         try {
-            await this.spawnProcess();
+            if (!this.startupPromise) {
+                this.startupPromise = this.spawnProcess().finally(() => {
+                    this.startupPromise = null;
+                });
+            }
+            await this.startupPromise;
         }
         catch (error) {
             this.options.logger?.warn?.(`memory-hm-arch: sidecar restart failed: ${String(error)}`);

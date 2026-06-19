@@ -6,6 +6,7 @@ import io
 import json
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -323,6 +324,134 @@ class TestSidecarServerInProcess:
         )
         assert response["ok"] is False
         assert response["error"]["code"] == "VALIDATION_ERROR"
+
+    def test_remember_timeout_is_mutation_safe(self, sidecar_db: str) -> None:
+        server = SidecarServer()
+        server.handle_line(json.dumps(_initialize(sidecar_db), ensure_ascii=False))
+        assert server.memory is not None
+
+        started = threading.Event()
+        release = threading.Event()
+        original_add = server.memory.add
+
+        def slow_add(content: str, **kwargs: Any) -> Any:
+            started.set()
+            if not release.wait(timeout=2.0):
+                raise TimeoutError("slow_add blocked too long")
+            return original_add(content, **kwargs)
+
+        marker = "mutation-timeout-marker"
+        response_holder: dict[str, Any] = {}
+
+        def run_timed_remember() -> None:
+            with patch.object(server.memory, "add", side_effect=slow_add):
+                line = server.handle_line(
+                    json.dumps(
+                        _request(
+                            "remember",
+                            {"content": marker},
+                            correlation_id="remember-timeout",
+                            timeout_ms=100,
+                        ),
+                        ensure_ascii=False,
+                    )
+                )
+            response_holder["payload"] = json.loads(line)
+
+        worker = threading.Thread(target=run_timed_remember)
+        worker.start()
+        assert started.wait(timeout=2.0)
+        worker.join(timeout=5.0)
+        assert "payload" in response_holder
+        timeout_response = response_holder["payload"]
+        assert timeout_response["ok"] is False
+        assert timeout_response["error"]["code"] == "TIMEOUT"
+
+        release.set()
+        time.sleep(0.2)
+
+        search = json.loads(
+            server.handle_line(
+                json.dumps(
+                    _request(
+                        "search",
+                        {"query": marker},
+                        correlation_id="search-after-timeout",
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+        )
+        assert search["ok"] is True
+        assert search["result"]["result_count"] == 0
+
+        follow_up = json.loads(
+            server.handle_line(
+                json.dumps(
+                    _request(
+                        "remember",
+                        {"content": "write lock released after timeout"},
+                        correlation_id="remember-after-timeout",
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+        )
+        assert follow_up["ok"] is True
+
+    def test_initialize_reopen_closes_previous_memory(self, sidecar_db: str) -> None:
+        server = SidecarServer()
+        server.handle_line(json.dumps(_initialize(sidecar_db), ensure_ascii=False))
+        first_memory = server.memory
+        assert first_memory is not None
+
+        closed = threading.Event()
+        original_close = first_memory.close
+
+        def tracked_close() -> None:
+            original_close()
+            closed.set()
+
+        with patch.object(first_memory, "close", side_effect=tracked_close):
+            server.handle_line(
+                json.dumps(
+                    _request(
+                        "initialize",
+                        {
+                            "db_path": sidecar_db,
+                            "client_capabilities": ["telemetry.v1"],
+                        },
+                        correlation_id="reinit-1",
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+        assert closed.wait(timeout=2.0)
+        assert server.memory is not None
+        assert server.memory is not first_memory
+
+    def test_shutdown_closes_memory(self, sidecar_db: str) -> None:
+        server = SidecarServer()
+        server.handle_line(json.dumps(_initialize(sidecar_db), ensure_ascii=False))
+        memory = server.memory
+        assert memory is not None
+
+        closed = threading.Event()
+        original_close = memory.close
+
+        def tracked_close() -> None:
+            original_close()
+            closed.set()
+
+        with patch.object(memory, "close", side_effect=tracked_close):
+            server.handle_line(
+                json.dumps(
+                    _request("shutdown", {}, correlation_id="shutdown-close"),
+                    ensure_ascii=False,
+                )
+            )
+        assert closed.wait(timeout=2.0)
+        assert server.memory is None
 
 
 class TestSidecarStdioLoop:
