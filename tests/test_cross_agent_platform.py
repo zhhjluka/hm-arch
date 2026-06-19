@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import stat
 import sys
 from pathlib import Path
@@ -24,9 +25,11 @@ from benchmarks.cross_agent.agents.cli_runner import (
 from benchmarks.cross_agent.agents.hm_arch_bench import (
     agent_prompt_context,
     agent_uses_hook_recall,
+    hm_arch_cli_env,
+    openclaw_benchmark_config_path,
 )
 from benchmarks.cross_agent.agents.workspace import AgentWorkspace
-from benchmarks.cross_agent.backends.hm_arch_paths import hm_arch_db_path
+from benchmarks.cross_agent.backends.hm_arch_paths import hm_arch_db_path, hm_arch_db_path_str
 from benchmarks.cross_agent.fixtures.synthetic import locomo_fixture
 from benchmarks.cross_agent.runner import CrossAgentBenchmarkHarness
 from benchmarks.cross_agent.types import (
@@ -35,6 +38,8 @@ from benchmarks.cross_agent.types import (
     BenchmarkRunConfig,
     MemoryBackendKind,
 )
+
+from hm_arch.integrations.openclaw.config import HM_ARCH_PLUGIN_ID, load_openclaw_config
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "cli_output"
@@ -276,6 +281,100 @@ def test_malformed_cli_json_is_query_failure(
 
     assert outcome.failure_count == 1
     assert outcome.error
+
+
+def _write_openclaw_env_probe(path: Path, *, capture_path: Path) -> str:
+    script = f"""#!/bin/sh
+if [ "$1" = "agent" ] && [ "$2" = "--help" ]; then
+  echo "--message"
+  exit 0
+fi
+{{
+  echo "OPENCLAW_STATE_DIR=${{OPENCLAW_STATE_DIR:-}}"
+  echo "OPENCLAW_CONFIG_PATH=${{OPENCLAW_CONFIG_PATH:-}}"
+  echo "HM_ARCH_DB_PATH=${{HM_ARCH_DB_PATH:-}}"
+}} > "{capture_path}"
+exec {sys.executable} {FAKE_CLI} "$@"
+"""
+    path.write_text(script, encoding="utf-8")
+    path.chmod(path.stat().st_mode | stat.S_IEXEC)
+    return str(path)
+
+
+def test_openclaw_hm_arch_wiring_uses_state_dir_config_and_child_env(
+    tmp_path: Path,
+) -> None:
+    env_probe = tmp_path / "openclaw-env-probe"
+    env_capture = tmp_path / "child-env.txt"
+    executable = _write_openclaw_env_probe(env_probe, capture_path=env_capture)
+
+    workspace = AgentWorkspace.create(AgentKind.OPENCLAW, parent=tmp_path)
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir()
+    config = BenchmarkRunConfig(
+        family=BenchmarkFamily.LOCOMO,
+        agent=AgentKind.OPENCLAW,
+        backend=MemoryBackendKind.HM_ARCH,
+        use_mock_agent=False,
+        agent_executable=executable,
+    )
+    runner = OpenClawCliAgentRunner(
+        AgentRunnerContext(
+            workspace=workspace,
+            config=config,
+            storage_dir=storage_dir,
+            executable=executable,
+        )
+    )
+    expected_config = openclaw_benchmark_config_path(workspace.agent_home)
+    expected_plugin = (
+        workspace.agent_home / "extensions" / HM_ARCH_PLUGIN_ID / "openclaw.plugin.json"
+    )
+    project_config = workspace.workspace / ".openclaw" / "openclaw.json"
+
+    try:
+        runner.open()
+        assert expected_config.is_file(), "state config must exist under OPENCLAW_STATE_DIR"
+        assert expected_plugin.is_file(), "plugin manifest must live under state config root"
+        assert not project_config.exists(), "project-scoped config must not be used for wiring"
+
+        openclaw_config = load_openclaw_config(expected_config)
+        plugin_settings = (
+            openclaw_config.get("plugins", {})
+            .get("entries", {})
+            .get(HM_ARCH_PLUGIN_ID, {})
+            .get("config", {})
+        )
+        assert plugin_settings.get("dbPath") == hm_arch_db_path_str(storage_dir)
+
+        child_env = hm_arch_cli_env(
+            storage_dir,
+            config,
+            agent_home=workspace.agent_home,
+        )
+        assert child_env["OPENCLAW_CONFIG_PATH"] == str(expected_config)
+        assert child_env["HM_ARCH_DB_PATH"] == hm_arch_db_path_str(storage_dir)
+        assert os.environ.get("OPENCLAW_STATE_DIR") == str(workspace.agent_home)
+
+        outcome = runner.answer(
+            locomo_fixture().queries[0],
+            recalled_context="should-not-be-injected",
+            seed=0,
+        )
+    finally:
+        runner.close()
+        workspace.cleanup()
+
+    assert outcome.failure_count == 0
+    assert env_capture.is_file()
+    captured = dict(
+        line.split("=", 1)
+        for line in env_capture.read_text(encoding="utf-8").splitlines()
+        if "=" in line
+    )
+    assert captured["OPENCLAW_STATE_DIR"] == str(workspace.agent_home)
+    assert captured["OPENCLAW_CONFIG_PATH"] == str(expected_config)
+    assert captured["HM_ARCH_DB_PATH"] == hm_arch_db_path_str(storage_dir)
 
 
 def test_unsupported_cli_executable_fails_at_open(tmp_path: Path) -> None:

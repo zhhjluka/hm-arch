@@ -9,6 +9,11 @@ from ..backends.hm_arch_paths import hm_arch_db_path_str
 from ..types import AgentKind, BenchmarkRunConfig, MemoryBackendKind
 
 
+def openclaw_benchmark_config_path(agent_home: Path) -> Path:
+    """Return the OpenClaw config file consumed by isolated benchmark child CLIs."""
+    return agent_home / "openclaw.json"
+
+
 def agent_uses_hook_recall(config: BenchmarkRunConfig) -> bool:
     """Return whether the agent CLI owns recall via installed HM-Arch hooks.
 
@@ -33,11 +38,19 @@ def agent_prompt_context(
     return recalled_context
 
 
-def hm_arch_cli_env(storage_dir: Path, config: BenchmarkRunConfig) -> dict[str, str]:
+def hm_arch_cli_env(
+    storage_dir: Path,
+    config: BenchmarkRunConfig,
+    *,
+    agent_home: Path | None = None,
+) -> dict[str, str]:
     """Environment variables that align agent hooks with benchmark storage."""
-    if config.backend is not MemoryBackendKind.HM_ARCH:
-        return {}
-    return {"HM_ARCH_DB_PATH": hm_arch_db_path_str(storage_dir)}
+    env: dict[str, str] = {}
+    if config.backend is MemoryBackendKind.HM_ARCH:
+        env["HM_ARCH_DB_PATH"] = hm_arch_db_path_str(storage_dir)
+    if config.agent is AgentKind.OPENCLAW and agent_home is not None:
+        env["OPENCLAW_CONFIG_PATH"] = str(openclaw_benchmark_config_path(agent_home))
+    return env
 
 
 def configure_hm_arch_agent_install(
@@ -82,17 +95,26 @@ def configure_hm_arch_agent_install(
     if agent is AgentKind.OPENCLAW:
         from hm_arch.integrations.management.openclaw import OpenClawAgentHandler
         from hm_arch.integrations.openclaw.config import (
+            HM_ARCH_PLUGIN_ID,
             load_openclaw_config,
             merge_plugin_settings,
-            resolve_openclaw_config_path,
             write_openclaw_config,
         )
 
-        OpenClawAgentHandler().install(global_install=False)
-        config_path = resolve_openclaw_config_path(global_install=False)
+        # OPENCLAW_STATE_DIR points at agent_home during workspace.activate().
+        # Install into that state dir so the child CLI loads the same config/plugins.
+        config_path = openclaw_benchmark_config_path(agent_home)
+        OpenClawAgentHandler().install(global_install=True)
         config = load_openclaw_config(config_path) if config_path.exists() else {}
         merged = merge_plugin_settings(config, {"dbPath": db_path})
         write_openclaw_config(config_path, merged)
+        plugin_manifest = (
+            config_path.parent / "extensions" / HM_ARCH_PLUGIN_ID / "openclaw.plugin.json"
+        )
+        if not plugin_manifest.is_file():
+            raise RuntimeError(
+                f"OpenClaw HM-Arch plugin was not installed at {plugin_manifest.parent}"
+            )
         return
 
     raise ValueError(f"unsupported agent for HM-Arch install: {agent}")

@@ -24,7 +24,11 @@ from .cli_process import (
     resolve_agent_executable,
     run_cli,
 )
-from .hm_arch_bench import configure_hm_arch_agent_install, hm_arch_cli_env
+from .hm_arch_bench import (
+    configure_hm_arch_agent_install,
+    hm_arch_cli_env,
+    openclaw_benchmark_config_path,
+)
 from .workspace import AgentWorkspace
 
 
@@ -143,7 +147,11 @@ class CliAgentRunner(ABC):
             "query_id": query.query_id,
         }
         argv = self._build_argv(executable, prompt_payload)
-        cli_env = hm_arch_cli_env(self.storage_dir, self.config)
+        cli_env = hm_arch_cli_env(
+            self.storage_dir,
+            self.config,
+            agent_home=self.workspace.agent_home,
+        )
         t0 = time.perf_counter()
         try:
             result = run_cli(
@@ -539,7 +547,7 @@ class OpenClawCliAgentRunner(CliAgentRunner):
         )
 
     def _prepare_agent_home(self) -> None:
-        config_path = self.workspace.workspace / ".openclaw" / "openclaw.json"
+        config_path = openclaw_benchmark_config_path(self.workspace.agent_home)
         if self.config.backend is MemoryBackendKind.NO_MEMORY:
             config_path.parent.mkdir(parents=True, exist_ok=True)
             if not config_path.exists():
