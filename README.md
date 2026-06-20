@@ -160,6 +160,11 @@ npx @hm-arch/installer doctor claude-code
 npx @hm-arch/installer install hermes
 npx @hm-arch/installer status hermes
 npx @hm-arch/installer doctor hermes
+
+# OpenClaw: installs the HM-Arch memory plugin and configures plugins.slots.memory.
+npx @hm-arch/installer install openclaw
+npx @hm-arch/installer status openclaw
+npx @hm-arch/installer doctor openclaw
 ```
 
 Or install the npm launcher globally:
@@ -170,10 +175,12 @@ npm install -g @hm-arch/installer
 hm-arch-install install codex
 hm-arch-install install claude-code
 hm-arch-install install hermes
+hm-arch-install install openclaw
 
 hm-arch-install status codex
 hm-arch-install status claude-code
 hm-arch-install status hermes
+hm-arch-install status openclaw
 ```
 
 Use `--global` when you want Codex or Claude Code hooks in the user-level config
@@ -211,6 +218,14 @@ hm-arch-install doctor hermes
 sqlite3 ~/.hermes/hm_arch_memory.db '.tables'
 ```
 
+OpenClaw uses `OPENCLAW_STATE_DIR` (default: `~/.openclaw`) for global config and
+extensions. After `hm-arch-install install openclaw`, restart the OpenClaw gateway
+if it is already running so it loads the memory plugin. Validate with:
+
+```bash
+hm-arch-install doctor openclaw
+```
+
 ### Uninstall Agents With npm
 
 Use the same npm installer to remove HM-Arch-managed agent configuration:
@@ -224,6 +239,9 @@ npx @hm-arch/installer uninstall claude-code
 
 # Hermes: removes the provider bridge/config entries, then restart Hermes.
 npx @hm-arch/installer uninstall hermes
+
+# OpenClaw: removes plugin files and HM-Arch config entries, then restart the gateway.
+npx @hm-arch/installer uninstall openclaw
 ```
 
 For global Codex or Claude Code hooks:
@@ -239,6 +257,7 @@ If you installed the npm launcher globally, use `hm-arch-install` directly:
 hm-arch-install uninstall codex
 hm-arch-install uninstall claude-code
 hm-arch-install uninstall hermes
+hm-arch-install uninstall openclaw
 ```
 
 Uninstalling agent integration removes HM-Arch-managed hooks or Hermes provider
@@ -249,6 +268,7 @@ files manually only after you no longer need the stored memories. Common paths:
 .hm_arch_agent_memory.db
 ~/.hm-arch/global.db
 ~/.hermes/hm_arch_memory.db
+~/.openclaw/hm_arch_memory.db
 ```
 
 ### Install Agents With Python
@@ -258,6 +278,7 @@ files manually only after you no longer need the stored memories. Common paths:
 | Codex | `hm-arch install codex` | `hm-arch status codex`, `hm-arch doctor codex` |
 | Claude Code | `hm-arch install claude-code` | `hm-arch status claude-code`, `hm-arch doctor claude-code` |
 | Hermes | `hm-arch install hermes` | `hm-arch status hermes`, `hm-arch doctor hermes` |
+| OpenClaw | `hm-arch install openclaw` | `hm-arch status openclaw`, `hm-arch doctor openclaw` |
 
 Python uninstall commands mirror npm:
 
@@ -265,6 +286,7 @@ Python uninstall commands mirror npm:
 hm-arch uninstall codex
 hm-arch uninstall claude-code
 hm-arch uninstall hermes
+hm-arch uninstall openclaw
 ```
 
 Setup guides: [docs/agents/README.md](docs/agents/README.md). Smoke tests:

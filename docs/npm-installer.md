@@ -81,6 +81,8 @@ Managed venv path: `<HM_ARCH_HOME>/python-env/`
 | `HM_ARCH_PIP_SPEC` | pip requirement for `hm-arch` (default: `hm-arch==<bundled>`) |
 | `HM_ARCH_RUNTIME` | `auto` (default), `standalone`, or `python` |
 | `HM_ARCH_RELEASE_BASE_URL` | Override GitHub release download base URL (tests/mirrors) |
+| `HM_ARCH_STANDALONE_FIXTURE` | Local standalone `hm-arch` executable for clean-machine tests (skips GitHub download) |
+| `OPENCLAW_STATE_DIR` | OpenClaw state directory (isolates config/extensions during tests) |
 
 The bundled Python package version is synced from `src/hm_arch/_version.py` at build
 time into `dist/bundled-version.json`. At runtime the default pip spec is
@@ -117,22 +119,38 @@ npx @hm-arch/installer install hermes
 npx @hm-arch/installer status hermes
 npx @hm-arch/installer doctor hermes
 
+# OpenClaw: install the @hm-arch/openclaw-plugin package and memory slot config.
+npx @hm-arch/installer install openclaw
+npx @hm-arch/installer status openclaw
+npx @hm-arch/installer doctor openclaw
+
 # Global CLI after npm install -g
 npm install -g @hm-arch/installer
 hm-arch-install doctor
 hm-arch-install status codex
 hm-arch-install install hermes
 hm-arch-install status hermes
+hm-arch-install install openclaw
+hm-arch-install status openclaw
 hm-arch-install upgrade
 hm-arch-install uninstall codex
+hm-arch-install uninstall openclaw
 ```
 
-Supported agents: `codex`, `claude-code`, `hermes`.
+Supported agents: `codex`, `claude-code`, `hermes`, `openclaw`.
 
 Supported subcommands: `install`, `status`, `doctor`, `upgrade`, `uninstall`.
 For Hermes, `install hermes` writes the HM-Arch provider config and plugin bridge
 under `$HERMES_HOME` (default: `~/.hermes`). Restart Hermes after install so the
 running agent process loads the plugin.
+
+For OpenClaw, `install openclaw` copies the canonical `@hm-arch/openclaw-plugin`
+package into the OpenClaw extensions directory and configures
+`plugins.slots.memory` in `openclaw.json`. Use a temporary `OPENCLAW_STATE_DIR`
+(or project-local `.openclaw/`) during tests so real user OpenClaw state is not
+modified. Restart the OpenClaw gateway after install when it is already running.
+`uninstall openclaw` removes HM-Arch plugin files and config entries but preserves
+the SQLite memory database unless you delete it manually.
 
 Flags: `--global` / `-g`, `--help` / `-h`.
 
@@ -155,10 +173,12 @@ node dist/cli.js doctor
 
 ### postinstall is intentionally a no-op
 
-`npm install` does **not** modify Codex, Claude Code, or Hermes configuration.
+`npm install` does **not** modify Codex, Claude Code, Hermes, or OpenClaw configuration.
 Run `hm-arch-install install <agent>` explicitly after environment checks pass.
 For Hermes, run `hm-arch-install install hermes`, restart Hermes, then validate
 with `hm-arch-install status hermes` and `hm-arch-install doctor hermes`.
+For OpenClaw, run `hm-arch-install install openclaw`, restart the gateway if needed,
+then validate with `hm-arch-install status openclaw` and `hm-arch-install doctor openclaw`.
 
 ## CI verification
 

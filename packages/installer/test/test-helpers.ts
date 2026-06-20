@@ -200,18 +200,26 @@ export async function withStandaloneRuntimeEnv<T>(
 
   const previousHome = process.env.HM_ARCH_HOME;
   const previousHermesHome = process.env.HERMES_HOME;
+  const previousOpenClawStateDir = process.env.OPENCLAW_STATE_DIR;
+  const previousStandaloneFixture = process.env.HM_ARCH_STANDALONE_FIXTURE;
   const previousRuntime = process.env.HM_ARCH_RUNTIME;
   const previousCwd = process.cwd();
   const pathGuard = options.stripPython ? stripPythonFromPath() : null;
 
   process.env.HM_ARCH_HOME = home;
   process.env.HERMES_HOME = join(home, "hermes-home");
+  process.env.OPENCLAW_STATE_DIR = join(home, "openclaw-state");
   process.env.HM_ARCH_RUNTIME = "standalone";
   process.chdir(workdir);
 
   try {
     if (options.installFixture !== false) {
-      installStandaloneFixtureBinary(home);
+      const fixturePath = resolveStandaloneFixtureBinary();
+      if (!fixturePath) {
+        throw new Error("standalone fixture binary not found");
+      }
+      process.env.HM_ARCH_STANDALONE_FIXTURE = fixturePath;
+      installStandaloneFixtureBinary(home, fixturePath);
     }
     return await fn({ home, workdir });
   } finally {
@@ -225,6 +233,16 @@ export async function withStandaloneRuntimeEnv<T>(
       delete process.env.HERMES_HOME;
     } else {
       process.env.HERMES_HOME = previousHermesHome;
+    }
+    if (previousOpenClawStateDir === undefined) {
+      delete process.env.OPENCLAW_STATE_DIR;
+    } else {
+      process.env.OPENCLAW_STATE_DIR = previousOpenClawStateDir;
+    }
+    if (previousStandaloneFixture === undefined) {
+      delete process.env.HM_ARCH_STANDALONE_FIXTURE;
+    } else {
+      process.env.HM_ARCH_STANDALONE_FIXTURE = previousStandaloneFixture;
     }
     if (previousRuntime === undefined) {
       delete process.env.HM_ARCH_RUNTIME;

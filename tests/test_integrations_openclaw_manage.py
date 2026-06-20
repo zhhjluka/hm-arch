@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -316,3 +317,40 @@ def test_resolve_openclaw_config_path_env(
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(custom))
     assert resolve_openclaw_config_path(global_install=False) == custom
     assert resolve_openclaw_config_path(global_install=True) == custom
+
+
+def test_install_openclaw_plugin_version_mismatch(
+    project_root: Path,
+    openclaw_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    _configure_openclaw_env(
+        monkeypatch,
+        home=openclaw_home,
+        project_root=project_root,
+    )
+    from hm_arch.integrations.openclaw import plugin_source
+
+    source = plugin_source.resolve_bundled_plugin_source()
+    fixture_root = tmp_path / "openclaw-plugin-fixture"
+    shutil.copytree(
+        source,
+        fixture_root,
+        ignore=shutil.ignore_patterns("node_modules", ".git"),
+    )
+    package_json = fixture_root / "package.json"
+    original = package_json.read_text(encoding="utf-8")
+    package_json.write_text(
+        original.replace('"version": "2.0.4"', '"version": "0.0.0"'),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "hm_arch.integrations.management.openclaw.resolve_bundled_plugin_source",
+        lambda: fixture_root,
+    )
+
+    assert main(["install", "openclaw"]) == 2
+    err = capsys.readouterr().err
+    assert "version mismatch" in err.lower()
