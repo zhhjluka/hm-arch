@@ -1,0 +1,4 @@
+run_id,family,query_id,question,expected_answer,prediction,accuracy,task_success,retrieval_hit_rate,recall_time_ms,agent_time_ms,query_time_ms,input_tokens,output_tokens,input_token_source,output_token_source,failure_count,recall_context_chars,recall_hit_count,agent_managed,agent_runner_mode
+locomo-codex-hm_arch-s0-k5-1770641fd28506d0,locomo,conv-0-q0,When did Caroline go to the LGBTQ support group?,7 May 2023,,0.0,,,0.0,15023.95627500664,15023.95627500664,0,0,estimated,estimated,1,0,0,True,real
+locomo-codex-hm_arch-s0-k5-1770641fd28506d0,locomo,conv-0-q1,When did Melanie paint a sunrise?,2022,,0.0,,,0.0,14887.120838990086,14887.120838990086,0,0,estimated,estimated,1,0,0,True,real
+locomo-codex-hm_arch-s0-k5-1770641fd28506d0,locomo,conv-0-q2,What fields would Caroline be likely to pursue in her educaton?,"Psychology, counseling certification",,0.0,,,0.0,16150.716096002725,16150.716096002725,0,0,estimated,estimated,1,0,0,True,real

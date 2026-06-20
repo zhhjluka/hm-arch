@@ -1,0 +1,256 @@
+{
+  "run_id": "locomo-codex-no_memory-s0-k5-a946b3bfb4255103",
+  "config": {
+    "family": "locomo",
+    "agent": "codex",
+    "backend": "no_memory",
+    "seed": 0,
+    "run_id": null,
+    "top_k": 5,
+    "resume": false,
+    "use_mock_agent": false,
+    "agent_executable": "/home/ubuntu/.npm-global/bin/codex",
+    "agent_timeout_s": 25.0,
+    "dataset_id": "locomo10-sample",
+    "dataset_version": "2024-03-sample",
+    "max_conversations": 1,
+    "max_queries": 3
+  },
+  "storage_dir": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/storage",
+  "phases_completed": [
+    "setup",
+    "ingest",
+    "consolidate",
+    "query",
+    "evaluate",
+    "teardown",
+    "checkpoint"
+  ],
+  "queries": [
+    {
+      "query_id": "conv-0-q0",
+      "family": "locomo",
+      "question": "When did Caroline go to the LGBTQ support group?",
+      "expected_answer": "7 May 2023",
+      "prediction": "",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": 0.0,
+      "recall_time_ms": 0.00022900348994880915,
+      "agent_time_ms": 14877.918792000855,
+      "query_time_ms": 14877.971784997499,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "failure_count": 1,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:3"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": false,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "no_memory",
+        "exit_code": 1,
+        "stderr": "2026-06-20T07:39:53.104287Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:39:53.326752Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:39:53.759697Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:39:54.349997Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:39:55.455823Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:39:57.145976Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:40:00.697898Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n",
+        "stdout": "{\"type\":\"thread.started\",\"thread_id\":\"019ee3f8-c85e-7593-bbc6-d2bedae84c30\"}\n{\"type\":\"turn.started\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 2/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e91f4c0e85be4c-IAD)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 3/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e91f4fbda37d17-IAD)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 4/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e91f565a35c94e-IAD)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 5/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e91f612817fe41-IAD)\"}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"error\",\"message\":\"Falling back from WebSockets to HTTPS transport. unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e91f772eeb0737-IAD\"}}\n{\"type\":\"error\",\"message\":\"Reconnecting... 1/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91f788d27f2c6-IAD, request id: req_58fe1ef04b024f58ae94175aa71b40d4)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 2/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91f7a7ecce056-IAD, request id: req_2319ef73ebe24cf1a7482257976672ab)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 3/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91f7ddfa1430c-IAD, request id: req_4286a785a4574ed78bb04d581a1c5424)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 4/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91f83ab6d57ea-IAD, request id: req_680ac086e6b649e7a5a7374e59a2fa02)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 5/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91f8e5c7e3af4-IAD, request id: req_c689c9900441455da62b1e9de51e926e)\"}\n{\"type\":\"error\",\"message\":\"unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91fa289620bfe-IAD, request id: req_97a5d9519f154e1fae9956c99c2f4c02\"}\n{\"type\":\"turn.failed\",\"error\":{\"message\":\"unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91fa289620bfe-IAD, request id: req_97a5d9519f154e1fae9956c99c2f4c02\"}}\n",
+        "argv": [
+          "/home/ubuntu/.npm-global/bin/codex",
+          "exec",
+          "--json",
+          "--disable",
+          "memories",
+          "When did Caroline go to the LGBTQ support group?"
+        ],
+        "timed_out": false
+      }
+    },
+    {
+      "query_id": "conv-0-q1",
+      "family": "locomo",
+      "question": "When did Melanie paint a sunrise?",
+      "expected_answer": "2022",
+      "prediction": "",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": 0.0,
+      "recall_time_ms": 0.0001449952833354473,
+      "agent_time_ms": 14895.481655999902,
+      "query_time_ms": 14895.533582006465,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "failure_count": 1,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:12"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": false,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "no_memory",
+        "exit_code": 1,
+        "stderr": "2026-06-20T07:40:07.924881Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:40:08.171829Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:40:08.583864Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:40:09.201498Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:40:10.233741Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:40:12.156868Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:40:15.685855Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n",
+        "stdout": "{\"type\":\"thread.started\",\"thread_id\":\"019ee3f9-024e-7a52-b938-011608c146df\"}\n{\"type\":\"turn.started\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 2/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e91fa8a9cc2f89-IAD)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 3/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e91fac9cf3d6ec-IAD)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 4/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e91fb2bae28000-IAD)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 5/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e91fbebac9d658-IAD)\"}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"error\",\"message\":\"Falling back from WebSockets to HTTPS transport. unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e91fd4eb007411-IAD\"}}\n{\"type\":\"error\",\"message\":\"Reconnecting... 1/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91fd63be6208e-IAD, request id: req_86344ba2b6ab4c8db698bdc0c768e0c3)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 2/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91fd82c85d6b4-IAD, request id: req_96072e86a1e6419aaf255c49ce90672f)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 3/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91fdb0a8b5e53-IAD, request id: req_60fedae24c9a41d28412656da1ae6910)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 4/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91fe0e9a86e9e-IAD, request id: req_a155b381306e4093949aa4e163cc6c34)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 5/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91fec19bce602-IAD, request id: req_982f3bfa484c40d4b45bf1881540df8a)\"}\n{\"type\":\"error\",\"message\":\"unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91fff8e420831-IAD, request id: req_be69ad2ec88e4506b29ab117476b8148\"}\n{\"type\":\"turn.failed\",\"error\":{\"message\":\"unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e91fff8e420831-IAD, request id: req_be69ad2ec88e4506b29ab117476b8148\"}}\n",
+        "argv": [
+          "/home/ubuntu/.npm-global/bin/codex",
+          "exec",
+          "--json",
+          "--disable",
+          "memories",
+          "When did Melanie paint a sunrise?"
+        ],
+        "timed_out": false
+      }
+    },
+    {
+      "query_id": "conv-0-q2",
+      "family": "locomo",
+      "question": "What fields would Caroline be likely to pursue in her educaton?",
+      "expected_answer": "Psychology, counseling certification",
+      "prediction": "",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": 0.0,
+      "recall_time_ms": 0.00021400046534836292,
+      "agent_time_ms": 15211.070880992338,
+      "query_time_ms": 15211.13176200015,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "failure_count": 1,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:9",
+        "D1:11"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": false,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "no_memory",
+        "exit_code": 1,
+        "stderr": "2026-06-20T07:40:22.804484Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:40:23.065389Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:40:23.499352Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:40:24.098061Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:40:25.194884Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:40:26.990625Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n2026-06-20T07:40:30.679279Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses\n",
+        "stdout": "{\"type\":\"thread.started\",\"thread_id\":\"019ee3f9-3c8a-7f60-a13c-79c55d736c48\"}\n{\"type\":\"turn.started\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 2/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e92005ef9b9312-IAD)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 3/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e92009894437c5-IAD)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 4/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e920106f598f7d-IAD)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 5/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e9201b9cf75886-IAD)\"}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"error\",\"message\":\"Falling back from WebSockets to HTTPS transport. unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: wss://api.openai.com/v1/responses, cf-ray: a0e92032baa6e5c3-IAD\"}}\n{\"type\":\"error\",\"message\":\"Reconnecting... 1/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e92033feecca32-IAD, request id: req_84d3468c047747b595192ecbbd2061d9)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 2/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e92035bd023c60-IAD, request id: req_1bcd0d882aa949aebc4aa0a209a0780a)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 3/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e92038fdb114f4-IAD, request id: req_8fdf20904ca14a7d816ed51f93b3bd49)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 4/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e9203ecbc2aa17-IAD, request id: req_75b49d843a904439bc249d4a0776ea38)\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... 5/5 (unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e92049fb3091d2-IAD, request id: req_fae173d6c31b4c4bb4cea0f7e41f53c0)\"}\n{\"type\":\"error\",\"message\":\"unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e9205eabaf20d6-IAD, request id: req_181c396c1a3b4ccf965d5c468b9259b0\"}\n{\"type\":\"turn.failed\",\"error\":{\"message\":\"unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses, cf-ray: a0e9205eabaf20d6-IAD, request id: req_181c396c1a3b4ccf965d5c468b9259b0\"}}\n",
+        "argv": [
+          "/home/ubuntu/.npm-global/bin/codex",
+          "exec",
+          "--json",
+          "--disable",
+          "memories",
+          "What fields would Caroline be likely to pursue in her educaton?"
+        ],
+        "timed_out": false
+      }
+    }
+  ],
+  "aggregates": {
+    "query_count": 3,
+    "completed_query_count": 3,
+    "mean_accuracy": 0.0,
+    "task_success_rate": null,
+    "mean_retrieval_hit_rate": 0.0,
+    "mean_query_time_ms": 14994.87904300137,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0,
+    "total_failure_count": 3
+  },
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
+    "timestamp_utc": "2026-06-20T07:39:52.589937+00:00"
+  },
+  "agent_metadata": {
+    "matrix_implementation": "real",
+    "matrix_rationale": "Invoke codex CLI in isolated CODEX_HOME without HM-Arch hooks.",
+    "support_rationale": "Invoke codex CLI in isolated CODEX_HOME without HM-Arch hooks.",
+    "supported": true,
+    "use_mock_agent": false,
+    "agent_home": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/agent_workspace/agent_home",
+    "workspace_root": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/agent_workspace",
+    "storage_dir": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/storage",
+    "runtime_provenance": {
+      "python": "3.12.3",
+      "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
+      "agent_cli": {
+        "agent": "codex",
+        "executable": "/home/ubuntu/.npm-global/bin/codex",
+        "version": "codex-cli 0.141.0",
+        "probe_status": "ok"
+      },
+      "provider_packages": {},
+      "cli_mode": "real"
+    }
+  },
+  "compatibility": {
+    "codex|no_memory": "real",
+    "codex|native_memory": "unsupported",
+    "codex|hm_arch": "real",
+    "codex|mem0": "unsupported",
+    "codex|openviking": "unsupported",
+    "claude_code|no_memory": "real",
+    "claude_code|native_memory": "unsupported",
+    "claude_code|hm_arch": "real",
+    "claude_code|mem0": "unsupported",
+    "claude_code|openviking": "unsupported",
+    "hermes|no_memory": "real",
+    "hermes|native_memory": "unsupported",
+    "hermes|hm_arch": "real",
+    "hermes|mem0": "unsupported",
+    "hermes|openviking": "unsupported",
+    "openclaw|no_memory": "real",
+    "openclaw|native_memory": "unsupported",
+    "openclaw|hm_arch": "real",
+    "openclaw|mem0": "unsupported",
+    "openclaw|openviking": "unsupported"
+  },
+  "dataset": {
+    "dataset_id": "locomo10-sample",
+    "version": "2024-03-sample",
+    "description": "Pinned one-conversation LoCoMo subset for offline tests",
+    "source_url": "https://github.com/snap-research/locomo/blob/main/data/locomo10.json",
+    "filename": "locomo10-sample.json",
+    "sha256": "580e189fdcaf989caa1512e87b42cb14d90f16522cbeca14f48fa01c5b83ef0f",
+    "conversation_count": 1,
+    "qa_count": 199,
+    "max_conversations": 1
+  },
+  "category_aggregates": {
+    "open_domain": {
+      "query_count": 1,
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": 0.0,
+      "mean_query_time_ms": 15211.13176200015,
+      "p95_query_time_ms": 15211.13176200015,
+      "mean_input_tokens": 0.0,
+      "total_input_tokens": 0,
+      "total_failure_count": 1
+    },
+    "temporal": {
+      "query_count": 2,
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": 0.0,
+      "mean_query_time_ms": 14886.752683501982,
+      "p95_query_time_ms": 14894.655492156016,
+      "mean_input_tokens": 0.0,
+      "total_input_tokens": 0,
+      "total_failure_count": 2
+    }
+  },
+  "timing_aggregates": {
+    "mean_query_time_ms": 14994.87904300137,
+    "p95_query_time_ms": 15179.571944000782,
+    "mean_input_tokens": 0.0,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0,
+    "total_failure_count": 3
+  }
+}

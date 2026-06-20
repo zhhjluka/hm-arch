@@ -17,6 +17,7 @@ def derive_run_id(
     dataset_id: str | None = None,
     dataset_version: str | None = None,
     max_conversations: int | None = None,
+    max_queries: int | None = None,
 ) -> str:
     """Return a stable run id from benchmark matrix coordinates.
 
@@ -25,9 +26,10 @@ def derive_run_id(
     dataset_id_part = dataset_id or ""
     dataset_version_part = dataset_version or ""
     max_conv_part = "" if max_conversations is None else str(max_conversations)
+    max_queries_part = "" if max_queries is None else str(max_queries)
     payload = (
         f"{family.value}|{agent.value}|{backend.value}|{seed}|{top_k}|"
-        f"{dataset_id_part}|{dataset_version_part}|{max_conv_part}"
+        f"{dataset_id_part}|{dataset_version_part}|{max_conv_part}|{max_queries_part}"
     )
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
     return (
@@ -48,4 +50,5 @@ def resolve_run_id(config: BenchmarkRunConfig) -> str:
         dataset_id=config.dataset_id,
         dataset_version=config.dataset_version,
         max_conversations=config.max_conversations,
+        max_queries=config.max_queries,
     )

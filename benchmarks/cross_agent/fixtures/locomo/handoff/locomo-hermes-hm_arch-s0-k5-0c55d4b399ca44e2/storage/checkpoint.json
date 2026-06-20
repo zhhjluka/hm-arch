@@ -1,0 +1,152 @@
+{
+  "run_id": "locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2",
+  "status": "completed",
+  "error": null,
+  "config": {
+    "family": "locomo",
+    "agent": "hermes",
+    "backend": "hm_arch",
+    "seed": 0,
+    "run_id": null,
+    "top_k": 5,
+    "resume": false,
+    "use_mock_agent": false,
+    "agent_executable": "/home/ubuntu/.local/bin/hermes",
+    "agent_timeout_s": 25.0,
+    "dataset_id": "locomo10-sample",
+    "dataset_version": "2024-03-sample",
+    "max_conversations": 1,
+    "max_queries": 3
+  },
+  "phases_completed": [
+    "setup",
+    "ingest",
+    "consolidate",
+    "query",
+    "evaluate",
+    "teardown",
+    "checkpoint"
+  ],
+  "completed_query_ids": [
+    "conv-0-q0",
+    "conv-0-q1",
+    "conv-0-q2"
+  ],
+  "queries": [
+    {
+      "query_id": "conv-0-q0",
+      "family": "locomo",
+      "question": "When did Caroline go to the LGBTQ support group?",
+      "expected_answer": "7 May 2023",
+      "prediction": "",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 841.1156599904643,
+      "query_time_ms": 841.1156599904643,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "failure_count": 1,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:3"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "hm_arch",
+        "exit_code": 1,
+        "stderr": "hermes -z: agent failed: No inference provider configured. Run 'hermes model' to choose a provider and model, or set an API key (OPENROUTER_API_KEY, OPENAI_API_KEY, etc.) in ~/.hermes/.env.\n",
+        "stdout": "",
+        "argv": [
+          "/home/ubuntu/.local/bin/hermes",
+          "-z",
+          "When did Caroline go to the LGBTQ support group?"
+        ],
+        "timed_out": false
+      }
+    },
+    {
+      "query_id": "conv-0-q1",
+      "family": "locomo",
+      "question": "When did Melanie paint a sunrise?",
+      "expected_answer": "2022",
+      "prediction": "",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 831.8558890023269,
+      "query_time_ms": 831.8558890023269,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "failure_count": 1,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:12"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "hm_arch",
+        "exit_code": 1,
+        "stderr": "hermes -z: agent failed: No inference provider configured. Run 'hermes model' to choose a provider and model, or set an API key (OPENROUTER_API_KEY, OPENAI_API_KEY, etc.) in ~/.hermes/.env.\n",
+        "stdout": "",
+        "argv": [
+          "/home/ubuntu/.local/bin/hermes",
+          "-z",
+          "When did Melanie paint a sunrise?"
+        ],
+        "timed_out": false
+      }
+    },
+    {
+      "query_id": "conv-0-q2",
+      "family": "locomo",
+      "question": "What fields would Caroline be likely to pursue in her educaton?",
+      "expected_answer": "Psychology, counseling certification",
+      "prediction": "",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 837.4522940139286,
+      "query_time_ms": 837.4522940139286,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "failure_count": 1,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:9",
+        "D1:11"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "hm_arch",
+        "exit_code": 1,
+        "stderr": "hermes -z: agent failed: No inference provider configured. Run 'hermes model' to choose a provider and model, or set an API key (OPENROUTER_API_KEY, OPENAI_API_KEY, etc.) in ~/.hermes/.env.\n",
+        "stdout": "",
+        "argv": [
+          "/home/ubuntu/.local/bin/hermes",
+          "-z",
+          "What fields would Caroline be likely to pursue in her educaton?"
+        ],
+        "timed_out": false
+      }
+    }
+  ]
+}

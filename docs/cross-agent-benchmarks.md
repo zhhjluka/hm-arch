@@ -171,6 +171,17 @@ cell links to per-run `summary.json`, `queries.jsonl`, and `invocations.jsonl`
 (raw argv/stdout/stderr). Real-mode summaries include CLI/provider version
 provenance and the exact reproducible shell command.
 
+**Handoff artifacts** (committed real-CLI pilot results) live under
+`benchmarks/cross_agent/fixtures/locomo/handoff/`. Regenerate with:
+
+```bash
+scripts/run_locomo_matrix_handoff.sh
+```
+
+Use `--max-queries N` for pilot runs. Per-agent CLI overrides:
+`--codex-executable`, `--claude-code-executable`, `--hermes-executable`, or
+`HM_ARCH_BENCH_*_EXECUTABLE` env vars.
+
 OpenClaw cells default to `pending` (MEM-75). Unsupported cells are listed with
 explicit rationale and are never silently substituted.
 

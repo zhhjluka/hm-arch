@@ -1,0 +1,255 @@
+{
+  "run_id": "locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea",
+  "config": {
+    "family": "locomo",
+    "agent": "claude_code",
+    "backend": "hm_arch",
+    "seed": 0,
+    "run_id": null,
+    "top_k": 5,
+    "resume": false,
+    "use_mock_agent": false,
+    "agent_executable": "/home/ubuntu/.npm-global/bin/claude",
+    "agent_timeout_s": 25.0,
+    "dataset_id": "locomo10-sample",
+    "dataset_version": "2024-03-sample",
+    "max_conversations": 1,
+    "max_queries": 3
+  },
+  "storage_dir": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/storage",
+  "phases_completed": [
+    "setup",
+    "ingest",
+    "consolidate",
+    "query",
+    "evaluate",
+    "teardown",
+    "checkpoint"
+  ],
+  "queries": [
+    {
+      "query_id": "conv-0-q0",
+      "family": "locomo",
+      "question": "When did Caroline go to the LGBTQ support group?",
+      "expected_answer": "7 May 2023",
+      "prediction": "",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 654.4810780033004,
+      "query_time_ms": 654.4810780033004,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "failure_count": 1,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:3"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "hm_arch",
+        "exit_code": 1,
+        "stderr": "",
+        "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":null,\"duration_ms\":270,\"duration_api_ms\":0,\"num_turns\":1,\"result\":\"Not logged in \u00b7 Please run /login\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"032bb62e-3063-4642-b386-0fe71c3b2125\",\"total_cost_usd\":0,\"usage\":{\"input_tokens\":0,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":0,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"2ade20c0-4b47-4712-ad2a-d4833a5aa640\"}\n",
+        "argv": [
+          "/home/ubuntu/.npm-global/bin/claude",
+          "-p",
+          "When did Caroline go to the LGBTQ support group?",
+          "--output-format",
+          "json"
+        ],
+        "timed_out": false
+      }
+    },
+    {
+      "query_id": "conv-0-q1",
+      "family": "locomo",
+      "question": "When did Melanie paint a sunrise?",
+      "expected_answer": "2022",
+      "prediction": "",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 658.1275869975798,
+      "query_time_ms": 658.1275869975798,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "failure_count": 1,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:12"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "hm_arch",
+        "exit_code": 1,
+        "stderr": "",
+        "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":null,\"duration_ms\":228,\"duration_api_ms\":0,\"num_turns\":1,\"result\":\"Not logged in \u00b7 Please run /login\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"a76aa759-e613-42b5-8084-5021fc1dff2e\",\"total_cost_usd\":0,\"usage\":{\"input_tokens\":0,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":0,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"2299aab7-c02f-4344-87fb-f594a94c70eb\"}\n",
+        "argv": [
+          "/home/ubuntu/.npm-global/bin/claude",
+          "-p",
+          "When did Melanie paint a sunrise?",
+          "--output-format",
+          "json"
+        ],
+        "timed_out": false
+      }
+    },
+    {
+      "query_id": "conv-0-q2",
+      "family": "locomo",
+      "question": "What fields would Caroline be likely to pursue in her educaton?",
+      "expected_answer": "Psychology, counseling certification",
+      "prediction": "",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 605.8050569990883,
+      "query_time_ms": 605.8050569990883,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "failure_count": 1,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:9",
+        "D1:11"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "hm_arch",
+        "exit_code": 1,
+        "stderr": "",
+        "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":null,\"duration_ms\":233,\"duration_api_ms\":0,\"num_turns\":1,\"result\":\"Not logged in \u00b7 Please run /login\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"be42f63b-57af-460c-bdeb-49f11f1f8d24\",\"total_cost_usd\":0,\"usage\":{\"input_tokens\":0,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":0,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"351dff8c-3b5c-4bd4-b62e-5d6341048e76\"}\n",
+        "argv": [
+          "/home/ubuntu/.npm-global/bin/claude",
+          "-p",
+          "What fields would Caroline be likely to pursue in her educaton?",
+          "--output-format",
+          "json"
+        ],
+        "timed_out": false
+      }
+    }
+  ],
+  "aggregates": {
+    "query_count": 3,
+    "completed_query_count": 3,
+    "mean_accuracy": 0.0,
+    "task_success_rate": null,
+    "mean_retrieval_hit_rate": null,
+    "mean_query_time_ms": 639.4712406666562,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0,
+    "total_failure_count": 3
+  },
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
+    "timestamp_utc": "2026-06-20T07:39:49.263901+00:00"
+  },
+  "agent_metadata": {
+    "matrix_implementation": "real",
+    "matrix_rationale": "Install HM-Arch Claude Code hooks in isolated home; invoke claude CLI boundary.",
+    "support_rationale": "Install HM-Arch Claude Code hooks in isolated home; invoke claude CLI boundary.",
+    "supported": true,
+    "use_mock_agent": false,
+    "agent_home": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/agent_workspace/agent_home",
+    "workspace_root": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/agent_workspace",
+    "storage_dir": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/storage",
+    "runtime_provenance": {
+      "python": "3.12.3",
+      "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
+      "agent_cli": {
+        "agent": "claude_code",
+        "executable": "/home/ubuntu/.npm-global/bin/claude",
+        "version": "2.1.183 (Claude Code)",
+        "probe_status": "ok"
+      },
+      "provider_packages": {
+        "hm_arch": "2.0.4"
+      },
+      "cli_mode": "real"
+    }
+  },
+  "compatibility": {
+    "codex|no_memory": "real",
+    "codex|native_memory": "unsupported",
+    "codex|hm_arch": "real",
+    "codex|mem0": "unsupported",
+    "codex|openviking": "unsupported",
+    "claude_code|no_memory": "real",
+    "claude_code|native_memory": "unsupported",
+    "claude_code|hm_arch": "real",
+    "claude_code|mem0": "unsupported",
+    "claude_code|openviking": "unsupported",
+    "hermes|no_memory": "real",
+    "hermes|native_memory": "unsupported",
+    "hermes|hm_arch": "real",
+    "hermes|mem0": "unsupported",
+    "hermes|openviking": "unsupported",
+    "openclaw|no_memory": "real",
+    "openclaw|native_memory": "unsupported",
+    "openclaw|hm_arch": "real",
+    "openclaw|mem0": "unsupported",
+    "openclaw|openviking": "unsupported"
+  },
+  "dataset": {
+    "dataset_id": "locomo10-sample",
+    "version": "2024-03-sample",
+    "description": "Pinned one-conversation LoCoMo subset for offline tests",
+    "source_url": "https://github.com/snap-research/locomo/blob/main/data/locomo10.json",
+    "filename": "locomo10-sample.json",
+    "sha256": "580e189fdcaf989caa1512e87b42cb14d90f16522cbeca14f48fa01c5b83ef0f",
+    "conversation_count": 1,
+    "qa_count": 199,
+    "max_conversations": 1
+  },
+  "category_aggregates": {
+    "open_domain": {
+      "query_count": 1,
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": null,
+      "mean_query_time_ms": 605.8050569990883,
+      "p95_query_time_ms": 605.8050569990883,
+      "mean_input_tokens": 0.0,
+      "total_input_tokens": 0,
+      "total_failure_count": 1
+    },
+    "temporal": {
+      "query_count": 2,
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": null,
+      "mean_query_time_ms": 656.3043325004401,
+      "p95_query_time_ms": 657.9452615478658,
+      "mean_input_tokens": 0.0,
+      "total_input_tokens": 0,
+      "total_failure_count": 2
+    }
+  },
+  "timing_aggregates": {
+    "mean_query_time_ms": 639.4712406666562,
+    "p95_query_time_ms": 657.7629360981518,
+    "mean_input_tokens": 0.0,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0,
+    "total_failure_count": 3
+  }
+}

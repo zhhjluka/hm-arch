@@ -145,6 +145,7 @@ def load_locomo_fixture(
     dataset_version: str | None = None,
     *,
     max_conversations: int | None = None,
+    max_queries: int | None = None,
 ) -> SyntheticFixture:
     """Convert a versioned LoCoMo dataset file into harness ingest + query items."""
     manifest = get_dataset_manifest(dataset_id)
@@ -223,6 +224,9 @@ def load_locomo_fixture(
                     },
                 )
             )
+
+    if max_queries is not None and max_queries > 0:
+        queries = queries[:max_queries]
 
     return SyntheticFixture(
         family=BenchmarkFamily.LOCOMO,

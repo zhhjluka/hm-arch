@@ -161,10 +161,11 @@ def test_locomo_matrix_marks_openclaw_pending_and_runs_non_openclaw_cells(
         assert cell["runner_mode"] == "mock_only"
 
 
-def test_locomo_matrix_real_cli_runs_supported_cells_with_fake_executable(
+def test_locomo_matrix_real_cli_smoke_with_fake_executable(
     tmp_path: Path,
     fake_executable: str,
 ) -> None:
+    """Offline smoke for the real-mode code path — not production comparison data."""
     summary = run_locomo_matrix(
         output_root=tmp_path,
         dataset_id="locomo10-sample",
@@ -172,11 +173,13 @@ def test_locomo_matrix_real_cli_runs_supported_cells_with_fake_executable(
         runner_mode=MatrixRunnerMode.REAL,
         include_openclaw=False,
         max_conversations=1,
+        max_queries=3,
         agent_executable=fake_executable,
         agent_timeout_s=30.0,
     )
     assert summary["report_type"] == "real_cli_comparison"
     assert summary["runner_mode"] == "real"
+    assert summary.get("test_double_mode") is True
     assert "real_results" in summary
     assert "mock_results" not in summary
     assert summary["completed_run_count"] == 6
@@ -219,6 +222,80 @@ def test_locomo_matrix_real_mode_marks_mem0_cells_unsupported() -> None:
     non_openclaw = [plan for plan in mem0_plans if plan.agent is not AgentKind.OPENCLAW]
     assert all(plan.status == "unsupported" for plan in non_openclaw)
     assert all(not plan.run for plan in non_openclaw)
+
+
+def test_max_queries_limits_fixture_queries() -> None:
+    fixture = load_locomo_fixture(
+        "locomo10-sample",
+        "2024-03-sample",
+        max_conversations=1,
+        max_queries=7,
+    )
+    assert len(fixture.queries) == 7
+
+
+def test_max_queries_affects_run_id() -> None:
+    base = derive_run_id(
+        family=BenchmarkFamily.LOCOMO,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.HM_ARCH,
+        seed=0,
+        top_k=5,
+        dataset_id="locomo10",
+        dataset_version="2024-03",
+    )
+    limited = derive_run_id(
+        family=BenchmarkFamily.LOCOMO,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.HM_ARCH,
+        seed=0,
+        top_k=5,
+        dataset_id="locomo10",
+        dataset_version="2024-03",
+        max_queries=5,
+    )
+    assert base != limited
+
+
+def test_locomo_handoff_summary_structure() -> None:
+    handoff_dir = (
+        REPO_ROOT
+        / "benchmarks"
+        / "cross_agent"
+        / "fixtures"
+        / "locomo"
+        / "handoff"
+    )
+    summary_path = handoff_dir / "matrix_summary_real.json"
+    if not summary_path.is_file():
+        pytest.skip("handoff artifacts not generated in this checkout")
+
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert summary["report_type"] == "real_cli_comparison"
+    assert summary.get("test_double_mode") is False
+    assert "real_results" in summary
+    assert summary["dataset"]["sha256"]
+    assert summary["provenance"]["exact_command"]
+
+    real_cells = summary["real_results"]
+    assert len(real_cells) == 6
+    agents = {cell["agent"] for cell in real_cells}
+    backends = {cell["backend"] for cell in real_cells}
+    assert agents == {"hermes", "claude_code", "codex"}
+    assert backends == {"no_memory", "hm_arch"}
+
+    for cell in real_cells:
+        assert cell["runner_mode"] == "real"
+        invocations_path = Path(cell["invocations_jsonl_path"])
+        assert invocations_path.is_file()
+        first_line = invocations_path.read_text(encoding="utf-8").splitlines()[0]
+        invocation = json.loads(first_line)
+        assert invocation["exact_command"]
+        assert "fake_agent_cli" not in invocation["exact_command"]
+        provenance = cell.get("runtime_provenance", {})
+        cli = provenance.get("agent_cli", {})
+        assert cli.get("executable")
+        assert "fake_agent_cli" not in str(cli.get("executable", ""))
 
 
 def test_category_aggregation_groups_by_locomo_category(tmp_path: Path) -> None:

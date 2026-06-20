@@ -67,6 +67,8 @@ cover/
 
 # Cross-agent benchmark run artifacts
 benchmark-results/
+!benchmarks/cross_agent/fixtures/locomo/handoff/
+!benchmarks/cross_agent/fixtures/locomo/handoff/**
 
 # Translations
 *.mo

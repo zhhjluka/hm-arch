@@ -67,6 +67,40 @@ LOCOMO_AGENTS: tuple[AgentKind, ...] = (
     AgentKind.CODEX,
 )
 
+# Tracked handoff directory for committed real-CLI comparison artifacts.
+LOCOMO_HANDOFF_DIR = (
+    Path(__file__).resolve().parent / "fixtures" / "locomo" / "handoff"
+)
+
+
+def _is_test_double_executable(executable: str | None) -> bool:
+    if not executable:
+        return False
+    path = Path(executable)
+    if "fake_agent_cli" in path.name or "fake-agent" in path.name:
+        return True
+    if path.is_file():
+        try:
+            content = path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            return False
+        return "fake_agent_cli" in content
+    return False
+
+
+def _resolve_cell_executable(
+    agent: AgentKind,
+    *,
+    agent_executable: str | None,
+    agent_executables: dict[str, str] | None,
+) -> str | None:
+    """Resolve per-agent executable override for a matrix cell."""
+    if agent_executables:
+        override = agent_executables.get(agent.value)
+        if override:
+            return override
+    return agent_executable
+
 
 @dataclass(frozen=True)
 class MatrixCellPlan:
@@ -191,6 +225,7 @@ def build_locomo_run_config(
     max_conversations: int | None,
     agent_executable: str | None = None,
     agent_timeout_s: float = 120.0,
+    max_queries: int | None = None,
 ) -> BenchmarkRunConfig:
     return BenchmarkRunConfig(
         family=BenchmarkFamily.LOCOMO,
@@ -205,6 +240,7 @@ def build_locomo_run_config(
         dataset_id=dataset_id,
         dataset_version=dataset_version,
         max_conversations=max_conversations,
+        max_queries=max_queries,
     )
 
 
@@ -220,6 +256,8 @@ def build_matrix_command(
     include_openclaw: bool,
     agent_executable: str | None,
     agent_timeout_s: float,
+    max_queries: int | None = None,
+    agent_executables: dict[str, str] | None = None,
 ) -> str:
     """Return a reproducible shell command for this matrix invocation."""
     argv = [
@@ -240,10 +278,16 @@ def build_matrix_command(
         argv.extend(["--dataset-version", dataset_version])
     if max_conversations is not None:
         argv.extend(["--max-conversations", str(max_conversations)])
+    if max_queries is not None:
+        argv.extend(["--max-queries", str(max_queries)])
     if include_openclaw:
         argv.append("--include-openclaw")
     if agent_executable:
         argv.extend(["--agent-executable", agent_executable])
+    if agent_executables:
+        for agent_name, executable in sorted(agent_executables.items()):
+            flag = f"--{agent_name.replace('_', '-')}-executable"
+            argv.extend([flag, executable])
     if agent_timeout_s != 120.0:
         argv.extend(["--agent-timeout-s", str(agent_timeout_s)])
     return " ".join(shlex.quote(part) for part in argv)
@@ -303,7 +347,9 @@ def run_locomo_matrix(
     include_openclaw: bool = False,
     max_conversations: int | None = None,
     agent_executable: str | None = None,
+    agent_executables: dict[str, str] | None = None,
     agent_timeout_s: float = 120.0,
+    max_queries: int | None = None,
 ) -> dict[str, Any]:
     """Execute or annotate every LoCoMo matrix cell."""
     manifest = get_dataset_manifest(dataset_id)
@@ -339,8 +385,13 @@ def run_locomo_matrix(
             top_k=top_k,
             runner_mode=runner_mode,
             max_conversations=max_conversations,
-            agent_executable=agent_executable,
+            agent_executable=_resolve_cell_executable(
+                plan.agent,
+                agent_executable=agent_executable,
+                agent_executables=agent_executables,
+            ),
             agent_timeout_s=agent_timeout_s,
+            max_queries=max_queries,
         )
         try:
             assert_supported(config.backend, config.agent)
@@ -372,6 +423,19 @@ def run_locomo_matrix(
         include_openclaw=include_openclaw,
         agent_executable=agent_executable,
         agent_timeout_s=agent_timeout_s,
+        max_queries=max_queries,
+        agent_executables=agent_executables,
+    )
+
+    test_double_mode = (
+        runner_mode is MatrixRunnerMode.REAL
+        and (
+            _is_test_double_executable(agent_executable)
+            or any(
+                _is_test_double_executable(path)
+                for path in (agent_executables or {}).values()
+            )
+        )
     )
 
     report_type = (
@@ -401,7 +465,9 @@ def run_locomo_matrix(
             "seed": seed,
             "top_k": top_k,
             "agent_executable": agent_executable,
+            "agent_executables": agent_executables,
             "agent_timeout_s": agent_timeout_s,
+            "max_queries": max_queries,
         },
         "cells": cells,
         "completed_run_count": len(completed_cells),
@@ -418,8 +484,28 @@ def run_locomo_matrix(
         )
     else:
         summary["real_results"] = completed_cells
-        summary["notes"] = (
-            "Real CLI results invoke production agent boundaries. Unsupported "
-            "cells are listed explicitly and were not executed."
-        )
+        if test_double_mode:
+            summary["notes"] = (
+                "WARNING: This report used a test-double executable "
+                "(fake_agent_cli). It is not a production cross-agent "
+                "comparison. Re-run without --agent-executable or with "
+                "per-agent production CLI paths."
+            )
+            summary["test_double_mode"] = True
+        else:
+            summary["notes"] = (
+                "Real CLI results invoke production agent boundaries. "
+                "Unsupported cells are listed explicitly and were not executed."
+            )
+            summary["test_double_mode"] = False
+        if completed_cells and all(
+            cell.get("mean_accuracy", 0) == 0.0
+            and cell.get("total_failure_count", 0) > 0
+            for cell in completed_cells
+        ):
+            summary["provider_auth_status"] = (
+                "All completed cells reported query failures. "
+                "Verify provider credentials (OPENAI_API_KEY, ANTHROPIC_API_KEY, "
+                "OPENROUTER_API_KEY, or agent login) before interpreting accuracy."
+            )
     return summary

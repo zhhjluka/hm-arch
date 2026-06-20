@@ -1,0 +1,7 @@
+{
+  "active_report": "matrix_summary_real.json",
+  "report_type": "real_cli_comparison",
+  "runner_mode": "real",
+  "path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/matrix_summary_real.json",
+  "test_double_mode": false
+}

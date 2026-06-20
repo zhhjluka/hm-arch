@@ -96,6 +96,7 @@ class BenchmarkRunConfig:
     dataset_id: str | None = None
     dataset_version: str | None = None
     max_conversations: int | None = None
+    max_queries: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -112,6 +113,7 @@ class BenchmarkRunConfig:
             "dataset_id": self.dataset_id,
             "dataset_version": self.dataset_version,
             "max_conversations": self.max_conversations,
+            "max_queries": self.max_queries,
         }
 
     @classmethod
@@ -130,6 +132,7 @@ class BenchmarkRunConfig:
             dataset_id=data.get("dataset_id"),
             dataset_version=data.get("dataset_version"),
             max_conversations=data.get("max_conversations"),
+            max_queries=data.get("max_queries"),
         )
 
 

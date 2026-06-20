@@ -8,12 +8,16 @@ Usage::
 
     # Real supported agent CLI runs (Hermes/Claude/Codex no_memory + hm_arch)
     uv run python scripts/run_locomo_matrix.py \\
-      --runner-mode real --dataset-id locomo10-sample --max-conversations 1
+      --runner-mode real --dataset-id locomo10-sample --max-conversations 1 \\
+      --max-queries 5
 
-    # With a test double executable for CI
+    # Production handoff with per-agent CLI paths
+    scripts/run_locomo_matrix_handoff.sh
+
+    # CI / offline real-path smoke only (test double — not comparison data)
     uv run python scripts/run_locomo_matrix.py \\
       --runner-mode real --agent-executable tests/fixtures/fake_agent_cli.py \\
-      --dataset-id locomo10-sample --max-conversations 1
+      --dataset-id locomo10-sample --max-conversations 1 --max-queries 3
 
 Offline tests::
 
@@ -32,6 +36,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from benchmarks.cross_agent.locomo_matrix import (  # noqa: E402
+    LOCOMO_HANDOFF_DIR,
     MatrixRunnerMode,
     run_locomo_matrix,
 )
@@ -48,6 +53,19 @@ def _parse_runner_mode(value: str) -> MatrixRunnerMode:
     )
 
 
+def _collect_agent_executables(args: argparse.Namespace) -> dict[str, str] | None:
+    mapping: dict[str, str] = {}
+    if args.codex_executable:
+        mapping["codex"] = args.codex_executable
+    if args.claude_code_executable:
+        mapping["claude_code"] = args.claude_code_executable
+    if args.hermes_executable:
+        mapping["hermes"] = args.hermes_executable
+    if args.openclaw_executable:
+        mapping["openclaw"] = args.openclaw_executable
+    return mapping or None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -55,6 +73,14 @@ def main() -> int:
         type=Path,
         default=Path("benchmark-results/locomo-matrix"),
         help="Directory for per-run artifacts and matrix summary JSON",
+    )
+    parser.add_argument(
+        "--handoff",
+        action="store_true",
+        help=(
+            "Write to the tracked handoff directory "
+            f"({LOCOMO_HANDOFF_DIR.relative_to(_ROOT)})"
+        ),
     )
     parser.add_argument(
         "--dataset-id",
@@ -75,6 +101,12 @@ def main() -> int:
         type=int,
         default=None,
         help="Limit conversations ingested from the dataset (default: all)",
+    )
+    parser.add_argument(
+        "--max-queries",
+        type=int,
+        default=None,
+        help="Limit QA queries per cell (useful for pilot real-CLI runs)",
     )
     parser.add_argument(
         "--include-openclaw",
@@ -99,6 +131,30 @@ def main() -> int:
         help="Override agent CLI executable for all real-mode cells",
     )
     parser.add_argument(
+        "--codex-executable",
+        type=str,
+        default=None,
+        help="Override Codex CLI executable (real mode)",
+    )
+    parser.add_argument(
+        "--claude-code-executable",
+        type=str,
+        default=None,
+        help="Override Claude Code CLI executable (real mode)",
+    )
+    parser.add_argument(
+        "--hermes-executable",
+        type=str,
+        default=None,
+        help="Override Hermes CLI executable (real mode)",
+    )
+    parser.add_argument(
+        "--openclaw-executable",
+        type=str,
+        default=None,
+        help="Override OpenClaw CLI executable (real mode)",
+    )
+    parser.add_argument(
         "--agent-timeout-s",
         type=float,
         default=120.0,
@@ -107,9 +163,10 @@ def main() -> int:
     args = parser.parse_args()
 
     runner_mode = MatrixRunnerMode.REAL if args.use_real_cli else args.runner_mode
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = LOCOMO_HANDOFF_DIR if args.handoff else args.output_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
     summary = run_locomo_matrix(
-        output_root=args.output_dir,
+        output_root=output_dir,
         dataset_id=args.dataset_id,
         dataset_version=args.dataset_version,
         seed=args.seed,
@@ -117,7 +174,9 @@ def main() -> int:
         runner_mode=runner_mode,
         include_openclaw=args.include_openclaw,
         max_conversations=args.max_conversations,
+        max_queries=args.max_queries,
         agent_executable=args.agent_executable,
+        agent_executables=_collect_agent_executables(args),
         agent_timeout_s=args.agent_timeout_s,
     )
     summary_name = (
@@ -125,18 +184,19 @@ def main() -> int:
         if runner_mode is MatrixRunnerMode.MOCK
         else "matrix_summary_real.json"
     )
-    summary_path = args.output_dir / summary_name
+    summary_path = output_dir / summary_name
     summary_path.write_text(
         json.dumps(summary, indent=2, default=str),
         encoding="utf-8",
     )
     # Keep a stable pointer for tooling that expects matrix_summary.json.
-    pointer_path = args.output_dir / "matrix_summary.json"
+    pointer_path = output_dir / "matrix_summary.json"
     pointer_payload = {
         "active_report": summary_name,
         "report_type": summary["report_type"],
         "runner_mode": summary["runner_mode"],
         "path": str(summary_path),
+        "test_double_mode": summary.get("test_double_mode"),
     }
     pointer_path.write_text(
         json.dumps(pointer_payload, indent=2, default=str),

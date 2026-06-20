@@ -14,5 +14,6 @@ def resolve_fixture(config: BenchmarkRunConfig) -> SyntheticFixture:
             config.dataset_id,
             config.dataset_version,
             max_conversations=config.max_conversations,
+            max_queries=config.max_queries,
         )
     return get_synthetic_fixture(config.family)
