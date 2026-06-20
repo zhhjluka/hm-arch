@@ -230,8 +230,10 @@ __marimo__/
 
 # Streamlit
 
-# Local workspace/editor state
-.DS_Store
+# Local benchmark provider state (regenerate via scripts/run_hotpotqa_matrix.py)
+benchmark-results/**/storage/*.db
+benchmark-results/**/storage/*.db-*
+
 .codex/
 .cursor/
 .streamlit/secrets.toml

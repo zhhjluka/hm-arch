@@ -1,0 +1,219 @@
+{
+  "run_id": "hotpotqa-claude_code-hm_arch-s0-k5-2ca4a109b01974a3",
+  "config": {
+    "family": "hotpotqa",
+    "agent": "claude_code",
+    "backend": "hm_arch",
+    "seed": 0,
+    "run_id": null,
+    "top_k": 5,
+    "resume": false,
+    "use_mock_agent": true,
+    "agent_executable": null,
+    "agent_timeout_s": 120.0
+  },
+  "storage_dir": "benchmark-results/hotpotqa-smoke/hotpotqa-claude_code-hm_arch-s0-k5-2ca4a109b01974a3/storage",
+  "phases_completed": [
+    "setup",
+    "ingest",
+    "consolidate",
+    "query",
+    "evaluate",
+    "teardown",
+    "checkpoint"
+  ],
+  "queries": [
+    {
+      "query_id": "hotpot-q1",
+      "family": "hotpotqa",
+      "question": "In which city was the inventor of the Orion Telescope honored?",
+      "expected_answer": "Zurich",
+      "prediction": "unknown",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": 0.3333333333333333,
+      "recall_time_ms": 27.650216987240128,
+      "agent_time_ms": 0.05111400969326496,
+      "query_time_ms": 27.714636002201587,
+      "input_tokens": 128,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [
+        "hotpot-doc-a"
+      ],
+      "expected_memory_ids": [
+        "hotpot-doc-a",
+        "hotpot-doc-b",
+        "hotpot-doc-c"
+      ],
+      "recall_context_chars": 858,
+      "recall_hit_count": 5,
+      "agent_managed": false
+    },
+    {
+      "query_id": "hotpot-q2",
+      "family": "hotpotqa",
+      "question": "In which country is the lab that developed the Helios Battery located?",
+      "expected_answer": "Norway",
+      "prediction": "Norway",
+      "accuracy": 1.0,
+      "task_success": null,
+      "retrieval_hit_rate": 1.0,
+      "recall_time_ms": 42.818319008802064,
+      "agent_time_ms": 0.028798996936529875,
+      "query_time_ms": 42.86185798991937,
+      "input_tokens": 114,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [
+        "hotpot-doc-d",
+        "hotpot-doc-e",
+        "hotpot-doc-l"
+      ],
+      "expected_memory_ids": [
+        "hotpot-doc-d",
+        "hotpot-doc-e"
+      ],
+      "recall_context_chars": 740,
+      "recall_hit_count": 5,
+      "agent_managed": false
+    },
+    {
+      "query_id": "hotpot-q3",
+      "family": "hotpotqa",
+      "question": "What annual event is hosted in the city where the Aurora Energy Lab is located?",
+      "expected_answer": "Northern Lights Summit",
+      "prediction": "unknown",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": 0.5,
+      "recall_time_ms": 45.178483007475734,
+      "agent_time_ms": 0.049291003961116076,
+      "query_time_ms": 45.24196700367611,
+      "input_tokens": 129,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [
+        "hotpot-doc-d",
+        "hotpot-doc-e"
+      ],
+      "expected_memory_ids": [
+        "hotpot-doc-e",
+        "hotpot-doc-f"
+      ],
+      "recall_context_chars": 837,
+      "recall_hit_count": 5,
+      "agent_managed": false
+    },
+    {
+      "query_id": "hotpot-q4",
+      "family": "hotpotqa",
+      "question": "What is the capital of the country where Elias Venn was born?",
+      "expected_answer": "Lisbon",
+      "prediction": "Lisbon",
+      "accuracy": 1.0,
+      "task_success": null,
+      "retrieval_hit_rate": 0.3333333333333333,
+      "recall_time_ms": 36.20161100116093,
+      "agent_time_ms": 0.02937499084509909,
+      "query_time_ms": 36.24473100353498,
+      "input_tokens": 109,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [
+        "hotpot-doc-i"
+      ],
+      "expected_memory_ids": [
+        "hotpot-doc-g",
+        "hotpot-doc-h",
+        "hotpot-doc-i"
+      ],
+      "recall_context_chars": 712,
+      "recall_hit_count": 5,
+      "agent_managed": false
+    },
+    {
+      "query_id": "hotpot-q5",
+      "family": "hotpotqa",
+      "question": "In which Canadian city is the institute where Mira Solis studied located?",
+      "expected_answer": "Vancouver",
+      "prediction": "Vancouver",
+      "accuracy": 1.0,
+      "task_success": null,
+      "retrieval_hit_rate": 0.3333333333333333,
+      "recall_time_ms": 40.43940900010057,
+      "agent_time_ms": 0.02845999551936984,
+      "query_time_ms": 40.48077599145472,
+      "input_tokens": 112,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [
+        "hotpot-doc-k"
+      ],
+      "expected_memory_ids": [
+        "hotpot-doc-j",
+        "hotpot-doc-k",
+        "hotpot-doc-l"
+      ],
+      "recall_context_chars": 744,
+      "recall_hit_count": 5,
+      "agent_managed": false
+    }
+  ],
+  "aggregates": {
+    "query_count": 5,
+    "completed_query_count": 5,
+    "mean_accuracy": 0.6,
+    "task_success_rate": null,
+    "mean_retrieval_hit_rate": 0.5,
+    "mean_query_time_ms": 38.508793598157354,
+    "total_input_tokens": 592,
+    "total_output_tokens": 5,
+    "total_failure_count": 0
+  },
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
+    "timestamp_utc": "2026-06-20T06:32:11.412580+00:00"
+  },
+  "agent_metadata": {
+    "matrix_implementation": "real",
+    "matrix_rationale": "Install HM-Arch Claude Code hooks in isolated home; invoke claude CLI boundary.",
+    "support_rationale": "mock runner enabled for offline harness tests",
+    "supported": true,
+    "use_mock_agent": true,
+    "storage_dir": "benchmark-results/hotpotqa-smoke/hotpotqa-claude_code-hm_arch-s0-k5-2ca4a109b01974a3/storage"
+  },
+  "compatibility": {
+    "codex|no_memory": "real",
+    "codex|native_memory": "unsupported",
+    "codex|hm_arch": "real",
+    "codex|mem0": "unsupported",
+    "codex|openviking": "unsupported",
+    "claude_code|no_memory": "real",
+    "claude_code|native_memory": "unsupported",
+    "claude_code|hm_arch": "real",
+    "claude_code|mem0": "unsupported",
+    "claude_code|openviking": "unsupported",
+    "hermes|no_memory": "real",
+    "hermes|native_memory": "unsupported",
+    "hermes|hm_arch": "real",
+    "hermes|mem0": "unsupported",
+    "hermes|openviking": "unsupported",
+    "openclaw|no_memory": "real",
+    "openclaw|native_memory": "unsupported",
+    "openclaw|hm_arch": "real",
+    "openclaw|mem0": "unsupported",
+    "openclaw|openviking": "unsupported"
+  }
+}

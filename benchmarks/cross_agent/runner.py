@@ -207,6 +207,7 @@ class CrossAgentBenchmarkHarness:
                 try:
                     agent.open()
                     agent_opened = True
+                    agent_metadata.update(agent_context.metadata)
                     backend.open(storage_dir, config)
                     backend_opened = True
                 except NotImplementedError as exc:

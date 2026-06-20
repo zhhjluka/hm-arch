@@ -61,12 +61,6 @@ def _cell_status(agent: AgentKind, backend: MemoryBackendKind) -> tuple[CellStat
     if matrix_cell.implementation.value == "real":
         return CellStatus.RUN, matrix_cell.rationale
 
-    if matrix_cell.implementation.value == "mock_only":
-        return (
-            CellStatus.RUN,
-            f"{matrix_cell.rationale} Executing with mock agent for offline retrieval comparison.",
-        )
-
     return CellStatus.UNSUPPORTED, matrix_cell.rationale
 
 

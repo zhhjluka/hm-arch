@@ -104,6 +104,13 @@ class CliAgentRunner(ABC):
         else:
             raise NotImplementedError(self._unsupported_cli_message())
         self._resolved_executable = executable
+        self._context.metadata.update(
+            {
+                "executable": executable,
+                "cli_mode": self._cli_mode,
+                "runner_kind": self.kind,
+            }
+        )
         self._opened = True
 
     def close(self) -> None:

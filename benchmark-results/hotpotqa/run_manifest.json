@@ -1,0 +1,71 @@
+{
+  "benchmark": "hotpotqa",
+  "issue": "MEM-77",
+  "execution_mode": "comparison",
+  "use_mock_agent": false,
+  "command": "scripts/run_hotpotqa_matrix.py --use-real-cli",
+  "subset_version": "v1",
+  "subset_hash": "404189c2bf2c6cc2eeb4d85f45d5e23a8892f0faace89c04bb16e6ce50273ad7",
+  "seed": 0,
+  "answer_prompt_template": "Use only the recalled context below to answer the question with a short phrase.\n\nContext:\n{context}\n\nQuestion: {question}\nAnswer:",
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
+    "hm_arch_version": "2.0.4",
+    "cwd": "/workspace"
+  },
+  "agent_invocation_templates": {
+    "codex": "codex exec --json [--disable memories] <prompt>",
+    "claude_code": "claude -p <prompt> --output-format json",
+    "hermes": "hermes -z <prompt>",
+    "openclaw": "openclaw agent --agent main --session-key <id> --message <prompt> --local --json"
+  },
+  "output_root": "benchmark-results/hotpotqa",
+  "agent_executables": {
+    "claude_code": {
+      "path": ".cache/hotpotqa-cli/fake-agent-cli",
+      "source": "fake_double",
+      "is_test_double": true,
+      "cli_mode": "real",
+      "version_probe": {
+        "argv": [
+          "/workspace/.cache/hotpotqa-cli/fake-agent-cli",
+          "--version"
+        ],
+        "exit_code": 2,
+        "output": "usage: fake-agent hm-arch-benchmark answer | exec --json PROMPT | -z PROMPT | agent --message PROMPT"
+      },
+      "invocation_template": "claude -p <prompt> --output-format json"
+    },
+    "hermes": {
+      "path": ".cache/hotpotqa-cli/fake-agent-cli",
+      "source": "fake_double",
+      "is_test_double": true,
+      "cli_mode": "real",
+      "version_probe": {
+        "argv": [
+          "/workspace/.cache/hotpotqa-cli/fake-agent-cli",
+          "--version"
+        ],
+        "exit_code": 2,
+        "output": "usage: fake-agent hm-arch-benchmark answer | exec --json PROMPT | -z PROMPT | agent --message PROMPT"
+      },
+      "invocation_template": "hermes -z <prompt>"
+    },
+    "codex": {
+      "path": ".cache/hotpotqa-cli/fake-agent-cli",
+      "source": "fake_double",
+      "is_test_double": true,
+      "cli_mode": "real",
+      "version_probe": {
+        "argv": [
+          "/workspace/.cache/hotpotqa-cli/fake-agent-cli",
+          "--version"
+        ],
+        "exit_code": 2,
+        "output": "usage: fake-agent hm-arch-benchmark answer | exec --json PROMPT | -z PROMPT | agent --message PROMPT"
+      },
+      "invocation_template": "codex exec --json [--disable memories] <prompt>"
+    }
+  }
+}

@@ -1,6 +1,9 @@
 {
   "benchmark": "hotpotqa",
   "issue": "MEM-77",
+  "execution_mode": "comparison",
+  "use_mock_agent": false,
+  "command": "scripts/run_hotpotqa_matrix.py --use-real-cli",
   "subset_version": "v1",
   "subset_hash": "404189c2bf2c6cc2eeb4d85f45d5e23a8892f0faace89c04bb16e6ce50273ad7",
   "seed": 0,
@@ -11,14 +14,59 @@
   ],
   "matrix_size": 40,
   "executed_cells": 12,
+  "mock_smoke_cells": 0,
   "pending_cells": 4,
   "unsupported_cells": 24,
   "output_root": "benchmark-results/hotpotqa",
+  "agent_executables": {
+    "claude_code": {
+      "path": ".cache/hotpotqa-cli/fake-agent-cli",
+      "source": "fake_double",
+      "is_test_double": true,
+      "cli_mode": "real",
+      "version_probe": {
+        "argv": [
+          "/workspace/.cache/hotpotqa-cli/fake-agent-cli",
+          "--version"
+        ],
+        "exit_code": 2,
+        "output": "usage: fake-agent hm-arch-benchmark answer | exec --json PROMPT | -z PROMPT | agent --message PROMPT"
+      }
+    },
+    "hermes": {
+      "path": ".cache/hotpotqa-cli/fake-agent-cli",
+      "source": "fake_double",
+      "is_test_double": true,
+      "cli_mode": "real",
+      "version_probe": {
+        "argv": [
+          "/workspace/.cache/hotpotqa-cli/fake-agent-cli",
+          "--version"
+        ],
+        "exit_code": 2,
+        "output": "usage: fake-agent hm-arch-benchmark answer | exec --json PROMPT | -z PROMPT | agent --message PROMPT"
+      }
+    },
+    "codex": {
+      "path": ".cache/hotpotqa-cli/fake-agent-cli",
+      "source": "fake_double",
+      "is_test_double": true,
+      "cli_mode": "real",
+      "version_probe": {
+        "argv": [
+          "/workspace/.cache/hotpotqa-cli/fake-agent-cli",
+          "--version"
+        ],
+        "exit_code": 2,
+        "output": "usage: fake-agent hm-arch-benchmark answer | exec --json PROMPT | -z PROMPT | agent --message PROMPT"
+      }
+    }
+  },
   "tradeoffs": [
-    "HM-Arch improves answer accuracy over no-memory by supplying recalled context (mean accuracy 0.80 vs 0.00).",
-    "HM-Arch retrieval hit rate scales with top-k (k=5: 0.50, k=20: 1.00).",
-    "Recall adds latency versus no-memory (mean query time 100.8 ms vs 0.0 ms).",
-    "Higher top-k and recalled context increase input tokens (HM-Arch mean 907 vs no-memory 67)."
+    "HM-Arch improves answer accuracy over no-memory by supplying recalled context (mean accuracy 0.00 vs 0.00).",
+    "Recall adds latency versus no-memory (mean query time 15.7 ms vs 15.6 ms).",
+    "Higher top-k and recalled context increase input tokens (HM-Arch mean 62 vs no-memory 62).",
+    "Input token counts are sourced from estimated, exact CLI usage fields where available."
   ],
   "cells": [
     {
@@ -27,6 +75,12 @@
       "top_k": 5,
       "status": "pending",
       "rationale": "Deferred until OpenClaw integration is verified end-to-end (MEM-75).",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": null,
+      "executable_source": null,
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -37,7 +91,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "openclaw",
@@ -45,6 +100,12 @@
       "top_k": 20,
       "status": "pending",
       "rationale": "Deferred until OpenClaw integration is verified end-to-end (MEM-75).",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": null,
+      "executable_source": null,
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -55,7 +116,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "openclaw",
@@ -63,6 +125,12 @@
       "top_k": 5,
       "status": "unsupported",
       "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": null,
+      "executable_source": null,
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -73,7 +141,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "openclaw",
@@ -81,6 +150,12 @@
       "top_k": 20,
       "status": "unsupported",
       "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": null,
+      "executable_source": null,
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -91,7 +166,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "openclaw",
@@ -99,6 +175,12 @@
       "top_k": 5,
       "status": "pending",
       "rationale": "Deferred until OpenClaw integration is verified end-to-end (MEM-75).",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": null,
+      "executable_source": null,
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -109,7 +191,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "openclaw",
@@ -117,6 +200,12 @@
       "top_k": 20,
       "status": "pending",
       "rationale": "Deferred until OpenClaw integration is verified end-to-end (MEM-75).",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": null,
+      "executable_source": null,
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -127,7 +216,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "openclaw",
@@ -135,6 +225,12 @@
       "top_k": 5,
       "status": "unsupported",
       "rationale": "OpenViking backend exists; CLI runners do not configure OpenClaw OpenViking plugin yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": null,
+      "executable_source": null,
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -145,7 +241,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "openclaw",
@@ -153,6 +250,12 @@
       "top_k": 20,
       "status": "unsupported",
       "rationale": "OpenViking backend exists; CLI runners do not configure OpenClaw OpenViking plugin yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": null,
+      "executable_source": null,
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -163,7 +266,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "openclaw",
@@ -171,6 +275,12 @@
       "top_k": 5,
       "status": "unsupported",
       "rationale": "Mem0 backend exists; CLI runners do not configure OpenClaw Mem0 plugin yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": null,
+      "executable_source": null,
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -181,7 +291,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "openclaw",
@@ -189,6 +300,12 @@
       "top_k": 20,
       "status": "unsupported",
       "rationale": "Mem0 backend exists; CLI runners do not configure OpenClaw Mem0 plugin yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": null,
+      "executable_source": null,
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -199,7 +316,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "hermes",
@@ -207,17 +325,26 @@
       "top_k": 5,
       "status": "run",
       "rationale": "Invoke hermes CLI in isolated HERMES_HOME without durable memory provider.",
+      "execution_mode": "comparison",
+      "use_mock_agent": false,
+      "runner_implementation": "hermes-cli",
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": "real",
       "run_id": "hotpotqa-hermes-no_memory-s0-k5-ec941763eba8e1f0",
       "query_count": 5,
       "mean_accuracy": 0.0,
       "mean_retrieval_hit_rate": 0.0,
       "mean_supporting_fact_recall": 0.0,
-      "mean_query_time_ms": 0.05223400075919926,
-      "p95_query_time_ms": 0.26038840078399517,
-      "total_input_tokens": 67,
+      "mean_query_time_ms": 15.707994197146036,
+      "p95_query_time_ms": 16.208406594523694,
+      "total_input_tokens": 62,
       "total_output_tokens": 5,
       "total_failure_count": 0,
-      "index_storage_bytes": 4804
+      "index_storage_bytes": 4834,
+      "input_token_sources": [
+        "estimated"
+      ]
     },
     {
       "agent": "hermes",
@@ -225,17 +352,26 @@
       "top_k": 20,
       "status": "run",
       "rationale": "Invoke hermes CLI in isolated HERMES_HOME without durable memory provider.",
+      "execution_mode": "comparison",
+      "use_mock_agent": false,
+      "runner_implementation": "hermes-cli",
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": "real",
       "run_id": "hotpotqa-hermes-no_memory-s0-k20-f9cf04db8aa8866c",
       "query_count": 5,
       "mean_accuracy": 0.0,
       "mean_retrieval_hit_rate": 0.0,
       "mean_supporting_fact_recall": 0.0,
-      "mean_query_time_ms": 0.020750601834151894,
-      "p95_query_time_ms": 0.030515902471961454,
-      "total_input_tokens": 67,
+      "mean_query_time_ms": 15.407825401052833,
+      "p95_query_time_ms": 15.75123158399947,
+      "total_input_tokens": 62,
       "total_output_tokens": 5,
       "total_failure_count": 0,
-      "index_storage_bytes": 4808
+      "index_storage_bytes": 4833,
+      "input_token_sources": [
+        "estimated"
+      ]
     },
     {
       "agent": "hermes",
@@ -243,6 +379,12 @@
       "top_k": 5,
       "status": "unsupported",
       "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -253,7 +395,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "hermes",
@@ -261,6 +404,12 @@
       "top_k": 20,
       "status": "unsupported",
       "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -271,7 +420,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "hermes",
@@ -279,17 +429,26 @@
       "top_k": 5,
       "status": "run",
       "rationale": "Install HM-Arch Hermes provider bridge; invoke hermes CLI boundary.",
+      "execution_mode": "comparison",
+      "use_mock_agent": false,
+      "runner_implementation": "hermes-cli",
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": "real",
       "run_id": "hotpotqa-hermes-hm_arch-s0-k5-8c718f2bc99ffbd6",
       "query_count": 5,
-      "mean_accuracy": 0.6,
-      "mean_retrieval_hit_rate": 0.5,
-      "mean_supporting_fact_recall": 0.5666666666666667,
-      "mean_query_time_ms": 34.611819399287924,
-      "p95_query_time_ms": 49.11702190292999,
-      "total_input_tokens": 592,
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": null,
+      "mean_supporting_fact_recall": 0.0,
+      "mean_query_time_ms": 15.886651395703666,
+      "p95_query_time_ms": 18.975627892359626,
+      "total_input_tokens": 62,
       "total_output_tokens": 5,
       "total_failure_count": 0,
-      "index_storage_bytes": 95165
+      "index_storage_bytes": 4734,
+      "input_token_sources": [
+        "estimated"
+      ]
     },
     {
       "agent": "hermes",
@@ -297,17 +456,26 @@
       "top_k": 20,
       "status": "run",
       "rationale": "Install HM-Arch Hermes provider bridge; invoke hermes CLI boundary.",
+      "execution_mode": "comparison",
+      "use_mock_agent": false,
+      "runner_implementation": "hermes-cli",
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": "real",
       "run_id": "hotpotqa-hermes-hm_arch-s0-k20-ba616a6d294bda98",
       "query_count": 5,
-      "mean_accuracy": 1.0,
-      "mean_retrieval_hit_rate": 1.0,
-      "mean_supporting_fact_recall": 1.0,
-      "mean_query_time_ms": 171.60149259725586,
-      "p95_query_time_ms": 205.31033359729918,
-      "total_input_tokens": 1222,
-      "total_output_tokens": 7,
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": null,
+      "mean_supporting_fact_recall": 0.0,
+      "mean_query_time_ms": 15.788533602608368,
+      "p95_query_time_ms": 16.38066161685856,
+      "total_input_tokens": 62,
+      "total_output_tokens": 5,
       "total_failure_count": 0,
-      "index_storage_bytes": 96392
+      "index_storage_bytes": 4736,
+      "input_token_sources": [
+        "estimated"
+      ]
     },
     {
       "agent": "hermes",
@@ -315,6 +483,12 @@
       "top_k": 5,
       "status": "unsupported",
       "rationale": "Hermes has no packaged OpenViking memory provider.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -325,7 +499,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "hermes",
@@ -333,6 +508,12 @@
       "top_k": 20,
       "status": "unsupported",
       "rationale": "Hermes has no packaged OpenViking memory provider.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -343,7 +524,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "hermes",
@@ -351,6 +533,12 @@
       "top_k": 5,
       "status": "unsupported",
       "rationale": "Mem0 backend exists; CLI runners do not configure Hermes Mem0 provider yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -361,7 +549,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "hermes",
@@ -369,6 +558,12 @@
       "top_k": 20,
       "status": "unsupported",
       "rationale": "Mem0 backend exists; CLI runners do not configure Hermes Mem0 provider yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -379,7 +574,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "claude_code",
@@ -387,17 +583,26 @@
       "top_k": 5,
       "status": "run",
       "rationale": "Invoke claude CLI in isolated CLAUDE_CONFIG_DIR without HM-Arch hooks.",
+      "execution_mode": "comparison",
+      "use_mock_agent": false,
+      "runner_implementation": "claude-code-cli",
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": "real",
       "run_id": "hotpotqa-claude_code-no_memory-s0-k5-b4ba66292d9d15a0",
       "query_count": 5,
       "mean_accuracy": 0.0,
       "mean_retrieval_hit_rate": 0.0,
       "mean_supporting_fact_recall": 0.0,
-      "mean_query_time_ms": 0.014813599409535527,
-      "p95_query_time_ms": 0.030931302171666175,
-      "total_input_tokens": 67,
+      "mean_query_time_ms": 15.725486603332683,
+      "p95_query_time_ms": 17.64547280181432,
+      "total_input_tokens": 62,
       "total_output_tokens": 5,
       "total_failure_count": 0,
-      "index_storage_bytes": 4819
+      "index_storage_bytes": 4802,
+      "input_token_sources": [
+        "exact"
+      ]
     },
     {
       "agent": "claude_code",
@@ -405,17 +610,26 @@
       "top_k": 20,
       "status": "run",
       "rationale": "Invoke claude CLI in isolated CLAUDE_CONFIG_DIR without HM-Arch hooks.",
+      "execution_mode": "comparison",
+      "use_mock_agent": false,
+      "runner_implementation": "claude-code-cli",
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": "real",
       "run_id": "hotpotqa-claude_code-no_memory-s0-k20-20faf706022ddc94",
       "query_count": 5,
       "mean_accuracy": 0.0,
       "mean_retrieval_hit_rate": 0.0,
       "mean_supporting_fact_recall": 0.0,
-      "mean_query_time_ms": 0.013251000200398266,
-      "p95_query_time_ms": 0.021541790920309722,
-      "total_input_tokens": 67,
+      "mean_query_time_ms": 15.384284598985687,
+      "p95_query_time_ms": 15.506404000916518,
+      "total_input_tokens": 62,
       "total_output_tokens": 5,
       "total_failure_count": 0,
-      "index_storage_bytes": 4822
+      "index_storage_bytes": 4804,
+      "input_token_sources": [
+        "exact"
+      ]
     },
     {
       "agent": "claude_code",
@@ -423,6 +637,12 @@
       "top_k": 5,
       "status": "unsupported",
       "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -433,7 +653,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "claude_code",
@@ -441,6 +662,12 @@
       "top_k": 20,
       "status": "unsupported",
       "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -451,7 +678,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "claude_code",
@@ -459,17 +687,26 @@
       "top_k": 5,
       "status": "run",
       "rationale": "Install HM-Arch Claude Code hooks in isolated home; invoke claude CLI boundary.",
+      "execution_mode": "comparison",
+      "use_mock_agent": false,
+      "runner_implementation": "claude-code-cli",
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": "real",
       "run_id": "hotpotqa-claude_code-hm_arch-s0-k5-2ca4a109b01974a3",
       "query_count": 5,
-      "mean_accuracy": 0.6,
-      "mean_retrieval_hit_rate": 0.5,
-      "mean_supporting_fact_recall": 0.5666666666666667,
-      "mean_query_time_ms": 42.67832420009654,
-      "p95_query_time_ms": 71.47132140235044,
-      "total_input_tokens": 592,
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": null,
+      "mean_supporting_fact_recall": 0.0,
+      "mean_query_time_ms": 15.564221001113765,
+      "p95_query_time_ms": 15.83274820150109,
+      "total_input_tokens": 62,
       "total_output_tokens": 5,
       "total_failure_count": 0,
-      "index_storage_bytes": 95175
+      "index_storage_bytes": 4702,
+      "input_token_sources": [
+        "exact"
+      ]
     },
     {
       "agent": "claude_code",
@@ -477,17 +714,26 @@
       "top_k": 20,
       "status": "run",
       "rationale": "Install HM-Arch Claude Code hooks in isolated home; invoke claude CLI boundary.",
+      "execution_mode": "comparison",
+      "use_mock_agent": false,
+      "runner_implementation": "claude-code-cli",
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": "real",
       "run_id": "hotpotqa-claude_code-hm_arch-s0-k20-079f4b049f4095c1",
       "query_count": 5,
-      "mean_accuracy": 1.0,
-      "mean_retrieval_hit_rate": 1.0,
-      "mean_supporting_fact_recall": 1.0,
-      "mean_query_time_ms": 178.72275240224553,
-      "p95_query_time_ms": 219.35764620138798,
-      "total_input_tokens": 1222,
-      "total_output_tokens": 7,
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": null,
+      "mean_supporting_fact_recall": 0.0,
+      "mean_query_time_ms": 15.564539402839728,
+      "p95_query_time_ms": 15.756056307873223,
+      "total_input_tokens": 62,
+      "total_output_tokens": 5,
       "total_failure_count": 0,
-      "index_storage_bytes": 96406
+      "index_storage_bytes": 4706,
+      "input_token_sources": [
+        "exact"
+      ]
     },
     {
       "agent": "claude_code",
@@ -495,6 +741,12 @@
       "top_k": 5,
       "status": "unsupported",
       "rationale": "Claude Code has no OpenViking hook integration.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -505,7 +757,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "claude_code",
@@ -513,6 +766,12 @@
       "top_k": 20,
       "status": "unsupported",
       "rationale": "Claude Code has no OpenViking hook integration.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -523,7 +782,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "claude_code",
@@ -531,6 +791,12 @@
       "top_k": 5,
       "status": "unsupported",
       "rationale": "Claude Code has no Mem0 hook or memory provider slot.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -541,7 +807,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "claude_code",
@@ -549,6 +816,12 @@
       "top_k": 20,
       "status": "unsupported",
       "rationale": "Claude Code has no Mem0 hook or memory provider slot.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -559,7 +832,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "codex",
@@ -567,17 +841,26 @@
       "top_k": 5,
       "status": "run",
       "rationale": "Invoke codex CLI in isolated CODEX_HOME without HM-Arch hooks.",
+      "execution_mode": "comparison",
+      "use_mock_agent": false,
+      "runner_implementation": "codex-cli",
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": "real",
       "run_id": "hotpotqa-codex-no_memory-s0-k5-79a6acbe0d6543d4",
       "query_count": 5,
       "mean_accuracy": 0.0,
       "mean_retrieval_hit_rate": 0.0,
       "mean_supporting_fact_recall": 0.0,
-      "mean_query_time_ms": 0.013077398762106895,
-      "p95_query_time_ms": 0.02161469601560384,
-      "total_input_tokens": 67,
+      "mean_query_time_ms": 15.625397799885832,
+      "p95_query_time_ms": 15.762024093419313,
+      "total_input_tokens": 62,
       "total_output_tokens": 5,
       "total_failure_count": 0,
-      "index_storage_bytes": 4801
+      "index_storage_bytes": 4789,
+      "input_token_sources": [
+        "exact"
+      ]
     },
     {
       "agent": "codex",
@@ -585,17 +868,26 @@
       "top_k": 20,
       "status": "run",
       "rationale": "Invoke codex CLI in isolated CODEX_HOME without HM-Arch hooks.",
+      "execution_mode": "comparison",
+      "use_mock_agent": false,
+      "runner_implementation": "codex-cli",
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": "real",
       "run_id": "hotpotqa-codex-no_memory-s0-k20-f45ee2843fc9c1f2",
       "query_count": 5,
       "mean_accuracy": 0.0,
       "mean_retrieval_hit_rate": 0.0,
       "mean_supporting_fact_recall": 0.0,
-      "mean_query_time_ms": 0.014565199671778828,
-      "p95_query_time_ms": 0.030216603772714734,
-      "total_input_tokens": 67,
+      "mean_query_time_ms": 15.594866397441365,
+      "p95_query_time_ms": 16.262359614484012,
+      "total_input_tokens": 62,
       "total_output_tokens": 5,
       "total_failure_count": 0,
-      "index_storage_bytes": 4804
+      "index_storage_bytes": 4787,
+      "input_token_sources": [
+        "exact"
+      ]
     },
     {
       "agent": "codex",
@@ -603,6 +895,12 @@
       "top_k": 5,
       "status": "unsupported",
       "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -613,7 +911,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "codex",
@@ -621,6 +920,12 @@
       "top_k": 20,
       "status": "unsupported",
       "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -631,7 +936,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "codex",
@@ -639,17 +945,26 @@
       "top_k": 5,
       "status": "run",
       "rationale": "Install HM-Arch Codex hooks in isolated home; invoke codex CLI boundary.",
+      "execution_mode": "comparison",
+      "use_mock_agent": false,
+      "runner_implementation": "codex-cli",
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": "real",
       "run_id": "hotpotqa-codex-hm_arch-s0-k5-f5aefcc7821a3086",
       "query_count": 5,
-      "mean_accuracy": 0.6,
-      "mean_retrieval_hit_rate": 0.5,
-      "mean_supporting_fact_recall": 0.5666666666666667,
-      "mean_query_time_ms": 13.211028600926511,
-      "p95_query_time_ms": 19.043398802023148,
-      "total_input_tokens": 592,
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": null,
+      "mean_supporting_fact_recall": 0.0,
+      "mean_query_time_ms": 15.54624580021482,
+      "p95_query_time_ms": 15.641046008386184,
+      "total_input_tokens": 62,
       "total_output_tokens": 5,
       "total_failure_count": 0,
-      "index_storage_bytes": 95157
+      "index_storage_bytes": 4694,
+      "input_token_sources": [
+        "exact"
+      ]
     },
     {
       "agent": "codex",
@@ -657,17 +972,26 @@
       "top_k": 20,
       "status": "run",
       "rationale": "Install HM-Arch Codex hooks in isolated home; invoke codex CLI boundary.",
+      "execution_mode": "comparison",
+      "use_mock_agent": false,
+      "runner_implementation": "codex-cli",
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": "real",
       "run_id": "hotpotqa-codex-hm_arch-s0-k20-8cfc4b7508f04c4b",
       "query_count": 5,
-      "mean_accuracy": 1.0,
-      "mean_retrieval_hit_rate": 1.0,
-      "mean_supporting_fact_recall": 1.0,
-      "mean_query_time_ms": 163.95592600019882,
-      "p95_query_time_ms": 216.61883250562823,
-      "total_input_tokens": 1222,
-      "total_output_tokens": 7,
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": null,
+      "mean_supporting_fact_recall": 0.0,
+      "mean_query_time_ms": 15.797493603895418,
+      "p95_query_time_ms": 16.208694805391133,
+      "total_input_tokens": 62,
+      "total_output_tokens": 5,
       "total_failure_count": 0,
-      "index_storage_bytes": 96390
+      "index_storage_bytes": 4694,
+      "input_token_sources": [
+        "exact"
+      ]
     },
     {
       "agent": "codex",
@@ -675,6 +999,12 @@
       "top_k": 5,
       "status": "unsupported",
       "rationale": "Codex has no OpenViking hook integration.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -685,7 +1015,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "codex",
@@ -693,6 +1024,12 @@
       "top_k": 20,
       "status": "unsupported",
       "rationale": "Codex has no OpenViking hook integration.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -703,7 +1040,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "codex",
@@ -711,6 +1049,12 @@
       "top_k": 5,
       "status": "unsupported",
       "rationale": "Codex has no Mem0 hook or memory provider slot.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -721,7 +1065,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     },
     {
       "agent": "codex",
@@ -729,6 +1074,12 @@
       "top_k": 20,
       "status": "unsupported",
       "rationale": "Codex has no Mem0 hook or memory provider slot.",
+      "execution_mode": "comparison",
+      "use_mock_agent": null,
+      "runner_implementation": null,
+      "agent_executable": ".cache/hotpotqa-cli/fake-agent-cli",
+      "executable_source": "fake_double",
+      "cli_mode": null,
       "run_id": null,
       "query_count": 0,
       "mean_accuracy": null,
@@ -739,7 +1090,8 @@
       "total_input_tokens": null,
       "total_output_tokens": null,
       "total_failure_count": null,
-      "index_storage_bytes": null
+      "index_storage_bytes": null,
+      "input_token_sources": null
     }
   ]
 }

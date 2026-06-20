@@ -3,7 +3,12 @@
 
 Usage::
 
-    uv run python scripts/run_hotpotqa_matrix.py
+    # Production comparison matrix (real CLI boundary; falls back to fake_agent_cli double)
+    uv run python scripts/run_hotpotqa_matrix.py --use-real-cli
+
+    # Offline mock-synthetic smoke (harness lifecycle only; separate output dir)
+    uv run python scripts/run_hotpotqa_matrix.py --mock-smoke
+
     uv run python scripts/run_hotpotqa_matrix.py --output-dir benchmark-results/hotpotqa
 """
 
@@ -35,21 +40,42 @@ def main() -> int:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("benchmark-results/hotpotqa"),
+        default=None,
         help="Directory for per-run artifacts and matrix_summary.json",
     )
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--use-real-cli",
         action="store_true",
-        help="Invoke production agent CLIs instead of the offline mock runner",
+        help="Invoke production agent CLIs (default when neither mode flag is set)",
+    )
+    mode.add_argument(
+        "--mock-smoke",
+        action="store_true",
+        help="Run offline mock-synthetic smoke into benchmark-results/hotpotqa-smoke",
     )
     parser.add_argument(
         "--include-openclaw",
         action="store_true",
         help="Attempt OpenClaw cells (default: mark as pending per MEM-75)",
     )
+    parser.add_argument(
+        "--agent-executable",
+        type=str,
+        default=None,
+        help="Override agent CLI executable for all agents (tests/CI)",
+    )
     args = parser.parse_args()
+
+    use_mock_agent = args.mock_smoke
+    execution_mode = "mock_smoke" if use_mock_agent else "comparison"
+    output_dir = args.output_dir or (
+        Path("benchmark-results/hotpotqa-smoke")
+        if use_mock_agent
+        else Path("benchmark-results/hotpotqa")
+    )
+    command = " ".join(sys.argv)
 
     config = load_hotpotqa_config()
     print(
@@ -62,16 +88,22 @@ def main() -> int:
                 "document_count": config["document_count"],
                 "matrix_cells": len(list(iter_hotpotqa_matrix_cells())),
                 "runnable_non_openclaw_cells": expected_runnable_cell_count(),
+                "execution_mode": execution_mode,
+                "use_mock_agent": use_mock_agent,
+                "output_dir": str(output_dir),
             },
             indent=2,
         )
     )
 
     summary = run_hotpotqa_matrix(
-        output_root=args.output_dir,
+        output_root=output_dir,
         seed=args.seed,
-        use_mock_agent=not args.use_real_cli,
+        use_mock_agent=use_mock_agent,
         include_openclaw=args.include_openclaw,
+        agent_executable=args.agent_executable,
+        execution_mode=execution_mode,
+        command=command,
     )
     print(json.dumps(summary, indent=2, default=str))
     return 0

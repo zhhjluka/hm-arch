@@ -1,0 +1,24 @@
+{
+  "benchmark": "hotpotqa",
+  "issue": "MEM-77",
+  "execution_mode": "mock_smoke",
+  "use_mock_agent": true,
+  "command": "scripts/run_hotpotqa_matrix.py --mock-smoke",
+  "subset_version": "v1",
+  "subset_hash": "404189c2bf2c6cc2eeb4d85f45d5e23a8892f0faace89c04bb16e6ce50273ad7",
+  "seed": 0,
+  "answer_prompt_template": "Use only the recalled context below to answer the question with a short phrase.\n\nContext:\n{context}\n\nQuestion: {question}\nAnswer:",
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
+    "hm_arch_version": "2.0.4",
+    "cwd": "/workspace"
+  },
+  "agent_invocation_templates": {
+    "codex": "codex exec --json [--disable memories] <prompt>",
+    "claude_code": "claude -p <prompt> --output-format json",
+    "hermes": "hermes -z <prompt>",
+    "openclaw": "openclaw agent --agent main --session-key <id> --message <prompt> --local --json"
+  },
+  "output_root": "benchmark-results/hotpotqa-smoke"
+}
