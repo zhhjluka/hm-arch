@@ -366,10 +366,39 @@ def test_production_cli_status_rejects_fake_agent_cli() -> None:
 def test_production_cli_status_ignores_bench_env_override(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("HM_ARCH_BENCH_CODEX_EXECUTABLE", _fake_agent_cli_executable())
+    fake = _fake_agent_cli_executable()
+    production_codex = "/usr/local/bin/codex"
+    monkeypatch.setenv("HM_ARCH_BENCH_CODEX_EXECUTABLE", fake)
+
+    def _resolve_production_only(agent, *, override=None, default_names=(), production_only=False):
+        if production_only and override is None:
+            return production_codex
+        if override:
+            return override
+        return fake
+
+    from benchmarks.cross_agent.agents.cli_runner import CodexCliAgentRunner
+
+    monkeypatch.setattr(
+        "benchmarks.cross_agent.tau2.agent_cli.resolve_agent_executable",
+        _resolve_production_only,
+    )
+
+    captured: dict[str, str | None] = {}
+
+    def _open_runner(self) -> None:
+        captured["context_executable"] = self._context.executable
+        self._cli_mode = "real"
+        self._resolved_executable = self._context.executable
+        self._opened = True
+
+    monkeypatch.setattr(CodexCliAgentRunner, "open", _open_runner)
+
     status, reason = production_cli_status(AgentKind.CODEX)
-    assert status in {"unavailable", "failed"}
-    assert "fake_agent_cli" not in reason
+    assert status == "ready"
+    assert captured["context_executable"] == production_codex
+    assert fake not in reason
+    assert production_codex in reason
 
 
 def test_production_cli_status_marks_benchmark_double_unavailable() -> None:

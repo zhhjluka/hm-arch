@@ -105,13 +105,13 @@ def production_cli_status(
         backend=MemoryBackendKind.NO_MEMORY,
         seed=0,
         use_mock_agent=False,
-        agent_executable=executable_override,
+        agent_executable=executable,
     )
     context = AgentRunnerContext(
         workspace=workspace,
         config=config,
         storage_dir=workspace.workspace / "storage",
-        executable=executable_override,
+        executable=executable,
     )
     runner = runner_cls(context)
     cli_mode: str | None = None
