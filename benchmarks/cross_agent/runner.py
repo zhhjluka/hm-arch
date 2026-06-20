@@ -32,6 +32,7 @@ from .metrics import (
     timing_aggregates,
 )
 from .output import (
+    append_invocation_jsonl,
     append_query_jsonl,
     default_output_paths,
     prepare_run_directory,
@@ -303,6 +304,15 @@ class CrossAgentBenchmarkHarness:
                     query_records.append(record)
                     completed_query_ids.append(query.query_id)
                     append_query_jsonl(paths["queries_jsonl"], record, run_id=run_id)
+                    last_invocation = getattr(agent, "last_invocation", None)
+                    if last_invocation is not None:
+                        append_invocation_jsonl(
+                            paths["invocations_jsonl"],
+                            run_id=run_id,
+                            query_id=query.query_id,
+                            invocation=last_invocation,
+                            metadata=record.agent_metadata or None,
+                        )
                     self._persist_checkpoint(
                         storage_dir,
                         run_id=run_id,
@@ -470,6 +480,11 @@ class CrossAgentBenchmarkHarness:
         )
         failure_count = recall.failure_count + agent_out.failure_count
         failure_fields = build_query_failure_provenance(recall=recall, agent_out=agent_out)
+        agent_meta = dict(agent_out.metadata)
+        if config.use_mock_agent:
+            agent_meta.setdefault("runner_mode", "mock_only")
+        elif getattr(agent, "cli_mode", None):
+            agent_meta.setdefault("runner_mode", agent.cli_mode)
 
         return QueryRecord(
             query_id=query.query_id,
@@ -494,6 +509,7 @@ class CrossAgentBenchmarkHarness:
             recall_hit_count=recall.hit_count,
             agent_managed=hook_managed or recall.agent_managed,
             **failure_fields,
+            agent_metadata=agent_meta,
         )
 
     @staticmethod

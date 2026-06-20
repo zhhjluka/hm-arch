@@ -194,6 +194,7 @@ class QueryRecord:
     agent_failure_reason: str | None = None
     agent_exit_code: int | None = None
     agent_timed_out: bool | None = None
+    agent_metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

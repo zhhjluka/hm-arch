@@ -126,6 +126,15 @@ def timing_aggregates(records: list[QueryRecord]) -> dict[str, float | int | Non
     }
 
 
+def token_source_aggregates(records: list[QueryRecord]) -> dict[str, int]:
+    """Count per-query token provenance labels across a run."""
+    counts: dict[str, int] = {}
+    for record in records:
+        for label in (record.input_token_source, record.output_token_source):
+            counts[label] = counts.get(label, 0) + 1
+    return counts
+
+
 def aggregate_by_category(
     records: list[QueryRecord],
     fixture_queries: tuple[BenchmarkQuery, ...],
