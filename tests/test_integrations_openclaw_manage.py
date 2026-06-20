@@ -316,3 +316,31 @@ def test_resolve_openclaw_config_path_env(
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(custom))
     assert resolve_openclaw_config_path(global_install=False) == custom
     assert resolve_openclaw_config_path(global_install=True) == custom
+
+
+def test_install_openclaw_plugin_version_mismatch(
+    project_root: Path,
+    openclaw_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _configure_openclaw_env(
+        monkeypatch,
+        home=openclaw_home,
+        project_root=project_root,
+    )
+    from hm_arch.integrations.openclaw import plugin_source
+
+    source = plugin_source.resolve_bundled_plugin_source()
+    package_json = source / "package.json"
+    original = package_json.read_text(encoding="utf-8")
+    package_json.write_text(
+        original.replace('"version": "2.0.4"', '"version": "0.0.0"'),
+        encoding="utf-8",
+    )
+    try:
+        assert main(["install", "openclaw"]) == 2
+        err = capsys.readouterr().err
+        assert "version mismatch" in err.lower()
+    finally:
+        package_json.write_text(original, encoding="utf-8")

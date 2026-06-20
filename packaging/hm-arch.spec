@@ -8,6 +8,7 @@ from PyInstaller.utils.hooks import collect_submodules
 REPO_ROOT = Path(SPECPATH).resolve().parent
 ENTRYPOINT = REPO_ROOT / "packaging" / "cli_entrypoint.py"
 SRC_ROOT = REPO_ROOT / "src"
+OPENCLAW_PLUGIN_PACKAGE = REPO_ROOT / "packages" / "openclaw-plugin"
 
 hiddenimports = collect_submodules("hm_arch")
 
@@ -15,7 +16,7 @@ a = Analysis(
     [str(ENTRYPOINT)],
     pathex=[str(SRC_ROOT)],
     binaries=[],
-    datas=[],
+    datas=[(str(OPENCLAW_PLUGIN_PACKAGE), "openclaw-plugin")],
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},

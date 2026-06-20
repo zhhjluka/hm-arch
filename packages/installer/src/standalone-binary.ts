@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { BUNDLED_HM_ARCH_VERSION } from "./bundled-version.js";
 import { INSTALLER_VERSION } from "./installer-version.js";
@@ -6,6 +6,7 @@ import {
   DEFAULT_GITHUB_REPO,
   ENV_HM_ARCH_RELEASE_BASE_URL,
   ENV_HM_ARCH_RUNTIME,
+  ENV_HM_ARCH_STANDALONE_FIXTURE,
 } from "./constants.js";
 import {
   sha256Buffer,
@@ -283,6 +284,55 @@ function standaloneInstallReady(
   );
 }
 
+function installStandaloneFromFixture(
+  home: string,
+  targetVersion: string,
+  target: ReleaseTarget,
+  previous: StandaloneBinaryState | null,
+  now: string,
+  deps: StandaloneBinaryDeps,
+): EnsureStandaloneBinaryResult {
+  const fixturePath = process.env[ENV_HM_ARCH_STANDALONE_FIXTURE];
+  if (!fixturePath || !existsSync(fixturePath)) {
+    throw new Error("HM_ARCH_STANDALONE_FIXTURE is not set to a readable executable");
+  }
+  const bytes = readFileSync(fixturePath);
+  const mkdir = deps.mkdir ?? defaultMkdir;
+  const writeFile = deps.writeFile ?? defaultWriteFile;
+  const chmod = deps.chmod ?? defaultChmod;
+  const root = standaloneBinaryRoot(home);
+  mkdir(home);
+  mkdir(root);
+  const executable = managedStandaloneExecutable(home);
+  if (deps.writeFile) {
+    writeFile(executable, bytes);
+  } else {
+    copyFileSync(fixturePath, executable);
+  }
+  if (process.platform !== "win32") {
+    chmod(executable, 0o755);
+  }
+  const record: ReleaseArtifactRecord = {
+    filename: releaseArtifactFilename(targetVersion, target),
+    os: target.os,
+    arch: target.arch,
+    version: targetVersion,
+    sha256: sha256Buffer(bytes),
+    size_bytes: bytes.length,
+  };
+  const state = buildState(record, target, previous, now);
+  writeStandaloneBinaryState(home, state, deps);
+  const action =
+    previous === null ? "created" : previous.hmArchVersion !== targetVersion ? "upgraded" : "reused";
+  return {
+    home,
+    root,
+    executable,
+    state,
+    action,
+  };
+}
+
 /**
  * Download (when needed), verify checksums and release metadata, and install the
  * standalone hm-arch executable under {@link resolveHmArchHome}.
@@ -311,6 +361,11 @@ export async function ensureStandaloneBinary(
       state: previous!,
       action: "reused",
     };
+  }
+
+  const fixturePath = process.env[ENV_HM_ARCH_STANDALONE_FIXTURE];
+  if (fixturePath && existsSync(fixturePath)) {
+    return installStandaloneFromFixture(home, targetVersion, target, previous, now, deps);
   }
 
   const { bytes, record } = await downloadVerifiedStandaloneArtifact(
