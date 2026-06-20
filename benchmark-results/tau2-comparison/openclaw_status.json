@@ -20,7 +20,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unavailable"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "openclaw",
@@ -40,7 +40,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "openclaw",
@@ -60,7 +60,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "openclaw",
@@ -80,7 +80,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unavailable"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "openclaw",
@@ -100,7 +100,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     }
   ]
 }

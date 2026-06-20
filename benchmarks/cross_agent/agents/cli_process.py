@@ -40,14 +40,20 @@ def resolve_agent_executable(
     *,
     override: str | None = None,
     default_names: Sequence[str] = (),
+    production_only: bool = False,
 ) -> str | None:
-    """Resolve the agent executable from override, env, or PATH."""
+    """Resolve the agent executable from override, env, or PATH.
+
+    When *production_only* is True (REAL benchmark mode), ignore
+    ``HM_ARCH_BENCH_*_EXECUTABLE`` test-double overrides and resolve from PATH only.
+    """
     if override:
         return override
-    env_key = f"HM_ARCH_BENCH_{agent.upper().replace('-', '_')}_EXECUTABLE"
-    env_value = os.environ.get(env_key, "").strip()
-    if env_value:
-        return env_value
+    if not production_only:
+        env_key = f"HM_ARCH_BENCH_{agent.upper().replace('-', '_')}_EXECUTABLE"
+        env_value = os.environ.get(env_key, "").strip()
+        if env_value:
+            return env_value
     for name in default_names:
         from shutil import which
 

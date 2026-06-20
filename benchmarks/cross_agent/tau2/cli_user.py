@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from ..agents.cli_process import CliInvocationError, resolve_agent_executable, run_cli
+from .agent_cli import is_harness_executable
 from ..agents.cli_parsers import parse_claude_json_output, parse_codex_exec_jsonl
 from .availability import _stub_tau2_optional_deps
 from .loader import _task_reason_for_call
@@ -27,9 +28,12 @@ def resolve_user_cli_executable(
     *,
     preference: str = "auto",
     override: str | None = None,
+    production_only: bool = False,
 ) -> tuple[str | None, str | None]:
     """Return (executable, cli_kind) for codex or claude user simulation."""
     if override:
+        if production_only and is_harness_executable(override):
+            return None, None
         lowered = Path(override).name.lower()
         if "claude" in lowered:
             return override, "claude"
@@ -37,8 +41,12 @@ def resolve_user_cli_executable(
     choices = _SUPPORTED_USER_CLIS if preference == "auto" else (preference,)
     for kind in choices:
         default_names = ("codex",) if kind == "codex" else ("claude",)
-        resolved = resolve_agent_executable(kind, default_names=default_names)
-        if resolved is not None:
+        resolved = resolve_agent_executable(
+            kind,
+            default_names=default_names,
+            production_only=production_only,
+        )
+        if resolved is not None and not is_harness_executable(resolved):
             return resolved, kind
     return None, None
 

@@ -18,6 +18,7 @@ from ..types import AgentKind, BenchmarkFamily, BenchmarkRunConfig, MemoryBacken
 
 _HARNESS_EXECUTABLE_MARKERS = (
     "fake_tau2_agent_cli",
+    "fake_agent_cli",
     "hm-arch-benchmark",
 )
 _AUTH_FAILURE_PATTERNS = re.compile(
@@ -47,6 +48,8 @@ def is_harness_executable(executable: str | None) -> bool:
     if not executable:
         return False
     normalized = str(Path(executable).name).lower()
+    if normalized == "fake_agent_cli.py" or normalized.startswith("fake_agent_cli"):
+        return True
     if "fake" in normalized and "tau2" in normalized:
         return True
     return any(marker in executable for marker in _HARNESS_EXECUTABLE_MARKERS)
@@ -83,6 +86,7 @@ def production_cli_status(
         agent.value,
         override=executable_override,
         default_names=default_names,
+        production_only=True,
     )
     if executable is None:
         return (

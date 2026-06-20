@@ -16,11 +16,11 @@
     "agent_executable": null,
     "agent_model": null,
     "agent_provider": null,
-    "user_mode": "cli",
+    "user_mode": "scripted",
     "user_llm": null,
-    "user_cli": "codex",
-    "user_cli_executable": "tests/fixtures/fake_agent_cli.py",
-    "user_simulator_label": "cli_user_simulator",
+    "user_cli": "auto",
+    "user_cli_executable": null,
+    "user_simulator_label": "scripted_user_pilot",
     "consolidate_memory": true
   },
   "domains": [
@@ -46,7 +46,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unavailable"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "claude_code",
@@ -66,7 +66,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "claude_code",
@@ -86,7 +86,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "claude_code",
@@ -106,7 +106,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unavailable"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "claude_code",
@@ -126,27 +126,27 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "codex",
       "backend": "hm_arch",
-      "status": "completed",
-      "retail_task_success_rate": 0.0,
+      "status": "unavailable",
+      "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
-      "airline_task_success_rate": 0.0,
+      "airline_task_success_rate": null,
       "airline_mean_accuracy": null,
-      "mean_query_time_ms": 93.63132999715162,
-      "total_input_tokens": 4441,
-      "total_output_tokens": 2,
+      "mean_query_time_ms": null,
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
       "total_failure_count": 0,
-      "retail_run_id": "tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1",
-      "airline_run_id": "tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3",
-      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
-      "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1.jsonl",
-      "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3.jsonl",
-      "excluded_from_benchmark_table": false,
-      "exclusion_reason": null
+      "retail_run_id": null,
+      "airline_run_id": null,
+      "rationale": "codex production CLI not found on PATH (expected one of: codex)",
+      "retail_trajectory_path": null,
+      "airline_trajectory_path": null,
+      "excluded_from_benchmark_table": true,
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "codex",
@@ -166,7 +166,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "codex",
@@ -186,27 +186,27 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "codex",
       "backend": "no_memory",
-      "status": "completed",
-      "retail_task_success_rate": 0.0,
+      "status": "unavailable",
+      "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
-      "airline_task_success_rate": 0.0,
+      "airline_task_success_rate": null,
       "airline_mean_accuracy": null,
-      "mean_query_time_ms": 43.399730006058235,
-      "total_input_tokens": 4441,
-      "total_output_tokens": 2,
+      "mean_query_time_ms": null,
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
       "total_failure_count": 0,
-      "retail_run_id": "tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7",
-      "airline_run_id": "tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf",
-      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
-      "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7.jsonl",
-      "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf.jsonl",
-      "excluded_from_benchmark_table": false,
-      "exclusion_reason": null
+      "retail_run_id": null,
+      "airline_run_id": null,
+      "rationale": "codex production CLI not found on PATH (expected one of: codex)",
+      "retail_trajectory_path": null,
+      "airline_trajectory_path": null,
+      "excluded_from_benchmark_table": true,
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "codex",
@@ -226,7 +226,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "hermes",
@@ -246,7 +246,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unavailable"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "hermes",
@@ -266,7 +266,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "hermes",
@@ -286,7 +286,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "hermes",
@@ -306,7 +306,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unavailable"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "hermes",
@@ -326,7 +326,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "openclaw",
@@ -346,7 +346,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unavailable"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "openclaw",
@@ -366,7 +366,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "openclaw",
@@ -386,7 +386,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "openclaw",
@@ -406,7 +406,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unavailable"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     },
     {
       "agent": "openclaw",
@@ -426,51 +426,10 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "cell status=unsupported"
+      "exclusion_reason": "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     }
   ],
-  "benchmark_rows": [
-    {
-      "agent": "codex",
-      "backend": "hm_arch",
-      "status": "completed",
-      "retail_task_success_rate": 0.0,
-      "retail_mean_accuracy": null,
-      "airline_task_success_rate": 0.0,
-      "airline_mean_accuracy": null,
-      "mean_query_time_ms": 93.63132999715162,
-      "total_input_tokens": 4441,
-      "total_output_tokens": 2,
-      "total_failure_count": 0,
-      "retail_run_id": "tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1",
-      "airline_run_id": "tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3",
-      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
-      "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1.jsonl",
-      "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3.jsonl",
-      "excluded_from_benchmark_table": false,
-      "exclusion_reason": null
-    },
-    {
-      "agent": "codex",
-      "backend": "no_memory",
-      "status": "completed",
-      "retail_task_success_rate": 0.0,
-      "retail_mean_accuracy": null,
-      "airline_task_success_rate": 0.0,
-      "airline_mean_accuracy": null,
-      "mean_query_time_ms": 43.399730006058235,
-      "total_input_tokens": 4441,
-      "total_output_tokens": 2,
-      "total_failure_count": 0,
-      "retail_run_id": "tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7",
-      "airline_run_id": "tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf",
-      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
-      "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7.jsonl",
-      "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf.jsonl",
-      "excluded_from_benchmark_table": false,
-      "exclusion_reason": null
-    }
-  ],
+  "benchmark_rows": [],
   "matrix_status": [
     {
       "agent": "claude_code",
@@ -510,28 +469,9 @@
     {
       "agent": "codex",
       "backend": "hm_arch",
-      "status": "completed",
-      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
-      "domains": {
-        "retail": {
-          "run_id": "tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1",
-          "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1.jsonl",
-          "error": null,
-          "task_success_rate": 0.0,
-          "environment_execution_count": 0,
-          "agent_execution_count": 1,
-          "agent_invocation_mode": "tau2_agent_environment_loop"
-        },
-        "airline": {
-          "run_id": "tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3",
-          "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3.jsonl",
-          "error": null,
-          "task_success_rate": 0.0,
-          "environment_execution_count": 0,
-          "agent_execution_count": 1,
-          "agent_invocation_mode": "tau2_agent_environment_loop"
-        }
-      }
+      "status": "unavailable",
+      "rationale": "codex production CLI not found on PATH (expected one of: codex)",
+      "domains": {}
     },
     {
       "agent": "codex",
@@ -550,28 +490,9 @@
     {
       "agent": "codex",
       "backend": "no_memory",
-      "status": "completed",
-      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
-      "domains": {
-        "retail": {
-          "run_id": "tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7",
-          "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7.jsonl",
-          "error": null,
-          "task_success_rate": 0.0,
-          "environment_execution_count": 0,
-          "agent_execution_count": 1,
-          "agent_invocation_mode": "tau2_agent_environment_loop"
-        },
-        "airline": {
-          "run_id": "tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf",
-          "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf.jsonl",
-          "error": null,
-          "task_success_rate": 0.0,
-          "environment_execution_count": 0,
-          "agent_execution_count": 1,
-          "agent_invocation_mode": "tau2_agent_environment_loop"
-        }
-      }
+      "status": "unavailable",
+      "rationale": "codex production CLI not found on PATH (expected one of: codex)",
+      "domains": {}
     },
     {
       "agent": "codex",

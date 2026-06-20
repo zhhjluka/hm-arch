@@ -37,28 +37,9 @@
   {
     "agent": "codex",
     "backend": "hm_arch",
-    "status": "completed",
-    "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
-    "domains": {
-      "retail": {
-        "run_id": "tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1",
-        "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1.jsonl",
-        "error": null,
-        "task_success_rate": 0.0,
-        "environment_execution_count": 0,
-        "agent_execution_count": 1,
-        "agent_invocation_mode": "tau2_agent_environment_loop"
-      },
-      "airline": {
-        "run_id": "tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3",
-        "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3.jsonl",
-        "error": null,
-        "task_success_rate": 0.0,
-        "environment_execution_count": 0,
-        "agent_execution_count": 1,
-        "agent_invocation_mode": "tau2_agent_environment_loop"
-      }
-    }
+    "status": "unavailable",
+    "rationale": "codex production CLI not found on PATH (expected one of: codex)",
+    "domains": {}
   },
   {
     "agent": "codex",
@@ -77,28 +58,9 @@
   {
     "agent": "codex",
     "backend": "no_memory",
-    "status": "completed",
-    "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
-    "domains": {
-      "retail": {
-        "run_id": "tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7",
-        "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7.jsonl",
-        "error": null,
-        "task_success_rate": 0.0,
-        "environment_execution_count": 0,
-        "agent_execution_count": 1,
-        "agent_invocation_mode": "tau2_agent_environment_loop"
-      },
-      "airline": {
-        "run_id": "tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf",
-        "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf.jsonl",
-        "error": null,
-        "task_success_rate": 0.0,
-        "environment_execution_count": 0,
-        "agent_execution_count": 1,
-        "agent_invocation_mode": "tau2_agent_environment_loop"
-      }
-    }
+    "status": "unavailable",
+    "rationale": "codex production CLI not found on PATH (expected one of: codex)",
+    "domains": {}
   },
   {
     "agent": "codex",

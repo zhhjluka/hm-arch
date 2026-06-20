@@ -1,46 +1,5 @@
 {
   "issue": "MEM-76",
   "mode": "real",
-  "rows": [
-    {
-      "agent": "codex",
-      "backend": "hm_arch",
-      "status": "completed",
-      "retail_task_success_rate": 0.0,
-      "retail_mean_accuracy": null,
-      "airline_task_success_rate": 0.0,
-      "airline_mean_accuracy": null,
-      "mean_query_time_ms": 93.63132999715162,
-      "total_input_tokens": 4441,
-      "total_output_tokens": 2,
-      "total_failure_count": 0,
-      "retail_run_id": "tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1",
-      "airline_run_id": "tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3",
-      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
-      "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1.jsonl",
-      "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3.jsonl",
-      "excluded_from_benchmark_table": false,
-      "exclusion_reason": null
-    },
-    {
-      "agent": "codex",
-      "backend": "no_memory",
-      "status": "completed",
-      "retail_task_success_rate": 0.0,
-      "retail_mean_accuracy": null,
-      "airline_task_success_rate": 0.0,
-      "airline_mean_accuracy": null,
-      "mean_query_time_ms": 43.399730006058235,
-      "total_input_tokens": 4441,
-      "total_output_tokens": 2,
-      "total_failure_count": 0,
-      "retail_run_id": "tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7",
-      "airline_run_id": "tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf",
-      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
-      "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7.jsonl",
-      "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf.jsonl",
-      "excluded_from_benchmark_table": false,
-      "exclusion_reason": null
-    }
-  ]
+  "rows": []
 }

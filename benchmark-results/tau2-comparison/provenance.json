@@ -13,13 +13,11 @@
   "agent_executable": null,
   "agent_model": null,
   "agent_provider": null,
-  "user_mode": "cli",
+  "user_mode": "scripted",
   "user_llm": null,
-  "user_cli": "codex",
-  "user_cli_executable": "tests/fixtures/fake_agent_cli.py",
-  "user_simulator_label": "cli_user_simulator",
+  "user_cli": "auto",
+  "user_cli_executable": null,
+  "user_simulator_label": "scripted_user_pilot",
   "consolidate_memory": true,
-  "tau2_importable": true,
-  "tau2_runtime_commit": "2340ee74cc08cfc01c0f6fe2f1e83d80276f836e",
-  "tau2_runtime_data_dir": "/workspace/fixtures/tau2-bench/v1.0.0/data"
+  "tau2_importable": false
 }

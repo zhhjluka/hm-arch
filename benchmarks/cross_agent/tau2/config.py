@@ -106,6 +106,11 @@ class Tau2ComparisonConfig:
                 "failed",
                 "REAL mode must resolve production agent CLIs; remove --agent-executable",
             )
+        if self.user_cli_executable:
+            return (
+                "failed",
+                "REAL mode must resolve production user CLIs; remove --user-cli-executable",
+            )
         if self.user_mode == "llm" and not self.user_llm:
             return (
                 "failed",

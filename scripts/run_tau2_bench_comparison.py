@@ -32,9 +32,9 @@ Credential-free CI / offline tests::
 
 Production handoff (Codex / Claude Code review)::
 
-    # 1. Install benchmark extras and sync the pinned tau2 fixture subset
-    pip install -e '.[benchmark,dev]'
-    python3 scripts/sync_tau2_bench_data.py
+    # 1. Install benchmark group and sync the pinned tau2 fixture subset
+    uv sync --group benchmark
+    uv run python scripts/sync_tau2_bench_data.py
 
     # 2. REAL sweep — uses installed Codex/Claude CLIs for user simulation by default
     python3 scripts/run_tau2_bench_comparison.py \\
@@ -137,7 +137,7 @@ def main() -> int:
         "--user-cli-executable",
         type=Path,
         default=None,
-        help="Override user CLI executable for real+cli mode",
+        help="Override user CLI executable (not allowed in REAL mode)",
     )
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--num-tasks", type=int, default=3)
@@ -152,6 +152,8 @@ def main() -> int:
             parser.error("REAL mode cannot combine with --agent-executable")
         if args.user_mode == "llm" and not args.user_llm:
             parser.error("REAL mode requires --user-llm when --user-mode=llm")
+        if args.user_cli_executable is not None:
+            parser.error("REAL mode cannot combine with --user-cli-executable")
 
     config = Tau2ComparisonConfig(
         output_root=str(args.output_dir),

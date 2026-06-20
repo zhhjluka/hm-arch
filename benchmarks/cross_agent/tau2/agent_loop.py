@@ -30,9 +30,7 @@ from ..types import AgentKind, BenchmarkRunConfig, MemoryBackendKind
 from .agent_cli import is_harness_executable
 from .availability import require_tau2
 from .config import Tau2Domain
-from .cli_user import CliBackedTaskUser, resolve_user_cli_executable
 from .loader import _task_reason_for_call
-from .scripted_user import ScriptedTaskUser
 from .tool_prompt import format_tool_signatures
 
 HARNESS_AGENT_LABEL = "tau2_gold_action_harness"
@@ -335,6 +333,9 @@ class _Tau2CliAgentLoop:
         from tau2.user.user_simulator import UserSimulator
         from tau2.utils.tools import parse_action_string
 
+        from .cli_user import CliBackedTaskUser, resolve_user_cli_executable
+        from .scripted_user import ScriptedTaskUser
+
         self._domain = domain.value
         self._task = task
         self._agent_kind = agent
@@ -375,11 +376,11 @@ class _Tau2CliAgentLoop:
             user_executable, user_cli_kind = resolve_user_cli_executable(
                 preference=user_cli,
                 override=user_cli_executable,
+                production_only=not self._use_harness_agent,
             )
             if user_executable is None or user_cli_kind is None:
                 raise NotImplementedError(
-                    "CLI user simulator requires codex or claude on PATH "
-                    "(or --user-cli-executable)"
+                    "CLI user simulator requires codex or claude on PATH"
                 )
             self._user = CliBackedTaskUser(
                 task,
@@ -610,6 +611,7 @@ def run_task_agent_loop(
         agent.value,
         override=executable,
         default_names=default_names,
+        production_only=not use_harness_agent,
     )
     if resolved is None:
         raise NotImplementedError(f"{agent.value} CLI executable not found")
