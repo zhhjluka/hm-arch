@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -364,41 +365,45 @@ def test_production_cli_status_rejects_fake_agent_cli() -> None:
 
 
 def test_production_cli_status_ignores_bench_env_override(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake = _fake_agent_cli_executable()
-    production_codex = "/usr/local/bin/codex"
-    monkeypatch.setenv("HM_ARCH_BENCH_CODEX_EXECUTABLE", fake)
+    import sys
 
-    def _resolve_production_only(agent, *, override=None, default_names=(), production_only=False):
-        if production_only and override is None:
-            return production_codex
-        if override:
-            return override
-        return fake
-
-    from benchmarks.cross_agent.agents.cli_runner import CodexCliAgentRunner
-
-    monkeypatch.setattr(
-        "benchmarks.cross_agent.tau2.agent_cli.resolve_agent_executable",
-        _resolve_production_only,
+    python = sys.executable
+    production_codex = tmp_path / "codex"
+    production_codex.write_text(
+        f"#!{python}\n"
+        "import sys\n"
+        "if len(sys.argv) >= 2 and sys.argv[1] == 'exec' and sys.argv[-1] == '--help':\n"
+        "    print('production codex exec')\n"
+        "    sys.exit(0)\n"
+        "sys.exit(2)\n",
+        encoding="utf-8",
     )
+    production_codex.chmod(0o755)
 
-    captured: dict[str, str | None] = {}
+    bench_only = tmp_path / "bench_only_agent"
+    bench_only.write_text(
+        f"#!{python}\n"
+        "import sys\n"
+        "if len(sys.argv) >= 2 and sys.argv[1] == 'hm-arch-benchmark' "
+        "and sys.argv[2] in {'--help', '-h'}:\n"
+        "    print('benchmark-only double')\n"
+        "    sys.exit(0)\n"
+        "sys.exit(2)\n",
+        encoding="utf-8",
+    )
+    bench_only.chmod(0o755)
 
-    def _open_runner(self) -> None:
-        captured["context_executable"] = self._context.executable
-        self._cli_mode = "real"
-        self._resolved_executable = self._context.executable
-        self._opened = True
-
-    monkeypatch.setattr(CodexCliAgentRunner, "open", _open_runner)
+    monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}")
+    monkeypatch.setenv("HM_ARCH_BENCH_CODEX_EXECUTABLE", str(bench_only))
 
     status, reason = production_cli_status(AgentKind.CODEX)
+
     assert status == "ready"
-    assert captured["context_executable"] == production_codex
-    assert fake not in reason
-    assert production_codex in reason
+    assert str(production_codex) in reason
+    assert str(bench_only) not in reason
 
 
 def test_production_cli_status_marks_benchmark_double_unavailable() -> None:
