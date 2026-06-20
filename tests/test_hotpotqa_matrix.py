@@ -95,6 +95,7 @@ def test_run_hotpotqa_matrix_mock_smoke_writes_artifacts(tmp_path: Path) -> None
     assert loaded["use_mock_agent"] is True
     assert loaded["executed_cells"] == 0
     assert loaded["mock_smoke_cells"] == 12
+    assert loaded.get("test_double_cells", 0) == 0
     assert loaded["pending_cells"] == 4
     assert loaded["unsupported_cells"] == 24
     assert len(loaded["cells"]) == 40
@@ -124,34 +125,67 @@ def test_run_hotpotqa_matrix_real_cli_writes_provenance(tmp_path: Path) -> None:
         seed=0,
         use_mock_agent=False,
         agent_executable=fake_executable,
+        allow_test_double=True,
         execution_mode="comparison",
         command="pytest comparison",
     )
     loaded = json.loads((tmp_path / "matrix_summary.json").read_text(encoding="utf-8"))
     assert loaded["execution_mode"] == "comparison"
     assert loaded["use_mock_agent"] is False
-    assert loaded["executed_cells"] == 12
+    assert loaded["executed_cells"] == 0
+    assert loaded["test_double_cells"] == 12
     assert loaded["mock_smoke_cells"] == 0
     assert loaded["agent_executables"] is not None
 
-    executed = [row for row in loaded["cells"] if row["run_id"] and not row["use_mock_agent"]]
-    assert len(executed) == 12
-    for row in executed:
+    test_double_rows = [
+        row for row in loaded["cells"] if row["run_id"] and row["executable_source"] == "fake_double"
+    ]
+    assert len(test_double_rows) == 12
+    for row in test_double_rows:
+        assert row["use_mock_agent"] is False
         assert row["runner_implementation"] != "mock-synthetic"
-        assert row["cli_mode"] in {"real", "benchmark"}
-        assert row["agent_executable"] == fake_executable
+        assert row["executable_source"] == "fake_double"
         summary_path = tmp_path / row["run_id"] / "summary.json"
         run_summary = json.loads(summary_path.read_text(encoding="utf-8"))
         assert run_summary["config"]["use_mock_agent"] is False
 
     hm_arch_k5 = next(
         row
-        for row in executed
+        for row in test_double_rows
         if row["backend"] == "hm_arch" and row["top_k"] == 5 and row["agent"] == "codex"
     )
     assert hm_arch_k5["mean_accuracy"] is not None
-    # HM-Arch hook mode delegates recall to agent hooks; hit rate is null at harness level.
     assert hm_arch_k5["mean_retrieval_hit_rate"] is None
 
-    no_memory = next(row for row in executed if row["backend"] == "no_memory")
+    no_memory = next(row for row in test_double_rows if row["backend"] == "no_memory")
     assert no_memory["mean_retrieval_hit_rate"] == 0.0
+
+    tradeoffs = loaded["tradeoffs"]
+    assert any("not agent conclusions" in item for item in tradeoffs)
+
+
+def test_run_hotpotqa_matrix_comparison_without_cli_marks_pending(tmp_path: Path) -> None:
+    summary = run_hotpotqa_matrix(
+        output_root=tmp_path,
+        seed=0,
+        use_mock_agent=False,
+        execution_mode="comparison",
+        command="pytest comparison-pending",
+    )
+    loaded = json.loads((tmp_path / "matrix_summary.json").read_text(encoding="utf-8"))
+    manifest = json.loads((tmp_path / "run_manifest.json").read_text(encoding="utf-8"))
+    assert loaded["executed_cells"] == 0
+    assert loaded["test_double_cells"] == 0
+    assert loaded["pending_cells"] == 16
+    assert sorted(manifest.get("agent_cli_unavailable") or []) == ["claude_code", "codex", "hermes"]
+    assert manifest.get("agent_executables") in (None, {})
+
+    pending_rows = [row for row in loaded["cells"] if row["status"] == "pending" and row["run_id"] is None]
+    assert len(pending_rows) == 16
+    cli_pending = [
+        row
+        for row in pending_rows
+        if row["agent"] in {"codex", "claude_code", "hermes"} and row["backend"] in {"no_memory", "hm_arch"}
+    ]
+    assert len(cli_pending) == 12
+    assert all("not found on PATH" in row["rationale"] for row in cli_pending)

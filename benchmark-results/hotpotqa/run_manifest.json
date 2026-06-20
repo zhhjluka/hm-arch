@@ -21,51 +21,10 @@
     "openclaw": "openclaw agent --agent main --session-key <id> --message <prompt> --local --json"
   },
   "output_root": "benchmark-results/hotpotqa",
-  "agent_executables": {
-    "claude_code": {
-      "path": ".cache/hotpotqa-cli/fake-agent-cli",
-      "source": "fake_double",
-      "is_test_double": true,
-      "cli_mode": "real",
-      "version_probe": {
-        "argv": [
-          "/workspace/.cache/hotpotqa-cli/fake-agent-cli",
-          "--version"
-        ],
-        "exit_code": 2,
-        "output": "usage: fake-agent hm-arch-benchmark answer | exec --json PROMPT | -z PROMPT | agent --message PROMPT"
-      },
-      "invocation_template": "claude -p <prompt> --output-format json"
-    },
-    "hermes": {
-      "path": ".cache/hotpotqa-cli/fake-agent-cli",
-      "source": "fake_double",
-      "is_test_double": true,
-      "cli_mode": "real",
-      "version_probe": {
-        "argv": [
-          "/workspace/.cache/hotpotqa-cli/fake-agent-cli",
-          "--version"
-        ],
-        "exit_code": 2,
-        "output": "usage: fake-agent hm-arch-benchmark answer | exec --json PROMPT | -z PROMPT | agent --message PROMPT"
-      },
-      "invocation_template": "hermes -z <prompt>"
-    },
-    "codex": {
-      "path": ".cache/hotpotqa-cli/fake-agent-cli",
-      "source": "fake_double",
-      "is_test_double": true,
-      "cli_mode": "real",
-      "version_probe": {
-        "argv": [
-          "/workspace/.cache/hotpotqa-cli/fake-agent-cli",
-          "--version"
-        ],
-        "exit_code": 2,
-        "output": "usage: fake-agent hm-arch-benchmark answer | exec --json PROMPT | -z PROMPT | agent --message PROMPT"
-      },
-      "invocation_template": "codex exec --json [--disable memories] <prompt>"
-    }
-  }
+  "agent_executables": {},
+  "agent_cli_unavailable": [
+    "codex",
+    "claude_code",
+    "hermes"
+  ]
 }

@@ -17,8 +17,22 @@ from ..types import (
 )
 from .cells import CellStatus, HotpotqaMatrixCell, iter_hotpotqa_matrix_cells, runnable_non_openclaw_cells
 from .evidence import supporting_facts_index, write_retrieval_evidence
-from .manifest import build_run_manifest, collect_agent_executables, write_run_manifest
+from .manifest import (
+    ResolvedExecutable,
+    build_run_manifest,
+    collect_agent_executables,
+    write_run_manifest,
+)
 from .summary import build_matrix_summary, summarize_cell, write_matrix_summary
+
+CLI_UNAVAILABLE_RATIONALE = (
+    "Agent CLI executable not found on PATH; install the host agent "
+    "(codex, claude, hermes) and re-run with --use-real-cli."
+)
+TEST_DOUBLE_ONLY_RATIONALE = (
+    "Comparison runs require a host agent CLI; test-double invocations belong in "
+    "benchmark-results/hotpotqa-smoke or tests with allow_test_double=True."
+)
 
 
 @dataclass
@@ -26,6 +40,7 @@ class HotpotqaMatrixRunOutcome:
     cell: HotpotqaMatrixCell
     result: BenchmarkRunResult | None
     run_dir: Path | None
+    pending_rationale: str | None = None
 
 
 def _config_for_cell(
@@ -66,7 +81,13 @@ def _run_unsupported_cell(
     return run_cross_agent_benchmark(config, output_root=output_root)
 
 
-def _write_pending_placeholder(output_root: Path, cell: HotpotqaMatrixCell, *, seed: int) -> Path:
+def _write_pending_placeholder(
+    output_root: Path,
+    cell: HotpotqaMatrixCell,
+    *,
+    seed: int,
+    rationale: str | None = None,
+) -> Path:
     pending_dir = output_root / "pending" / f"{cell.agent.value}-{cell.backend.value}-k{cell.top_k}"
     pending_dir.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -75,10 +96,25 @@ def _write_pending_placeholder(output_root: Path, cell: HotpotqaMatrixCell, *, s
         "backend": cell.backend.value,
         "top_k": cell.top_k,
         "seed": seed,
-        "rationale": cell.rationale,
+        "rationale": rationale or cell.rationale,
     }
     (pending_dir / "status.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return pending_dir
+
+
+def _comparison_executable(
+    cell: HotpotqaMatrixCell,
+    agent_executables: dict[str, ResolvedExecutable | None],
+    *,
+    allow_test_double: bool,
+) -> tuple[ResolvedExecutable | None, str | None]:
+    """Return the resolved CLI for a comparison cell, or a pending rationale."""
+    resolved = agent_executables.get(cell.agent.value)
+    if resolved is None:
+        return None, CLI_UNAVAILABLE_RATIONALE
+    if resolved.is_test_double and not allow_test_double:
+        return None, TEST_DOUBLE_ONLY_RATIONALE
+    return resolved, None
 
 
 def run_hotpotqa_matrix(
@@ -88,6 +124,7 @@ def run_hotpotqa_matrix(
     use_mock_agent: bool = False,
     include_openclaw: bool = False,
     agent_executable: str | None = None,
+    allow_test_double: bool = False,
     execution_mode: str = "comparison",
     command: str | None = None,
 ) -> dict[str, Any]:
@@ -112,7 +149,11 @@ def run_hotpotqa_matrix(
     agent_executables = (
         {}
         if use_mock_agent
-        else collect_agent_executables(participating_agents, override=agent_executable)
+        else collect_agent_executables(
+            participating_agents,
+            override=agent_executable,
+            allow_test_double=allow_test_double,
+        )
     )
 
     run_command = command or (
@@ -150,7 +191,33 @@ def run_hotpotqa_matrix(
             continue
 
         if cell.status is CellStatus.RUN:
-            cell_executable = None if use_mock_agent else agent_executables[cell.agent.value].path
+            if use_mock_agent:
+                cell_executable = None
+                pending_rationale = None
+            else:
+                resolved, pending_rationale = _comparison_executable(
+                    cell,
+                    agent_executables,
+                    allow_test_double=allow_test_double,
+                )
+                if pending_rationale is not None:
+                    pending_dir = _write_pending_placeholder(
+                        output_root,
+                        cell,
+                        seed=seed,
+                        rationale=pending_rationale,
+                    )
+                    outcomes.append(
+                        HotpotqaMatrixRunOutcome(
+                            cell=cell,
+                            result=None,
+                            run_dir=pending_dir,
+                            pending_rationale=pending_rationale,
+                        )
+                    )
+                    continue
+                cell_executable = resolved.path if resolved is not None else None
+
             config = _config_for_cell(
                 cell,
                 seed=seed,
@@ -184,6 +251,7 @@ def run_hotpotqa_matrix(
                 if use_mock_agent
                 else agent_executables.get(outcome.cell.agent.value)
             ),
+            pending_rationale=outcome.pending_rationale,
         )
         for outcome in outcomes
     ]

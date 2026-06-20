@@ -97,17 +97,22 @@ def _portable_path(path: str) -> str:
         return str(resolved)
 
 
+def _is_test_double_path(path: str) -> bool:
+    return "fake_agent_cli" in path or path.endswith("fake-agent-cli")
+
+
 def resolve_comparison_executable(
     agent: AgentKind,
     *,
     override: str | None = None,
     fake_wrapper: str | None = None,
-) -> ResolvedExecutable:
-    """Resolve a production or documented test-double CLI for comparison runs."""
+    allow_test_double: bool = False,
+) -> ResolvedExecutable | None:
+    """Resolve a production CLI for comparison runs, or an explicit test double."""
     if override:
         path = override
-        source = "override"
-        is_test_double = "fake_agent_cli" in path or path.endswith("fake-agent-cli")
+        is_test_double = _is_test_double_path(path)
+        source = "fake_double" if is_test_double else "override"
     else:
         path = resolve_agent_executable(
             agent.value,
@@ -116,18 +121,16 @@ def resolve_comparison_executable(
         if path is not None:
             source = "path"
             is_test_double = False
-        elif fake_wrapper is not None:
+        elif allow_test_double and fake_wrapper is not None:
             path = fake_wrapper
             source = "fake_double"
             is_test_double = True
         else:
-            path = write_fake_agent_wrapper(REPO_ROOT / ".cache" / f"fake-{agent.value}-cli")
-            source = "fake_double"
-            is_test_double = True
+            return None
 
     cli_mode: str | None = None
     if is_test_double:
-        cli_mode = "real"
+        cli_mode = "benchmark"
     else:
         try:
             result = run_cli([path, "hm-arch-benchmark", "--help"], timeout_s=5.0)
@@ -200,7 +203,11 @@ def build_run_manifest(
                 "invocation_template": _AGENT_INVOCATION_TEMPLATES[AgentKind(agent)],
             }
             for agent, resolved in agent_executables.items()
+            if resolved is not None
         }
+        unavailable = [agent for agent, resolved in agent_executables.items() if resolved is None]
+        if unavailable:
+            manifest["agent_cli_unavailable"] = unavailable
     if extra:
         manifest.update(extra)
     return manifest
@@ -214,17 +221,21 @@ def collect_agent_executables(
     agents: tuple[AgentKind, ...],
     *,
     override: str | None = None,
+    allow_test_double: bool = False,
     cache_dir: Path | None = None,
-) -> dict[str, ResolvedExecutable]:
+) -> dict[str, ResolvedExecutable | None]:
     """Resolve executables for all agents participating in a matrix run."""
     cache = cache_dir or (REPO_ROOT / ".cache" / "hotpotqa-cli")
     cache.mkdir(parents=True, exist_ok=True)
-    fake_wrapper = write_fake_agent_wrapper(cache / "fake-agent-cli")
-    resolved: dict[str, ResolvedExecutable] = {}
+    fake_wrapper = (
+        write_fake_agent_wrapper(cache / "fake-agent-cli") if allow_test_double else None
+    )
+    resolved: dict[str, ResolvedExecutable | None] = {}
     for agent in agents:
         resolved[agent.value] = resolve_comparison_executable(
             agent,
             override=override,
             fake_wrapper=fake_wrapper,
+            allow_test_double=allow_test_double,
         )
     return resolved

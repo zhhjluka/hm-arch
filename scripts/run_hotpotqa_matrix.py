@@ -3,7 +3,7 @@
 
 Usage::
 
-    # Production comparison matrix (real CLI boundary; falls back to fake_agent_cli double)
+    # Production comparison matrix (requires host agent CLIs on PATH)
     uv run python scripts/run_hotpotqa_matrix.py --use-real-cli
 
     # Offline mock-synthetic smoke (harness lifecycle only; separate output dir)
@@ -56,6 +56,11 @@ def main() -> int:
         help="Run offline mock-synthetic smoke into benchmark-results/hotpotqa-smoke",
     )
     parser.add_argument(
+        "--allow-test-double",
+        action="store_true",
+        help="Allow fake_agent_cli test doubles (tests/CI only; not comparison conclusions)",
+    )
+    parser.add_argument(
         "--include-openclaw",
         action="store_true",
         help="Attempt OpenClaw cells (default: mark as pending per MEM-75)",
@@ -102,6 +107,7 @@ def main() -> int:
         use_mock_agent=use_mock_agent,
         include_openclaw=args.include_openclaw,
         agent_executable=args.agent_executable,
+        allow_test_double=args.allow_test_double,
         execution_mode=execution_mode,
         command=command,
     )

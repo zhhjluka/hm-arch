@@ -89,13 +89,14 @@ def summarize_cell(
     run_dir: Path | None,
     execution_mode: str | None = None,
     agent_executable: ResolvedExecutable | None = None,
+    pending_rationale: str | None = None,
 ) -> HotpotqaCellSummary:
   common = {
       "agent": cell.agent.value,
       "backend": cell.backend.value,
       "top_k": cell.top_k,
-      "status": cell.status.value,
-      "rationale": cell.rationale,
+      "status": CellStatus.PENDING.value if pending_rationale else cell.status.value,
+      "rationale": pending_rationale or cell.rationale,
       "execution_mode": execution_mode,
       "agent_executable": (
           _portable_path(agent_executable.path) if agent_executable else None
@@ -162,10 +163,20 @@ def build_matrix_summary(
     agent_executables: dict[str, ResolvedExecutable] | None = None,
 ) -> dict[str, Any]:
     config = load_hotpotqa_config()
-    executed = [
+    comparison_rows = [
         row
         for row in cell_summaries
-        if row.run_id is not None and row.use_mock_agent is False
+        if row.run_id is not None
+        and row.use_mock_agent is False
+        and row.executable_source != "fake_double"
+    ]
+    executed = comparison_rows
+    test_double = [
+        row
+        for row in cell_summaries
+        if row.run_id is not None
+        and row.use_mock_agent is False
+        and row.executable_source == "fake_double"
     ]
     mock_smoke = [
         row
@@ -249,6 +260,16 @@ def build_matrix_summary(
                     + ", ".join(token_sources)
                     + " CLI usage fields where available."
                 )
+    elif test_double:
+        tradeoffs.append(
+            "Test-double CLI cells completed for harness validation only; "
+            "accuracy, latency, and token metrics are not agent conclusions."
+        )
+    elif pending and not executed:
+        tradeoffs.append(
+            "No host agent CLIs were available for comparison; install codex, claude, "
+            "or hermes and re-run scripts/run_hotpotqa_matrix.py --use-real-cli."
+        )
 
     return {
         "benchmark": "hotpotqa",
@@ -263,6 +284,7 @@ def build_matrix_summary(
         "top_k_values": [5, 20],
         "matrix_size": len(list(iter_hotpotqa_matrix_cells())),
         "executed_cells": len(executed),
+        "test_double_cells": len(test_double),
         "mock_smoke_cells": len(mock_smoke),
         "pending_cells": len(pending),
         "unsupported_cells": len(unsupported),
@@ -271,7 +293,13 @@ def build_matrix_summary(
             {
                 agent: {**asdict(resolved), "path": _portable_path(resolved.path)}
                 for agent, resolved in (agent_executables or {}).items()
+                if resolved is not None
             }
+            if agent_executables
+            else None
+        ),
+        "agent_cli_unavailable": (
+            [agent for agent, resolved in agent_executables.items() if resolved is None]
             if agent_executables
             else None
         ),
