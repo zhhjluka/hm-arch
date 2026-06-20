@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .config import OPENCLAW_PENDING_ISSUE, Tau2ComparisonConfig, Tau2ComparisonMode, Tau2Domain
+from .config import OPENCLAW_E2E_ISSUE, Tau2ComparisonConfig, Tau2ComparisonMode, Tau2Domain
 from .types import Tau2CellResult
 
 
@@ -44,7 +44,7 @@ class Tau2ComparisonReport:
     """Full comparison artifact bundle."""
 
     issue: str = "MEM-76"
-    openclaw_pending_issue: str = OPENCLAW_PENDING_ISSUE
+    openclaw_e2e_issue: str = OPENCLAW_E2E_ISSUE
     mode: str = "real"
     provenance: dict[str, Any] = field(default_factory=dict)
     domains: list[str] = field(default_factory=lambda: [d.value for d in Tau2Domain])
@@ -55,7 +55,7 @@ class Tau2ComparisonReport:
     def to_dict(self) -> dict[str, Any]:
         return {
             "issue": self.issue,
-            "openclaw_pending_issue": self.openclaw_pending_issue,
+            "openclaw_e2e_issue": self.openclaw_e2e_issue,
             "mode": self.mode,
             "provenance": self.provenance,
             "domains": self.domains,
@@ -209,7 +209,7 @@ def write_comparison_artifacts(
     benchmark_json = output_root / "benchmark_table.json"
     benchmark_csv = output_root / "benchmark_table.csv"
     matrix_status = output_root / "matrix_status.json"
-    openclaw_pending = output_root / "openclaw_pending.json"
+    openclaw_status = output_root / "openclaw_status.json"
 
     summary_json.write_text(
         json.dumps(report.to_dict(), indent=2, default=str),
@@ -233,25 +233,33 @@ def write_comparison_artifacts(
     )
 
     with summary_csv.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=_SUMMARY_CSV_FIELDS)
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=_SUMMARY_CSV_FIELDS,
+            lineterminator="\n",
+        )
         writer.writeheader()
         for row in report.rows:
             writer.writerow(row.to_dict())
 
     with benchmark_csv.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=_SUMMARY_CSV_FIELDS)
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=_SUMMARY_CSV_FIELDS,
+            lineterminator="\n",
+        )
         writer.writeheader()
         for row in report.benchmark_rows:
             writer.writerow(row.to_dict())
 
     openclaw_rows = [row.to_dict() for row in report.rows if row.agent == "openclaw"]
-    openclaw_pending.write_text(
+    openclaw_status.write_text(
         json.dumps(
             {
-                "issue": OPENCLAW_PENDING_ISSUE,
+                "issue": OPENCLAW_E2E_ISSUE,
                 "message": (
-                    "OpenClaw tau2-bench cells are deferred until OpenClaw "
-                    "integration is verified end-to-end."
+                    "OpenClaw tau2-bench cells follow the same production CLI "
+                    "availability gates as other agents after MEM-75 e2e verification."
                 ),
                 "cells": openclaw_rows,
             },
@@ -267,5 +275,5 @@ def write_comparison_artifacts(
         "benchmark_json": benchmark_json,
         "benchmark_csv": benchmark_csv,
         "matrix_status": matrix_status,
-        "openclaw_pending": openclaw_pending,
+        "openclaw_status": openclaw_status,
     }

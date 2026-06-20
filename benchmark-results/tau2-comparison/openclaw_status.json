@@ -1,11 +1,11 @@
 {
   "issue": "MEM-75",
-  "message": "OpenClaw tau2-bench cells are deferred until OpenClaw integration is verified end-to-end.",
+  "message": "OpenClaw tau2-bench cells follow the same production CLI availability gates as other agents after MEM-75 e2e verification.",
   "cells": [
     {
       "agent": "openclaw",
       "backend": "hm_arch",
-      "status": "pending_mem75",
+      "status": "unavailable",
       "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
       "airline_task_success_rate": null,
@@ -16,16 +16,16 @@
       "total_failure_count": 0,
       "retail_run_id": null,
       "airline_run_id": null,
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "rationale": "openclaw production CLI not found on PATH (expected one of: openclaw)",
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unavailable"
     },
     {
       "agent": "openclaw",
       "backend": "mem0",
-      "status": "pending_mem75",
+      "status": "unsupported",
       "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
       "airline_task_success_rate": null,
@@ -36,16 +36,16 @@
       "total_failure_count": 0,
       "retail_run_id": null,
       "airline_run_id": null,
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "rationale": "Mem0 backend exists; CLI runners do not configure OpenClaw Mem0 plugin yet.",
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     },
     {
       "agent": "openclaw",
       "backend": "native_memory",
-      "status": "pending_mem75",
+      "status": "unsupported",
       "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
       "airline_task_success_rate": null,
@@ -56,16 +56,16 @@
       "total_failure_count": 0,
       "retail_run_id": null,
       "airline_run_id": null,
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     },
     {
       "agent": "openclaw",
       "backend": "no_memory",
-      "status": "pending_mem75",
+      "status": "unavailable",
       "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
       "airline_task_success_rate": null,
@@ -76,16 +76,16 @@
       "total_failure_count": 0,
       "retail_run_id": null,
       "airline_run_id": null,
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "rationale": "openclaw production CLI not found on PATH (expected one of: openclaw)",
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unavailable"
     },
     {
       "agent": "openclaw",
       "backend": "openviking",
-      "status": "pending_mem75",
+      "status": "unsupported",
       "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
       "airline_task_success_rate": null,
@@ -96,11 +96,11 @@
       "total_failure_count": 0,
       "retail_run_id": null,
       "airline_run_id": null,
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "rationale": "OpenViking backend exists; CLI runners do not configure OpenClaw OpenViking plugin yet.",
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     }
   ]
 }

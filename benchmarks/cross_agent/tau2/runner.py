@@ -27,7 +27,6 @@ from .agent_loop import HARNESS_AGENT_LABEL, run_domain_agent_loop
 from .availability import tau2_runtime_info
 from .config import (
     DOMAIN_SEEDS,
-    OPENCLAW_PENDING_ISSUE,
     Tau2ComparisonConfig,
     Tau2ComparisonMode,
     Tau2Domain,
@@ -190,6 +189,8 @@ def _run_agent_loop_domain_cell(
             use_harness_agent=use_harness_agent,
             user_mode="scripted" if use_harness_agent else comparison.user_mode,
             user_llm=comparison.user_llm,
+            user_cli=comparison.user_cli,
+            user_cli_executable=comparison.user_cli_executable,
         )
         if comparison.consolidate_memory:
             backend.consolidate()
@@ -220,15 +221,8 @@ def _run_agent_loop_domain_cell(
 def _resolve_cell_status(
     coordinate: Tau2MatrixCoordinate,
     *,
-    include_openclaw: bool,
     comparison: Tau2ComparisonConfig,
 ) -> tuple[str, str | None]:
-    if coordinate.agent is AgentKind.OPENCLAW and not include_openclaw:
-        return (
-            "pending_mem75",
-            f"Deferred pending {OPENCLAW_PENDING_ISSUE} OpenClaw end-to-end verification.",
-        )
-
     backend_supported, backend_reason = cell_support_rationale(
         coordinate.agent,
         coordinate.backend,
@@ -290,6 +284,22 @@ def _resolve_cell_status(
     return "completed", cli_reason
 
 
+def _detect_execution_failure(domain_run: Tau2DomainRun) -> str | None:
+    """Return an execution failure message for REAL-mode domain runs."""
+    if domain_run.error:
+        return domain_run.error
+    for execution in domain_run.agent_executions:
+        if execution.error:
+            return execution.error
+        for step in execution.steps:
+            if step.error:
+                return step.error
+            if step.exit_code != 0:
+                detail = step.stderr.strip() or step.stdout.strip() or f"exit {step.exit_code}"
+                return f"agent CLI step failed: {detail}"
+    return None
+
+
 def _detect_auth_failure(domain_run: Tau2DomainRun) -> str | None:
     """Return an auth/login failure message when agent CLI output indicates one."""
     for execution in domain_run.agent_executions:
@@ -337,7 +347,6 @@ def run_tau2_comparison(
     for coordinate in tau2_matrix_coordinates():
         status, rationale = _resolve_cell_status(
             coordinate,
-            include_openclaw=comparison.include_openclaw,
             comparison=comparison,
         )
         cell = Tau2CellResult(
@@ -373,8 +382,16 @@ def run_tau2_comparison(
                             cell.domain_results[domain] = Tau2DomainRun(
                                 domain=domain,
                                 error=auth_failure,
+                                trajectory_path=domain_run.trajectory_path,
+                                agent_executions=domain_run.agent_executions,
+                                metrics=domain_run.metrics,
+                                run_id=domain_run.run_id,
                             )
                             continue
+                        exec_failure = _detect_execution_failure(domain_run)
+                        if exec_failure is not None:
+                            cell.status = "failed"
+                            cell.rationale = exec_failure
                     cell.domain_results[domain] = domain_run
                     append_trajectory_index(
                         trajectory_index,

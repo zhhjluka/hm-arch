@@ -1,23 +1,26 @@
 {
   "issue": "MEM-76",
-  "openclaw_pending_issue": "MEM-75",
-  "mode": "harness",
+  "openclaw_e2e_issue": "MEM-75",
+  "mode": "real",
   "provenance": {
     "tau2_bench_repo": "https://github.com/sierra-research/tau2-bench",
     "tau2_bench_version": "v1.0.0",
     "tau2_bench_commit": "17e07b1da2bbc0cadfddeea36412686e0604127b",
     "tau2_data_root": "/workspace/fixtures/tau2-bench/v1.0.0/data",
     "task_split": "base",
-    "mode": "harness",
+    "mode": "real",
     "use_mock_agent": false,
-    "use_harness_agent": true,
+    "use_harness_agent": false,
     "task_split_name": "base",
     "num_tasks": 1,
-    "agent_executable": "tests/fixtures/fake_tau2_agent_cli.py",
+    "agent_executable": null,
     "agent_model": null,
     "agent_provider": null,
-    "user_mode": "scripted",
+    "user_mode": "cli",
     "user_llm": null,
+    "user_cli": "codex",
+    "user_cli_executable": "tests/fixtures/fake_agent_cli.py",
+    "user_simulator_label": "cli_user_simulator",
     "consolidate_memory": true
   },
   "domains": [
@@ -28,22 +31,22 @@
     {
       "agent": "claude_code",
       "backend": "hm_arch",
-      "status": "completed",
-      "retail_task_success_rate": 1.0,
+      "status": "unavailable",
+      "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
-      "airline_task_success_rate": 1.0,
+      "airline_task_success_rate": null,
       "airline_mean_accuracy": null,
-      "mean_query_time_ms": 459.71237450430635,
-      "total_input_tokens": 796,
-      "total_output_tokens": 14,
+      "mean_query_time_ms": null,
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
       "total_failure_count": 0,
-      "retail_run_id": "tau2_bench-claude_code-hm_arch-s0-k5-36d8af1ad079b55e",
-      "airline_run_id": "tau2_bench-claude_code-hm_arch-s1-k5-0af1db786f3f4354",
-      "rationale": "Install HM-Arch Claude Code hooks in isolated home; invoke claude CLI boundary.",
-      "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-hm_arch-s0-k5-36d8af1ad079b55e.jsonl",
-      "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-hm_arch-s1-k5-0af1db786f3f4354.jsonl",
+      "retail_run_id": null,
+      "airline_run_id": null,
+      "rationale": "claude_code production CLI not found on PATH (expected one of: claude)",
+      "retail_trajectory_path": null,
+      "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unavailable"
     },
     {
       "agent": "claude_code",
@@ -63,7 +66,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     },
     {
       "agent": "claude_code",
@@ -83,27 +86,27 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     },
     {
       "agent": "claude_code",
       "backend": "no_memory",
-      "status": "completed",
-      "retail_task_success_rate": 1.0,
+      "status": "unavailable",
+      "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
-      "airline_task_success_rate": 1.0,
+      "airline_task_success_rate": null,
       "airline_mean_accuracy": null,
-      "mean_query_time_ms": 396.05532600398874,
-      "total_input_tokens": 796,
-      "total_output_tokens": 14,
+      "mean_query_time_ms": null,
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
       "total_failure_count": 0,
-      "retail_run_id": "tau2_bench-claude_code-no_memory-s0-k5-303a0c197b7d8074",
-      "airline_run_id": "tau2_bench-claude_code-no_memory-s1-k5-e9d5e1cfb31e2aea",
-      "rationale": "Invoke claude CLI in isolated CLAUDE_CONFIG_DIR without HM-Arch hooks.",
-      "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-no_memory-s0-k5-303a0c197b7d8074.jsonl",
-      "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-no_memory-s1-k5-e9d5e1cfb31e2aea.jsonl",
+      "retail_run_id": null,
+      "airline_run_id": null,
+      "rationale": "claude_code production CLI not found on PATH (expected one of: claude)",
+      "retail_trajectory_path": null,
+      "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unavailable"
     },
     {
       "agent": "claude_code",
@@ -123,27 +126,27 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     },
     {
       "agent": "codex",
       "backend": "hm_arch",
       "status": "completed",
-      "retail_task_success_rate": 1.0,
+      "retail_task_success_rate": 0.0,
       "retail_mean_accuracy": null,
-      "airline_task_success_rate": 1.0,
+      "airline_task_success_rate": 0.0,
       "airline_mean_accuracy": null,
-      "mean_query_time_ms": 423.2693870071671,
-      "total_input_tokens": 796,
-      "total_output_tokens": 14,
+      "mean_query_time_ms": 93.63132999715162,
+      "total_input_tokens": 4441,
+      "total_output_tokens": 2,
       "total_failure_count": 0,
       "retail_run_id": "tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1",
       "airline_run_id": "tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3",
-      "rationale": "Install HM-Arch Codex hooks in isolated home; invoke codex CLI boundary.",
+      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
       "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1.jsonl",
       "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3.jsonl",
-      "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "excluded_from_benchmark_table": false,
+      "exclusion_reason": null
     },
     {
       "agent": "codex",
@@ -163,7 +166,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     },
     {
       "agent": "codex",
@@ -183,27 +186,27 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     },
     {
       "agent": "codex",
       "backend": "no_memory",
       "status": "completed",
-      "retail_task_success_rate": 1.0,
+      "retail_task_success_rate": 0.0,
       "retail_mean_accuracy": null,
-      "airline_task_success_rate": 1.0,
+      "airline_task_success_rate": 0.0,
       "airline_mean_accuracy": null,
-      "mean_query_time_ms": 421.0667459992692,
-      "total_input_tokens": 796,
-      "total_output_tokens": 14,
+      "mean_query_time_ms": 43.399730006058235,
+      "total_input_tokens": 4441,
+      "total_output_tokens": 2,
       "total_failure_count": 0,
       "retail_run_id": "tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7",
       "airline_run_id": "tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf",
-      "rationale": "Invoke codex CLI in isolated CODEX_HOME without HM-Arch hooks.",
+      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
       "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7.jsonl",
       "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf.jsonl",
-      "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "excluded_from_benchmark_table": false,
+      "exclusion_reason": null
     },
     {
       "agent": "codex",
@@ -223,27 +226,27 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     },
     {
       "agent": "hermes",
       "backend": "hm_arch",
-      "status": "completed",
-      "retail_task_success_rate": 1.0,
+      "status": "unavailable",
+      "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
-      "airline_task_success_rate": 1.0,
+      "airline_task_success_rate": null,
       "airline_mean_accuracy": null,
-      "mean_query_time_ms": 422.8039705049014,
-      "total_input_tokens": 796,
-      "total_output_tokens": 14,
+      "mean_query_time_ms": null,
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
       "total_failure_count": 0,
-      "retail_run_id": "tau2_bench-hermes-hm_arch-s0-k5-6f2f11f4a36d898a",
-      "airline_run_id": "tau2_bench-hermes-hm_arch-s1-k5-f71ecd9ced1a1ca9",
-      "rationale": "Install HM-Arch Hermes provider bridge; invoke hermes CLI boundary.",
-      "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-hm_arch-s0-k5-6f2f11f4a36d898a.jsonl",
-      "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-hm_arch-s1-k5-f71ecd9ced1a1ca9.jsonl",
+      "retail_run_id": null,
+      "airline_run_id": null,
+      "rationale": "hermes production CLI not found on PATH (expected one of: hermes)",
+      "retail_trajectory_path": null,
+      "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unavailable"
     },
     {
       "agent": "hermes",
@@ -263,7 +266,7 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     },
     {
       "agent": "hermes",
@@ -283,27 +286,27 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     },
     {
       "agent": "hermes",
       "backend": "no_memory",
-      "status": "completed",
-      "retail_task_success_rate": 1.0,
+      "status": "unavailable",
+      "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
-      "airline_task_success_rate": 1.0,
+      "airline_task_success_rate": null,
       "airline_mean_accuracy": null,
-      "mean_query_time_ms": 385.7992834964534,
-      "total_input_tokens": 796,
-      "total_output_tokens": 14,
+      "mean_query_time_ms": null,
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
       "total_failure_count": 0,
-      "retail_run_id": "tau2_bench-hermes-no_memory-s0-k5-633d5c04da7f3e90",
-      "airline_run_id": "tau2_bench-hermes-no_memory-s1-k5-c7ad6f382c38b1cc",
-      "rationale": "Invoke hermes CLI in isolated HERMES_HOME without durable memory provider.",
-      "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-no_memory-s0-k5-633d5c04da7f3e90.jsonl",
-      "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-no_memory-s1-k5-c7ad6f382c38b1cc.jsonl",
+      "retail_run_id": null,
+      "airline_run_id": null,
+      "rationale": "hermes production CLI not found on PATH (expected one of: hermes)",
+      "retail_trajectory_path": null,
+      "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unavailable"
     },
     {
       "agent": "hermes",
@@ -323,12 +326,12 @@
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     },
     {
       "agent": "openclaw",
       "backend": "hm_arch",
-      "status": "pending_mem75",
+      "status": "unavailable",
       "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
       "airline_task_success_rate": null,
@@ -339,16 +342,16 @@
       "total_failure_count": 0,
       "retail_run_id": null,
       "airline_run_id": null,
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "rationale": "openclaw production CLI not found on PATH (expected one of: openclaw)",
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unavailable"
     },
     {
       "agent": "openclaw",
       "backend": "mem0",
-      "status": "pending_mem75",
+      "status": "unsupported",
       "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
       "airline_task_success_rate": null,
@@ -359,16 +362,16 @@
       "total_failure_count": 0,
       "retail_run_id": null,
       "airline_run_id": null,
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "rationale": "Mem0 backend exists; CLI runners do not configure OpenClaw Mem0 plugin yet.",
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     },
     {
       "agent": "openclaw",
       "backend": "native_memory",
-      "status": "pending_mem75",
+      "status": "unsupported",
       "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
       "airline_task_success_rate": null,
@@ -379,16 +382,16 @@
       "total_failure_count": 0,
       "retail_run_id": null,
       "airline_run_id": null,
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     },
     {
       "agent": "openclaw",
       "backend": "no_memory",
-      "status": "pending_mem75",
+      "status": "unavailable",
       "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
       "airline_task_success_rate": null,
@@ -399,16 +402,16 @@
       "total_failure_count": 0,
       "retail_run_id": null,
       "airline_run_id": null,
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "rationale": "openclaw production CLI not found on PATH (expected one of: openclaw)",
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unavailable"
     },
     {
       "agent": "openclaw",
       "backend": "openviking",
-      "status": "pending_mem75",
+      "status": "unsupported",
       "retail_task_success_rate": null,
       "retail_mean_accuracy": null,
       "airline_task_success_rate": null,
@@ -419,40 +422,62 @@
       "total_failure_count": 0,
       "retail_run_id": null,
       "airline_run_id": null,
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "rationale": "OpenViking backend exists; CLI runners do not configure OpenClaw OpenViking plugin yet.",
       "retail_trajectory_path": null,
       "airline_trajectory_path": null,
       "excluded_from_benchmark_table": true,
-      "exclusion_reason": "mode=harness is harness-only"
+      "exclusion_reason": "cell status=unsupported"
     }
   ],
-  "benchmark_rows": [],
+  "benchmark_rows": [
+    {
+      "agent": "codex",
+      "backend": "hm_arch",
+      "status": "completed",
+      "retail_task_success_rate": 0.0,
+      "retail_mean_accuracy": null,
+      "airline_task_success_rate": 0.0,
+      "airline_mean_accuracy": null,
+      "mean_query_time_ms": 93.63132999715162,
+      "total_input_tokens": 4441,
+      "total_output_tokens": 2,
+      "total_failure_count": 0,
+      "retail_run_id": "tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1",
+      "airline_run_id": "tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3",
+      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
+      "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1.jsonl",
+      "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3.jsonl",
+      "excluded_from_benchmark_table": false,
+      "exclusion_reason": null
+    },
+    {
+      "agent": "codex",
+      "backend": "no_memory",
+      "status": "completed",
+      "retail_task_success_rate": 0.0,
+      "retail_mean_accuracy": null,
+      "airline_task_success_rate": 0.0,
+      "airline_mean_accuracy": null,
+      "mean_query_time_ms": 43.399730006058235,
+      "total_input_tokens": 4441,
+      "total_output_tokens": 2,
+      "total_failure_count": 0,
+      "retail_run_id": "tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7",
+      "airline_run_id": "tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf",
+      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
+      "retail_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7.jsonl",
+      "airline_trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf.jsonl",
+      "excluded_from_benchmark_table": false,
+      "exclusion_reason": null
+    }
+  ],
   "matrix_status": [
     {
       "agent": "claude_code",
       "backend": "hm_arch",
-      "status": "completed",
-      "rationale": "Install HM-Arch Claude Code hooks in isolated home; invoke claude CLI boundary.",
-      "domains": {
-        "retail": {
-          "run_id": "tau2_bench-claude_code-hm_arch-s0-k5-36d8af1ad079b55e",
-          "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-hm_arch-s0-k5-36d8af1ad079b55e.jsonl",
-          "error": null,
-          "task_success_rate": 1.0,
-          "environment_execution_count": 0,
-          "agent_execution_count": 1,
-          "agent_invocation_mode": "harness_gold_actions"
-        },
-        "airline": {
-          "run_id": "tau2_bench-claude_code-hm_arch-s1-k5-0af1db786f3f4354",
-          "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-hm_arch-s1-k5-0af1db786f3f4354.jsonl",
-          "error": null,
-          "task_success_rate": 1.0,
-          "environment_execution_count": 0,
-          "agent_execution_count": 1,
-          "agent_invocation_mode": "harness_gold_actions"
-        }
-      }
+      "status": "unavailable",
+      "rationale": "claude_code production CLI not found on PATH (expected one of: claude)",
+      "domains": {}
     },
     {
       "agent": "claude_code",
@@ -471,28 +496,9 @@
     {
       "agent": "claude_code",
       "backend": "no_memory",
-      "status": "completed",
-      "rationale": "Invoke claude CLI in isolated CLAUDE_CONFIG_DIR without HM-Arch hooks.",
-      "domains": {
-        "retail": {
-          "run_id": "tau2_bench-claude_code-no_memory-s0-k5-303a0c197b7d8074",
-          "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-no_memory-s0-k5-303a0c197b7d8074.jsonl",
-          "error": null,
-          "task_success_rate": 1.0,
-          "environment_execution_count": 0,
-          "agent_execution_count": 1,
-          "agent_invocation_mode": "harness_gold_actions"
-        },
-        "airline": {
-          "run_id": "tau2_bench-claude_code-no_memory-s1-k5-e9d5e1cfb31e2aea",
-          "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-no_memory-s1-k5-e9d5e1cfb31e2aea.jsonl",
-          "error": null,
-          "task_success_rate": 1.0,
-          "environment_execution_count": 0,
-          "agent_execution_count": 1,
-          "agent_invocation_mode": "harness_gold_actions"
-        }
-      }
+      "status": "unavailable",
+      "rationale": "claude_code production CLI not found on PATH (expected one of: claude)",
+      "domains": {}
     },
     {
       "agent": "claude_code",
@@ -505,25 +511,25 @@
       "agent": "codex",
       "backend": "hm_arch",
       "status": "completed",
-      "rationale": "Install HM-Arch Codex hooks in isolated home; invoke codex CLI boundary.",
+      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
       "domains": {
         "retail": {
           "run_id": "tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1",
           "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1.jsonl",
           "error": null,
-          "task_success_rate": 1.0,
+          "task_success_rate": 0.0,
           "environment_execution_count": 0,
           "agent_execution_count": 1,
-          "agent_invocation_mode": "harness_gold_actions"
+          "agent_invocation_mode": "tau2_agent_environment_loop"
         },
         "airline": {
           "run_id": "tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3",
           "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3.jsonl",
           "error": null,
-          "task_success_rate": 1.0,
+          "task_success_rate": 0.0,
           "environment_execution_count": 0,
           "agent_execution_count": 1,
-          "agent_invocation_mode": "harness_gold_actions"
+          "agent_invocation_mode": "tau2_agent_environment_loop"
         }
       }
     },
@@ -545,25 +551,25 @@
       "agent": "codex",
       "backend": "no_memory",
       "status": "completed",
-      "rationale": "Invoke codex CLI in isolated CODEX_HOME without HM-Arch hooks.",
+      "rationale": "production CLI resolved: /workspace/tests/fixtures/fake_agent_cli.py",
       "domains": {
         "retail": {
           "run_id": "tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7",
           "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7.jsonl",
           "error": null,
-          "task_success_rate": 1.0,
+          "task_success_rate": 0.0,
           "environment_execution_count": 0,
           "agent_execution_count": 1,
-          "agent_invocation_mode": "harness_gold_actions"
+          "agent_invocation_mode": "tau2_agent_environment_loop"
         },
         "airline": {
           "run_id": "tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf",
           "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf.jsonl",
           "error": null,
-          "task_success_rate": 1.0,
+          "task_success_rate": 0.0,
           "environment_execution_count": 0,
           "agent_execution_count": 1,
-          "agent_invocation_mode": "harness_gold_actions"
+          "agent_invocation_mode": "tau2_agent_environment_loop"
         }
       }
     },
@@ -577,28 +583,9 @@
     {
       "agent": "hermes",
       "backend": "hm_arch",
-      "status": "completed",
-      "rationale": "Install HM-Arch Hermes provider bridge; invoke hermes CLI boundary.",
-      "domains": {
-        "retail": {
-          "run_id": "tau2_bench-hermes-hm_arch-s0-k5-6f2f11f4a36d898a",
-          "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-hm_arch-s0-k5-6f2f11f4a36d898a.jsonl",
-          "error": null,
-          "task_success_rate": 1.0,
-          "environment_execution_count": 0,
-          "agent_execution_count": 1,
-          "agent_invocation_mode": "harness_gold_actions"
-        },
-        "airline": {
-          "run_id": "tau2_bench-hermes-hm_arch-s1-k5-f71ecd9ced1a1ca9",
-          "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-hm_arch-s1-k5-f71ecd9ced1a1ca9.jsonl",
-          "error": null,
-          "task_success_rate": 1.0,
-          "environment_execution_count": 0,
-          "agent_execution_count": 1,
-          "agent_invocation_mode": "harness_gold_actions"
-        }
-      }
+      "status": "unavailable",
+      "rationale": "hermes production CLI not found on PATH (expected one of: hermes)",
+      "domains": {}
     },
     {
       "agent": "hermes",
@@ -617,28 +604,9 @@
     {
       "agent": "hermes",
       "backend": "no_memory",
-      "status": "completed",
-      "rationale": "Invoke hermes CLI in isolated HERMES_HOME without durable memory provider.",
-      "domains": {
-        "retail": {
-          "run_id": "tau2_bench-hermes-no_memory-s0-k5-633d5c04da7f3e90",
-          "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-no_memory-s0-k5-633d5c04da7f3e90.jsonl",
-          "error": null,
-          "task_success_rate": 1.0,
-          "environment_execution_count": 0,
-          "agent_execution_count": 1,
-          "agent_invocation_mode": "harness_gold_actions"
-        },
-        "airline": {
-          "run_id": "tau2_bench-hermes-no_memory-s1-k5-c7ad6f382c38b1cc",
-          "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-no_memory-s1-k5-c7ad6f382c38b1cc.jsonl",
-          "error": null,
-          "task_success_rate": 1.0,
-          "environment_execution_count": 0,
-          "agent_execution_count": 1,
-          "agent_invocation_mode": "harness_gold_actions"
-        }
-      }
+      "status": "unavailable",
+      "rationale": "hermes production CLI not found on PATH (expected one of: hermes)",
+      "domains": {}
     },
     {
       "agent": "hermes",
@@ -650,36 +618,36 @@
     {
       "agent": "openclaw",
       "backend": "hm_arch",
-      "status": "pending_mem75",
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "status": "unavailable",
+      "rationale": "openclaw production CLI not found on PATH (expected one of: openclaw)",
       "domains": {}
     },
     {
       "agent": "openclaw",
       "backend": "mem0",
-      "status": "pending_mem75",
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "status": "unsupported",
+      "rationale": "Mem0 backend exists; CLI runners do not configure OpenClaw Mem0 plugin yet.",
       "domains": {}
     },
     {
       "agent": "openclaw",
       "backend": "native_memory",
-      "status": "pending_mem75",
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "status": "unsupported",
+      "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
       "domains": {}
     },
     {
       "agent": "openclaw",
       "backend": "no_memory",
-      "status": "pending_mem75",
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "status": "unavailable",
+      "rationale": "openclaw production CLI not found on PATH (expected one of: openclaw)",
       "domains": {}
     },
     {
       "agent": "openclaw",
       "backend": "openviking",
-      "status": "pending_mem75",
-      "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
+      "status": "unsupported",
+      "rationale": "OpenViking backend exists; CLI runners do not configure OpenClaw OpenViking plugin yet.",
       "domains": {}
     }
   ]

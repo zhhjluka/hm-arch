@@ -14,7 +14,7 @@ harness
     excluded from ``benchmark_table``.
 
 real
-    Production agent CLIs on PATH plus an explicit tau2 user simulator.
+    Production agent CLIs on PATH plus a CLI-backed or LLM tau2 user simulator.
     Unsupported or unauthenticated cells are recorded as ``unavailable`` /
     ``failed`` — never as completed benchmark metrics.
 
@@ -36,8 +36,15 @@ Production handoff (Codex / Claude Code review)::
     pip install -e '.[benchmark,dev]'
     python3 scripts/sync_tau2_bench_data.py
 
-    # 2. REAL sweep — requires production CLIs plus an LLM-backed user simulator
-    export TAU2_USER_LLM='openai/gpt-4o-mini'   # or another litellm route
+    # 2. REAL sweep — uses installed Codex/Claude CLIs for user simulation by default
+    python3 scripts/run_tau2_bench_comparison.py \\
+        --mode real \\
+        --user-mode cli \\
+        --num-tasks 3 \\
+        --output-dir benchmark-results/tau2-comparison
+
+    # Optional LLM-backed user simulator when a litellm route is available
+    export TAU2_USER_LLM='openai/gpt-4o-mini'
     python3 scripts/run_tau2_bench_comparison.py \\
         --mode real \\
         --user-mode llm \\
@@ -53,8 +60,8 @@ Production handoff (Codex / Claude Code review)::
         --output-dir benchmark-results/tau2-comparison-pilot
 
 Codex will append verified REAL artifacts under ``benchmark-results/`` during
-review. Hermes and OpenClaw cells remain explicit ``unavailable`` /
-``pending_mem75`` when their CLIs are not installed.
+review. Hermes and OpenClaw cells remain explicit ``unavailable`` when their
+CLIs are not installed.
 """
 
 from __future__ import annotations
@@ -93,11 +100,6 @@ def main() -> int:
         help="smoke = synthetic fixtures; harness = labeled agent-loop harness; real = production CLIs",
     )
     parser.add_argument(
-        "--include-openclaw",
-        action="store_true",
-        help="Include OpenClaw cells (default: defer pending MEM-75)",
-    )
-    parser.add_argument(
         "--use-mock-agent",
         action="store_true",
         help="Use offline MockSyntheticAgentRunner for smoke mode",
@@ -115,11 +117,27 @@ def main() -> int:
     )
     parser.add_argument("--agent-model", default=None)
     parser.add_argument("--agent-provider", default=None)
-    parser.add_argument("--user-mode", default="llm", choices=["llm", "scripted"])
+    parser.add_argument(
+        "--user-mode",
+        default="cli",
+        choices=["llm", "scripted", "cli"],
+    )
     parser.add_argument(
         "--user-llm",
         default=None,
         help="litellm model route for tau2 UserSimulator (required for real+llm)",
+    )
+    parser.add_argument(
+        "--user-cli",
+        default="auto",
+        choices=["auto", "codex", "claude"],
+        help="Installed CLI to simulate the tau2 user in real+cli mode",
+    )
+    parser.add_argument(
+        "--user-cli-executable",
+        type=Path,
+        default=None,
+        help="Override user CLI executable for real+cli mode",
     )
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--num-tasks", type=int, default=3)
@@ -141,13 +159,16 @@ def main() -> int:
         mode=Tau2ComparisonMode(args.mode),
         use_mock_agent=args.use_mock_agent,
         use_harness_agent=args.use_harness_agent or args.mode == Tau2ComparisonMode.HARNESS.value,
-        include_openclaw=args.include_openclaw,
         num_tasks=args.num_tasks,
         agent_executable=str(args.agent_executable) if args.agent_executable else None,
         agent_model=args.agent_model,
         agent_provider=args.agent_provider,
         user_mode=args.user_mode,
         user_llm=args.user_llm,
+        user_cli=args.user_cli,
+        user_cli_executable=(
+            str(args.user_cli_executable) if args.user_cli_executable else None
+        ),
     )
     report = run_tau2_comparison(config, output_root=args.output_dir)
     print(json.dumps(report.to_dict(), indent=2, default=str))

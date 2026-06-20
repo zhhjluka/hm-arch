@@ -11,6 +11,7 @@ from ..agents.cli_runner import (
     ClaudeCodeCliAgentRunner,
     CodexCliAgentRunner,
     HermesCliAgentRunner,
+    OpenClawCliAgentRunner,
 )
 from ..agents.workspace import AgentWorkspace
 from ..types import AgentKind, BenchmarkFamily, BenchmarkRunConfig, MemoryBackendKind
@@ -30,12 +31,14 @@ _CLI_RUNNERS = {
     AgentKind.CODEX: CodexCliAgentRunner,
     AgentKind.CLAUDE_CODE: ClaudeCodeCliAgentRunner,
     AgentKind.HERMES: HermesCliAgentRunner,
+    AgentKind.OPENCLAW: OpenClawCliAgentRunner,
 }
 
 _DEFAULT_EXECUTABLE_NAMES = {
     AgentKind.CODEX: ("codex",),
     AgentKind.CLAUDE_CODE: ("claude",),
     AgentKind.HERMES: ("hermes",),
+    AgentKind.OPENCLAW: ("openclaw",),
 }
 
 
@@ -68,9 +71,6 @@ def production_cli_status(
 
     status is one of: ready, unavailable, failed
     """
-    if agent is AgentKind.OPENCLAW:
-        return "unavailable", "OpenClaw production CLI deferred pending MEM-75"
-
     if is_harness_executable(executable_override):
         return "failed", "REAL mode cannot use harness or fake agent executables"
 
@@ -110,8 +110,10 @@ def production_cli_status(
         executable=executable_override,
     )
     runner = runner_cls(context)
+    cli_mode: str | None = None
     try:
         runner.open()
+        cli_mode = runner._cli_mode  # noqa: SLF001 — probe result
     except NotImplementedError as exc:
         return "unavailable", str(exc)
     except Exception as exc:  # noqa: BLE001
@@ -123,7 +125,7 @@ def production_cli_status(
             pass
         workspace.cleanup()
 
-    if runner._cli_mode != "real":  # noqa: SLF001 — probe result
+    if cli_mode != "real":
         return (
             "unavailable",
             f"{agent.value} executable only exposes hm-arch-benchmark test double, "

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 TAU2_BENCH_REPO = "https://github.com/sierra-research/tau2-bench"
@@ -12,6 +13,9 @@ DEFAULT_NUM_TASKS = 3
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 BUNDLED_DATA_ROOT = _REPO_ROOT / "fixtures" / "tau2-bench" / TAU2_BENCH_VERSION / "data"
+
+if BUNDLED_DATA_ROOT.is_dir() and not os.getenv("TAU2_DATA_DIR"):
+    os.environ["TAU2_DATA_DIR"] = str(BUNDLED_DATA_ROOT)
 
 
 def bundled_domain_dir(domain: str) -> Path:

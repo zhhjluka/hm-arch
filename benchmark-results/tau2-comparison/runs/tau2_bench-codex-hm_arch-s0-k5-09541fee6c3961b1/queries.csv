@@ -1,4 +1,0 @@
-run_id,family,query_id,question,expected_answer,prediction,accuracy,task_success,retrieval_hit_rate,recall_time_ms,agent_time_ms,query_time_ms,input_tokens,output_tokens,input_token_source,output_token_source,failure_count,recall_context_chars,recall_hit_count,agent_managed
-tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1,tau2_bench,retail-q0,Did tau2 retail task 0 complete successfully in the real environment run?,yes,unknown,0.0,,,0.0,20.118139989790507,20.118139989790507,12,1,exact,exact,0,0,0,True
-tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1,tau2_bench,retail-q1,Did tau2 retail task 1 complete successfully in the real environment run?,yes,unknown,0.0,,,0.0,15.823720998014323,15.823720998014323,12,1,exact,exact,0,0,0,True
-tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1,tau2_bench,retail-q2,Did tau2 retail task 2 complete successfully in the real environment run?,no,unknown,0.0,,,0.0,15.539826999884099,15.539826999884099,12,1,exact,exact,0,0,0,True

@@ -1,7 +1,7 @@
 """tau2-bench agent-experience comparison (HM-76 / MEM-76)."""
 
 from .config import (
-    OPENCLAW_PENDING_ISSUE,
+    OPENCLAW_E2E_ISSUE,
     Tau2ComparisonConfig,
     Tau2ComparisonMode,
     Tau2Domain,
@@ -12,7 +12,7 @@ from .types import Tau2CellResult
 from .summary import write_comparison_artifacts
 
 __all__ = [
-    "OPENCLAW_PENDING_ISSUE",
+    "OPENCLAW_E2E_ISSUE",
     "Tau2CellResult",
     "Tau2ComparisonConfig",
     "Tau2ComparisonMode",

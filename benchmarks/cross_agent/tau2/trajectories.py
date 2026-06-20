@@ -123,6 +123,8 @@ def write_agent_loop_trajectory(
             "agent_provider": comparison.agent_provider,
             "user_mode": comparison.user_mode,
             "user_llm": comparison.user_llm,
+            "user_cli": comparison.user_cli,
+            "user_cli_executable": comparison.user_cli_executable,
             "task_id": execution.task_id,
             "task_success": execution.task_success,
             "reward": execution.reward,

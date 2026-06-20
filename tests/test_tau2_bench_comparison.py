@@ -7,8 +7,16 @@ from pathlib import Path
 
 import pytest
 
-from benchmarks.cross_agent.tau2.agent_cli import classify_cli_failure, is_harness_executable
-from benchmarks.cross_agent.tau2.agent_loop import HARNESS_AGENT_LABEL, run_task_agent_loop
+from benchmarks.cross_agent.tau2.agent_cli import (
+    classify_cli_failure,
+    is_harness_executable,
+    production_cli_status,
+)
+from benchmarks.cross_agent.tau2.agent_loop import (
+    HARNESS_AGENT_LABEL,
+    _build_tau2_prompt,
+    run_task_agent_loop,
+)
 from benchmarks.cross_agent.tau2.availability import tau2_is_available
 from benchmarks.cross_agent.tau2.config import (
     COMPARISON_AGENTS,
@@ -85,11 +93,22 @@ def test_run_smoke_comparison_writes_artifacts(tmp_path: Path) -> None:
     assert report.benchmark_rows == []
 
 
-def test_openclaw_cells_are_pending_mem75(tmp_path: Path) -> None:
-    report = run_tau2_comparison(_smoke_config(tmp_path))
+def test_openclaw_cells_use_production_cli_status(tmp_path: Path) -> None:
+    report = run_tau2_comparison(
+        Tau2ComparisonConfig(
+            output_root=str(tmp_path),
+            mode=Tau2ComparisonMode.REAL,
+            user_mode="scripted",
+            num_tasks=1,
+        )
+    )
     openclaw_rows = [row for row in report.rows if row.agent == AgentKind.OPENCLAW.value]
     assert len(openclaw_rows) == len(COMPARISON_BACKENDS)
-    assert all(row.status == "pending_mem75" for row in openclaw_rows)
+    assert all(
+        row.status in {"unavailable", "failed", "completed", "unsupported"}
+        for row in openclaw_rows
+    )
+    assert all(row.status != "pending_mem75" for row in openclaw_rows)
 
 
 @pytest.mark.skipif(not tau2_is_available(), reason="tau2-bench not installed")
@@ -238,7 +257,9 @@ def test_real_mode_requires_user_llm(tmp_path: Path) -> None:
     assert report.benchmark_rows == []
 
 
-def test_real_mode_marks_missing_cli_unavailable(tmp_path: Path) -> None:
+def test_real_mode_marks_missing_cli_unavailable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("HM_ARCH_BENCH_CODEX_EXECUTABLE", raising=False)
+    monkeypatch.delenv("HM_ARCH_BENCH_CLAUDE_CODE_EXECUTABLE", raising=False)
     config = Tau2ComparisonConfig(
         output_root=str(tmp_path),
         mode=Tau2ComparisonMode.REAL,
@@ -269,6 +290,88 @@ def test_scripted_real_pilot_is_excluded_from_benchmark_table(tmp_path: Path) ->
 
 def test_is_harness_executable_detects_fake_cli() -> None:
     assert is_harness_executable(_fake_tau2_cli_executable())
+
+
+def test_production_cli_status_preserves_real_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = str(Path(__file__).resolve().parent / "fixtures" / "fake_agent_cli.py")
+    monkeypatch.setenv("HM_ARCH_BENCH_CODEX_EXECUTABLE", fake)
+    status, reason = production_cli_status(AgentKind.CODEX)
+    assert status == "ready"
+    assert "production CLI resolved" in reason
+
+
+def test_production_cli_status_marks_benchmark_double_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = str(Path(__file__).resolve().parent / "fixtures" / "fake_tau2_agent_cli.py")
+    monkeypatch.setenv("HM_ARCH_BENCH_CODEX_EXECUTABLE", fake)
+    status, reason = production_cli_status(AgentKind.CODEX)
+    assert status == "failed"
+    assert "harness double" in reason
+
+
+@pytest.mark.skipif(not tau2_is_available(), reason="tau2-bench not installed")
+def test_build_tau2_prompt_includes_tool_parameter_schemas() -> None:
+    from tau2.runner.build import build_environment
+
+    tasks = load_tau2_tasks(Tau2Domain.RETAIL, num_tasks=1)
+    environment = build_environment("retail", solo_mode=False)
+    tools = list(environment.get_tools())
+    prompt = _build_tau2_prompt(
+        domain=Tau2Domain.RETAIL,
+        task=tasks[0],
+        observation="user: hello",
+        policy=environment.get_policy(),
+        tools=tools,
+        memory_context="",
+        step_index=0,
+    )
+    assert '"properties"' in prompt or '"type":"object"' in prompt.replace(" ", "")
+
+
+def _fake_agent_cli_executable() -> str:
+    return str(Path(__file__).resolve().parent / "fixtures" / "fake_agent_cli.py")
+
+
+@pytest.mark.skipif(not tau2_is_available(), reason="tau2-bench not installed")
+def test_non_gold_action_fails_without_harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HM_ARCH_BENCH_CODEX_EXECUTABLE", _fake_agent_cli_executable())
+    tasks = load_tau2_tasks(Tau2Domain.RETAIL, num_tasks=1)
+    config = BenchmarkRunConfig(
+        family="tau2_bench",
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.NO_MEMORY,
+        seed=0,
+    )
+    workspace = AgentWorkspace.create(
+        AgentKind.CODEX,
+        run_id="tau2-non-gold",
+        parent=tmp_path,
+    )
+    execution = run_task_agent_loop(
+        Tau2Domain.RETAIL,
+        tasks[0],
+        agent=AgentKind.CODEX,
+        config=config,
+        workspace=workspace,
+        storage_dir=tmp_path / "storage",
+        executable=None,
+        use_harness_agent=False,
+        user_mode="scripted",
+        max_steps=1,
+    )
+    workspace.cleanup()
+    assert execution.harness_label is None
+    assert execution.error or any(step.error for step in execution.steps) or not execution.task_success
+
+
+def test_real_mode_cli_user_is_benchmark_eligible_label(tmp_path: Path) -> None:
+    config = Tau2ComparisonConfig(
+        output_root=str(tmp_path),
+        mode=Tau2ComparisonMode.REAL,
+        user_mode="cli",
+    )
+    assert config.user_simulator_label() == "cli_user_simulator"
 
 
 def test_classify_cli_failure_detects_auth_errors() -> None:

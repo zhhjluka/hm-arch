@@ -21,15 +21,19 @@ from ..agents.cli_runner import (
     ClaudeCodeCliAgentRunner,
     CodexCliAgentRunner,
     HermesCliAgentRunner,
+    OpenClawCliAgentRunner,
 )
+from ..agents.hm_arch_bench import agent_prompt_context, hm_arch_cli_env
 from ..agents.workspace import AgentWorkspace
 from ..metrics import approximate_token_count
-from ..types import AgentKind, BenchmarkRunConfig
+from ..types import AgentKind, BenchmarkRunConfig, MemoryBackendKind
 from .agent_cli import is_harness_executable
 from .availability import require_tau2
 from .config import Tau2Domain
+from .cli_user import CliBackedTaskUser, resolve_user_cli_executable
 from .loader import _task_reason_for_call
 from .scripted_user import ScriptedTaskUser
+from .tool_prompt import format_tool_signatures
 
 HARNESS_AGENT_LABEL = "tau2_gold_action_harness"
 REAL_AGENT_LOOP_LABEL = "tau2_agent_environment_loop"
@@ -147,7 +151,7 @@ def _build_tau2_prompt(
     memory_context: str,
     step_index: int,
 ) -> str:
-    tool_lines = [f"- {getattr(tool, 'name', str(tool))}" for tool in tools]
+    tool_block = format_tool_signatures(tools)
     memory_block = memory_context.strip() or "(none)"
     return (
         f"You are executing tau2-bench domain={domain.value} task_id={task.id} "
@@ -155,7 +159,7 @@ def _build_tau2_prompt(
         f"Policy:\n{policy}\n\n"
         f"Task reason for call:\n{_task_reason_for_call(task)}\n\n"
         f"Recalled memory:\n{memory_block}\n\n"
-        f"Available tools:\n" + "\n".join(tool_lines) + "\n\n"
+        f"Available tools:\n{tool_block}\n\n"
         f"Conversation observation:\n{observation or '(start)'}\n\n"
         "Respond with exactly one action string:\n"
         "- functional tool call, e.g. find_user_id_by_name_zip(first_name='A', last_name='B', zip='12345')\n"
@@ -193,6 +197,7 @@ def _resolve_cli_runner(agent: AgentKind, context: AgentRunnerContext):
         AgentKind.CODEX: CodexCliAgentRunner,
         AgentKind.CLAUDE_CODE: ClaudeCodeCliAgentRunner,
         AgentKind.HERMES: HermesCliAgentRunner,
+        AgentKind.OPENCLAW: OpenClawCliAgentRunner,
     }
     runner_cls = runners.get(agent)
     if runner_cls is None:
@@ -219,9 +224,15 @@ def _invoke_agent_cli(
             "--json-input",
             json.dumps(harness_payload, separators=(",", ":")),
         ]
+        cli_env = hm_arch_cli_env(
+            storage_dir,
+            config,
+            agent_home=workspace.agent_home,
+        )
         result = run_cli(
             argv,
             cwd=workspace.workspace,
+            env=cli_env or None,
             timeout_s=timeout_s,
         )
         if result.exit_code != 0:
@@ -265,9 +276,15 @@ def _invoke_agent_cli(
             "query_id": f"tau2-{workspace.run_id}",
         }
         argv = runner._build_argv(executable, prompt_payload)
+        cli_env = hm_arch_cli_env(
+            storage_dir,
+            cli_config,
+            agent_home=workspace.agent_home,
+        )
         result = run_cli(
             argv,
             cwd=workspace.workspace,
+            env=cli_env or None,
             timeout_s=timeout_s,
         )
         if result.exit_code != 0:
@@ -305,6 +322,8 @@ class _Tau2CliAgentLoop:
         use_harness_agent: bool = False,
         user_mode: str = "scripted",
         user_llm: str | None = None,
+        user_cli: str = "auto",
+        user_cli_executable: str | None = None,
         max_steps: int = 100,
         timeout_s: float = 120.0,
     ) -> None:
@@ -327,6 +346,8 @@ class _Tau2CliAgentLoop:
         self._use_harness_agent = use_harness_agent
         self._user_mode = user_mode
         self._user_llm = user_llm
+        self._user_cli = user_cli
+        self._user_cli_executable = user_cli_executable
         self._max_steps = max_steps
         self._timeout_s = timeout_s
         self._parse_action_string = parse_action_string
@@ -349,6 +370,23 @@ class _Tau2CliAgentLoop:
                 tools=user_tools,
                 instructions=task.user_scenario,
                 llm=user_llm,
+            )
+        elif user_mode == "cli":
+            user_executable, user_cli_kind = resolve_user_cli_executable(
+                preference=user_cli,
+                override=user_cli_executable,
+            )
+            if user_executable is None or user_cli_kind is None:
+                raise NotImplementedError(
+                    "CLI user simulator requires codex or claude on PATH "
+                    "(or --user-cli-executable)"
+                )
+            self._user = CliBackedTaskUser(
+                task,
+                executable=user_executable,
+                cli_kind=user_cli_kind,
+                cwd=workspace.workspace,
+                timeout_s=timeout_s,
             )
         else:
             self._user = ScriptedTaskUser(task)
@@ -419,13 +457,22 @@ class _Tau2CliAgentLoop:
                     }
                     prompt = ""
                 else:
+                    effective_memory = agent_prompt_context(
+                        self._config,
+                        self._memory_context,
+                        hook_managed=(
+                            self._config.backend is MemoryBackendKind.HM_ARCH
+                            and not self._use_harness_agent
+                            and not is_harness_executable(self._executable)
+                        ),
+                    )
                     prompt = _build_tau2_prompt(
                         domain=Tau2Domain(self._domain),
                         task=self._task,
                         observation=observation,
                         policy=self._policy,
                         tools=self._tools,
-                        memory_context=self._memory_context,
+                        memory_context=effective_memory,
                         step_index=step_index,
                     )
 
@@ -542,6 +589,8 @@ def run_task_agent_loop(
     use_harness_agent: bool = False,
     user_mode: str = "scripted",
     user_llm: str | None = None,
+    user_cli: str = "auto",
+    user_cli_executable: str | None = None,
     max_steps: int = 100,
     timeout_s: float = 120.0,
 ) -> Tau2AgentTaskExecution:
@@ -555,6 +604,7 @@ def run_task_agent_loop(
         AgentKind.CODEX: ("codex",),
         AgentKind.CLAUDE_CODE: ("claude",),
         AgentKind.HERMES: ("hermes",),
+        AgentKind.OPENCLAW: ("openclaw",),
     }.get(agent, ())
     resolved = resolve_agent_executable(
         agent.value,
@@ -575,6 +625,8 @@ def run_task_agent_loop(
         use_harness_agent=use_harness_agent,
         user_mode=user_mode,
         user_llm=user_llm,
+        user_cli=user_cli,
+        user_cli_executable=user_cli_executable,
         max_steps=max_steps,
         timeout_s=timeout_s,
     )
@@ -594,6 +646,8 @@ def run_domain_agent_loop(
     use_harness_agent: bool = False,
     user_mode: str = "scripted",
     user_llm: str | None = None,
+    user_cli: str = "auto",
+    user_cli_executable: str | None = None,
     max_steps: int = 100,
     timeout_s: float = 120.0,
 ) -> list[Tau2AgentTaskExecution]:
@@ -608,6 +662,16 @@ def run_domain_agent_loop(
             metadata={"domain": domain.value, "tau2_task_id": str(task.id)},
         )
         recalled = backend.recall(recall_query, top_k=config.top_k)
+        hook_managed = (
+            config.backend is MemoryBackendKind.HM_ARCH
+            and not use_harness_agent
+            and not is_harness_executable(executable)
+        )
+        memory_context = agent_prompt_context(
+            config,
+            recalled.context,
+            hook_managed=hook_managed,
+        )
         execution = run_task_agent_loop(
             domain,
             task,
@@ -616,10 +680,12 @@ def run_domain_agent_loop(
             workspace=workspace,
             storage_dir=storage_dir,
             executable=executable,
-            memory_context=recalled.context,
+            memory_context=memory_context,
             use_harness_agent=use_harness_agent,
             user_mode=user_mode,
             user_llm=user_llm,
+            user_cli=user_cli,
+            user_cli_executable=user_cli_executable,
             max_steps=max_steps,
             timeout_s=timeout_s,
         )

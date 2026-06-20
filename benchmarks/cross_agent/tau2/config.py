@@ -9,7 +9,7 @@ from ..compatibility import compatibility_cell, lookup_matrix_cell
 from ..types import AgentKind, MemoryBackendKind
 from .pin import DEFAULT_NUM_TASKS, DEFAULT_TASK_SPLIT, provenance
 
-OPENCLAW_PENDING_ISSUE = "MEM-75"
+OPENCLAW_E2E_ISSUE = "MEM-75"
 
 
 class Tau2Domain(str, Enum):
@@ -69,15 +69,16 @@ class Tau2ComparisonConfig:
     mode: Tau2ComparisonMode = Tau2ComparisonMode.REAL
     use_mock_agent: bool = False
     use_harness_agent: bool = False
-    include_openclaw: bool = False
     domains: tuple[Tau2Domain, ...] = (Tau2Domain.RETAIL, Tau2Domain.AIRLINE)
     task_split_name: str = DEFAULT_TASK_SPLIT
     num_tasks: int = DEFAULT_NUM_TASKS
     agent_executable: str | None = None
     agent_model: str | None = None
     agent_provider: str | None = None
-    user_mode: str = "llm"
+    user_mode: str = "cli"
     user_llm: str | None = None
+    user_cli: str = "auto"
+    user_cli_executable: str | None = None
     consolidate_memory: bool = True
 
     def user_simulator_label(self) -> str | None:
@@ -86,7 +87,9 @@ class Tau2ComparisonConfig:
             return None
         if self.user_mode == "scripted":
             return "scripted_user_pilot"
-        if self.user_llm:
+        if self.user_mode == "cli":
+            return "cli_user_simulator"
+        if self.user_mode == "llm" and self.user_llm:
             return "llm_user_simulator"
         return None
 
@@ -107,9 +110,9 @@ class Tau2ComparisonConfig:
             return (
                 "failed",
                 "REAL mode requires --user-llm when --user-mode=llm "
-                "(or pass --user-mode scripted for a labeled limited pilot)",
+                "(or pass --user-mode cli/scripted)",
             )
-        if self.user_mode not in {"llm", "scripted"}:
+        if self.user_mode not in {"llm", "scripted", "cli"}:
             return "failed", f"Unsupported user_mode: {self.user_mode}"
         return None
 
@@ -126,6 +129,8 @@ class Tau2ComparisonConfig:
             "agent_provider": self.agent_provider,
             "user_mode": self.user_mode,
             "user_llm": self.user_llm,
+            "user_cli": self.user_cli,
+            "user_cli_executable": self.user_cli_executable,
             "user_simulator_label": self.user_simulator_label(),
             "consolidate_memory": self.consolidate_memory,
         }
