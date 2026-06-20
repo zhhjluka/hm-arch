@@ -1,4 +1,8 @@
-"""Execute real tau2-bench environment tool calls and scoring."""
+"""Execute tau2-bench environment scoring helpers.
+
+Gold-action replay in this module is a labeled harness path only. Agent-driven
+runs must use :mod:`agent_loop` so tool calls come from the external CLI.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +13,8 @@ from typing import Any
 from .availability import require_tau2
 from .config import Tau2Domain
 from .pin import DEFAULT_TASK_SPLIT
+
+GOLD_REPLAY_HARNESS_LABEL = "gold_action_replay_harness"
 
 
 @dataclass(frozen=True)
@@ -98,13 +104,30 @@ def _build_simulation_from_actions(task, action_steps: list[Tau2ToolStep]):
     )
 
 
+def execute_task_environment_gold_replay(
+    domain: Tau2Domain,
+    task,
+    *,
+    reset_environment: bool = True,
+) -> Tau2EnvironmentExecution:
+    """Replay golden evaluation actions — harness-only, not agent-driven."""
+    execution = execute_task_environment(domain, task, reset_environment=reset_environment)
+    execution.evaluation["harness_label"] = GOLD_REPLAY_HARNESS_LABEL
+    return execution
+
+
 def execute_task_environment(
     domain: Tau2Domain,
     task,
     *,
     reset_environment: bool = True,
 ) -> Tau2EnvironmentExecution:
-    """Run evaluation actions through the real tau2 domain tools and score."""
+    """Run evaluation actions through the real tau2 domain tools and score.
+
+    Prefer :func:`execute_task_environment_gold_replay` in tests to make the
+    harness intent explicit. Production comparison runs should call the agent
+    loop instead of replaying golden actions here.
+    """
     require_tau2()
     from tau2.runner.build import build_environment
 
@@ -214,5 +237,8 @@ def execute_domain_tasks(
     domain: Tau2Domain,
     tasks: list,
 ) -> list[Tau2EnvironmentExecution]:
-    """Execute each task in *tasks* with a fresh environment reset."""
-    return [execute_task_environment(domain, task, reset_environment=True) for task in tasks]
+    """Harness helper: replay golden actions for each task."""
+    return [
+        execute_task_environment_gold_replay(domain, task, reset_environment=True)
+        for task in tasks
+    ]

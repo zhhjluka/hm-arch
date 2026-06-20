@@ -8,19 +8,21 @@ from pathlib import Path
 from typing import Iterator
 
 from ..agents.registry import is_supported_coordinate
+from ..agents.workspace import AgentWorkspace
 from ..backends.mem0 import Mem0Backend, OfflineMem0Client
 from ..backends.openviking import OfflineOpenVikingClient, OpenVikingBackend
 from ..backends.registry import create_memory_backend
 from ..protocol import MemoryBackend
+from ..run_id import resolve_run_id
 from ..runner import CrossAgentBenchmarkHarness
 from ..types import (
     AgentKind,
     BenchmarkFamily,
     BenchmarkRunConfig,
-    BenchmarkRunResult,
     MemoryBackendKind,
     SyntheticFixture,
 )
+from .agent_loop import HARNESS_AGENT_LABEL, run_domain_agent_loop
 from .availability import tau2_runtime_info
 from .config import (
     DOMAIN_SEEDS,
@@ -32,12 +34,11 @@ from .config import (
     cell_support_rationale,
     tau2_matrix_coordinates,
 )
-from .environment_runner import Tau2EnvironmentExecution
 from .fixtures import get_tau2_domain_fixture
-from .loader import load_real_domain_fixture
+from .loader import load_real_domain_tasks
 from .summary import Tau2ComparisonReport, build_summary_table, write_comparison_artifacts
-from .trajectories import append_trajectory_index, write_run_trajectory
-from .types import Tau2CellResult, Tau2DomainRun
+from .trajectories import append_trajectory_index, write_agent_loop_trajectory
+from .types import Tau2CellResult, Tau2DomainRun, aggregate_agent_executions
 
 
 @contextmanager
@@ -79,35 +80,15 @@ def _create_backend(
     return create_memory_backend(backend, agent=agent)
 
 
-def _resolve_domain_fixture(
-    domain: Tau2Domain,
-    comparison: Tau2ComparisonConfig,
-    *,
-    env_cache: dict[Tau2Domain, tuple[SyntheticFixture, list[Tau2EnvironmentExecution]]],
-) -> tuple[SyntheticFixture, list[Tau2EnvironmentExecution]]:
-    if comparison.mode is Tau2ComparisonMode.SMOKE:
-        fixture = get_tau2_domain_fixture(domain, mode=comparison.mode)
-        return fixture, []
-    if domain not in env_cache:
-        fixture, executions = load_real_domain_fixture(
-            domain,
-            task_split_name=comparison.task_split_name,
-            num_tasks=comparison.num_tasks,
-        )
-        env_cache[domain] = (fixture, executions)
-    return env_cache[domain]
-
-
-def _run_domain_cell(
+def _run_smoke_domain_cell(
     coordinate: Tau2MatrixCoordinate,
     domain: Tau2Domain,
     *,
     comparison: Tau2ComparisonConfig,
     output_root: Path,
     trajectories_dir: Path,
-    fixture: SyntheticFixture,
-    env_executions: list[Tau2EnvironmentExecution],
 ) -> Tau2DomainRun:
+    fixture = get_tau2_domain_fixture(domain, mode=comparison.mode)
     seed = DOMAIN_SEEDS[domain]
     config = BenchmarkRunConfig(
         family=BenchmarkFamily.TAU2_BENCH,
@@ -116,8 +97,7 @@ def _run_domain_cell(
         seed=seed,
         top_k=comparison.top_k,
         resume=False,
-        use_mock_agent=comparison.use_mock_agent,
-        agent_executable=comparison.agent_executable,
+        use_mock_agent=True,
     )
     namespace = f"tau2-{domain.value}-{coordinate.agent.value}-{coordinate.backend.value}"
 
@@ -131,19 +111,108 @@ def _run_domain_cell(
         result = harness.run(config)
 
     trajectory_path = trajectories_dir / f"{result.run_id}.jsonl"
+    from .trajectories import write_run_trajectory
+
     write_run_trajectory(
         trajectory_path,
         domain=domain,
         result=result,
         fixture=fixture,
         comparison=comparison,
-        env_executions=env_executions,
+        env_executions=[],
     )
     return Tau2DomainRun(
         domain=domain,
         result=result,
         trajectory_path=str(trajectory_path),
-        env_executions=env_executions,
+        run_id=result.run_id,
+    )
+
+
+def _run_agent_loop_domain_cell(
+    coordinate: Tau2MatrixCoordinate,
+    domain: Tau2Domain,
+    *,
+    comparison: Tau2ComparisonConfig,
+    output_root: Path,
+    trajectories_dir: Path,
+) -> Tau2DomainRun:
+    tasks = load_real_domain_tasks(
+        domain,
+        task_split_name=comparison.task_split_name,
+        num_tasks=comparison.num_tasks,
+    )
+    seed = DOMAIN_SEEDS[domain]
+    use_harness_agent = (
+        comparison.mode is Tau2ComparisonMode.HARNESS or comparison.use_harness_agent
+    )
+    agent_executable = comparison.agent_executable
+    if agent_executable:
+        agent_executable = str(Path(agent_executable).resolve())
+    config = BenchmarkRunConfig(
+        family=BenchmarkFamily.TAU2_BENCH,
+        agent=coordinate.agent,
+        backend=coordinate.backend,
+        seed=seed,
+        top_k=comparison.top_k,
+        resume=False,
+        use_mock_agent=False,
+        agent_executable=agent_executable,
+    )
+    run_id = resolve_run_id(config)
+    run_dir = output_root / run_id
+    storage_dir = run_dir / "storage"
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    namespace = f"tau2-{domain.value}-{coordinate.agent.value}-{coordinate.backend.value}"
+
+    workspace = AgentWorkspace.create(
+        coordinate.agent,
+        run_id=run_id,
+        parent=run_dir,
+    )
+    backend = _create_backend(
+        coordinate.backend,
+        coordinate.agent,
+        namespace=namespace,
+    )
+    backend.open(storage_dir, config)
+    try:
+        agent_executions = run_domain_agent_loop(
+            domain,
+            tasks,
+            agent=coordinate.agent,
+            config=config,
+            workspace=workspace,
+            storage_dir=storage_dir,
+            backend=backend,
+            executable=agent_executable,
+            use_harness_agent=use_harness_agent,
+            user_mode="scripted" if use_harness_agent else comparison.user_mode,
+            user_llm=comparison.user_llm,
+        )
+        if comparison.consolidate_memory:
+            backend.consolidate()
+    finally:
+        backend.close()
+        workspace.cleanup()
+
+    metrics = aggregate_agent_executions(agent_executions)
+    trajectory_path = trajectories_dir / f"{run_id}.jsonl"
+    write_agent_loop_trajectory(
+        trajectory_path,
+        domain=domain,
+        coordinate=coordinate,
+        comparison=comparison,
+        run_id=run_id,
+        agent_executions=agent_executions,
+        metrics=metrics,
+    )
+    return Tau2DomainRun(
+        domain=domain,
+        trajectory_path=str(trajectory_path),
+        agent_executions=agent_executions,
+        metrics=metrics,
+        run_id=run_id,
     )
 
 
@@ -151,7 +220,7 @@ def _resolve_cell_status(
     coordinate: Tau2MatrixCoordinate,
     *,
     include_openclaw: bool,
-    use_mock_agent: bool,
+    comparison: Tau2ComparisonConfig,
 ) -> tuple[str, str | None]:
     if coordinate.agent is AgentKind.OPENCLAW and not include_openclaw:
         return (
@@ -166,16 +235,39 @@ def _resolve_cell_status(
     if not backend_supported:
         return "unsupported", backend_reason
 
+    if comparison.mode is Tau2ComparisonMode.SMOKE:
+        config = BenchmarkRunConfig(
+            family=BenchmarkFamily.TAU2_BENCH,
+            agent=coordinate.agent,
+            backend=coordinate.backend,
+            seed=0,
+            use_mock_agent=True,
+        )
+        runner_supported, runner_reason = is_supported_coordinate(config)
+        if not runner_supported:
+            return "unsupported", runner_reason
+        return "completed", runner_reason
+
     config = BenchmarkRunConfig(
         family=BenchmarkFamily.TAU2_BENCH,
         agent=coordinate.agent,
         backend=coordinate.backend,
         seed=0,
-        use_mock_agent=use_mock_agent,
+        use_mock_agent=False,
+        agent_executable=comparison.agent_executable,
     )
     runner_supported, runner_reason = is_supported_coordinate(config)
     if not runner_supported:
         return "unsupported", runner_reason
+
+    if comparison.mode is Tau2ComparisonMode.REAL and comparison.use_harness_agent:
+        return "failed", "REAL mode cannot combine with use_harness_agent"
+
+    if comparison.mode is Tau2ComparisonMode.REAL and comparison.agent_executable:
+        return (
+            "failed",
+            "REAL mode must resolve production agent CLIs; remove agent_executable override",
+        )
 
     return "completed", runner_reason
 
@@ -202,21 +294,18 @@ def run_tau2_comparison(
     root = Path(output_root or comparison.output_root).resolve()
     runs_root = root / "runs"
     trajectories_dir = root / "trajectories"
-    env_dir = root / "environment_executions"
     trajectories_dir.mkdir(parents=True, exist_ok=True)
-    env_dir.mkdir(parents=True, exist_ok=True)
     trajectory_index = root / "trajectory_index.jsonl"
     if trajectory_index.exists():
         trajectory_index.unlink()
 
-    env_cache: dict[Tau2Domain, tuple[SyntheticFixture, list[Tau2EnvironmentExecution]]] = {}
     cell_results: list[Tau2CellResult] = []
 
     for coordinate in tau2_matrix_coordinates():
         status, rationale = _resolve_cell_status(
             coordinate,
             include_openclaw=comparison.include_openclaw,
-            use_mock_agent=comparison.use_mock_agent,
+            comparison=comparison,
         )
         cell = Tau2CellResult(
             coordinate=coordinate,
@@ -227,42 +316,44 @@ def run_tau2_comparison(
         if status == "completed":
             for domain in comparison.domains:
                 try:
-                    fixture, env_executions = _resolve_domain_fixture(
-                        domain,
-                        comparison,
-                        env_cache=env_cache,
-                    )
-                    if env_executions and comparison.mode is Tau2ComparisonMode.REAL:
-                        env_path = env_dir / f"{domain.value}-environment.json"
-                        if not env_path.exists():
-                            env_path.write_text(
-                                json.dumps(
-                                    [execution.to_dict() for execution in env_executions],
-                                    indent=2,
-                                    default=str,
-                                ),
-                                encoding="utf-8",
-                            )
-                    domain_run = _run_domain_cell(
-                        coordinate,
-                        domain,
-                        comparison=comparison,
-                        output_root=runs_root,
-                        trajectories_dir=trajectories_dir,
-                        fixture=fixture,
-                        env_executions=env_executions,
-                    )
+                    if comparison.mode is Tau2ComparisonMode.SMOKE:
+                        domain_run = _run_smoke_domain_cell(
+                            coordinate,
+                            domain,
+                            comparison=comparison,
+                            output_root=runs_root,
+                            trajectories_dir=trajectories_dir,
+                        )
+                    else:
+                        domain_run = _run_agent_loop_domain_cell(
+                            coordinate,
+                            domain,
+                            comparison=comparison,
+                            output_root=runs_root,
+                            trajectories_dir=trajectories_dir,
+                        )
                     cell.domain_results[domain] = domain_run
                     append_trajectory_index(
                         trajectory_index,
                         [
                             {
-                                "run_id": domain_run.result.run_id,
+                                "run_id": domain_run.run_id
+                                or (
+                                    domain_run.result.run_id
+                                    if domain_run.result
+                                    else None
+                                ),
                                 "domain": domain.value,
                                 "agent": coordinate.agent.value,
                                 "backend": coordinate.backend.value,
                                 "trajectory_path": domain_run.trajectory_path,
                                 "mode": comparison.mode.value,
+                                "harness_label": (
+                                    HARNESS_AGENT_LABEL
+                                    if comparison.mode is Tau2ComparisonMode.HARNESS
+                                    or comparison.use_harness_agent
+                                    else None
+                                ),
                             }
                         ],
                     )

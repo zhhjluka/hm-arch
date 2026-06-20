@@ -3,15 +3,15 @@
 
 Usage::
 
-    # Real tau2-bench tasks + CLI boundary (default)
+    # Real tau2-bench tasks + production agent CLIs (default)
     uv run python scripts/run_tau2_bench_comparison.py
 
     # Labeled synthetic smoke evidence only
     uv run python scripts/run_tau2_bench_comparison.py --mode smoke --use-mock-agent
 
-    # Real tau2 with explicit CLI executable
-    uv run python scripts/run_tau2_bench_comparison.py \\
-        --agent-executable tests/fixtures/fake_agent_cli.py
+    # Labeled harness: real tau2 tasks + fake tau2 CLI gold-action driver
+    uv run python scripts/run_tau2_bench_comparison.py --mode harness \\
+        --agent-executable tests/fixtures/fake_tau2_agent_cli.py
 
 Offline tests::
 
@@ -48,7 +48,7 @@ def main() -> int:
         "--mode",
         choices=[mode.value for mode in Tau2ComparisonMode],
         default=Tau2ComparisonMode.REAL.value,
-        help="smoke = labeled synthetic fixtures; real = version-pinned tau2-bench",
+        help="smoke = synthetic fixtures; harness = labeled agent-loop harness; real = production CLIs",
     )
     parser.add_argument(
         "--include-openclaw",
@@ -58,16 +58,23 @@ def main() -> int:
     parser.add_argument(
         "--use-mock-agent",
         action="store_true",
-        help="Use offline MockSyntheticAgentRunner instead of CLI runners",
+        help="Use offline MockSyntheticAgentRunner for smoke mode",
+    )
+    parser.add_argument(
+        "--use-harness-agent",
+        action="store_true",
+        help="Use labeled fake tau2 CLI that replays gold actions (harness only)",
     )
     parser.add_argument(
         "--agent-executable",
         type=Path,
         default=None,
-        help="Override agent CLI executable for supported cells",
+        help="Override agent CLI executable (harness mode only)",
     )
     parser.add_argument("--agent-model", default=None)
     parser.add_argument("--agent-provider", default=None)
+    parser.add_argument("--user-mode", default="llm", choices=["llm", "scripted"])
+    parser.add_argument("--user-llm", default=None)
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--num-tasks", type=int, default=3)
     args = parser.parse_args()
@@ -77,11 +84,14 @@ def main() -> int:
         top_k=args.top_k,
         mode=Tau2ComparisonMode(args.mode),
         use_mock_agent=args.use_mock_agent,
+        use_harness_agent=args.use_harness_agent or args.mode == Tau2ComparisonMode.HARNESS.value,
         include_openclaw=args.include_openclaw,
         num_tasks=args.num_tasks,
         agent_executable=str(args.agent_executable) if args.agent_executable else None,
         agent_model=args.agent_model,
         agent_provider=args.agent_provider,
+        user_mode=args.user_mode,
+        user_llm=args.user_llm,
     )
     report = run_tau2_comparison(config, output_root=args.output_dir)
     print(json.dumps(report.to_dict(), indent=2, default=str))

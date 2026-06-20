@@ -16,6 +16,12 @@ def get_tau2_domain_fixture(
 ) -> SyntheticFixture:
     if mode is Tau2ComparisonMode.SMOKE:
         return get_smoke_domain_fixture(domain)
+    if mode is Tau2ComparisonMode.HARNESS:
+        fixture, _executions = load_real_domain_fixture(
+            domain,
+            num_tasks=num_tasks or 3,
+        )
+        return fixture
     fixture, _executions = load_real_domain_fixture(
         domain,
         num_tasks=num_tasks or 3,

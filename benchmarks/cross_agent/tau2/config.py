@@ -23,6 +23,7 @@ class Tau2ComparisonMode(str, Enum):
     """Execution mode for the tau2 comparison sweep."""
 
     SMOKE = "smoke"
+    HARNESS = "harness"
     REAL = "real"
 
 
@@ -67,6 +68,7 @@ class Tau2ComparisonConfig:
     top_k: int = 5
     mode: Tau2ComparisonMode = Tau2ComparisonMode.REAL
     use_mock_agent: bool = False
+    use_harness_agent: bool = False
     include_openclaw: bool = False
     domains: tuple[Tau2Domain, ...] = (Tau2Domain.RETAIL, Tau2Domain.AIRLINE)
     task_split_name: str = DEFAULT_TASK_SPLIT
@@ -74,17 +76,24 @@ class Tau2ComparisonConfig:
     agent_executable: str | None = None
     agent_model: str | None = None
     agent_provider: str | None = None
+    user_mode: str = "llm"
+    user_llm: str | None = None
+    consolidate_memory: bool = True
 
     def provenance(self) -> dict[str, str | int | bool | None]:
         data: dict[str, str | int | bool | None] = {
             **provenance(),
             "mode": self.mode.value,
             "use_mock_agent": self.use_mock_agent,
+            "use_harness_agent": self.use_harness_agent,
             "task_split_name": self.task_split_name,
             "num_tasks": self.num_tasks,
             "agent_executable": self.agent_executable,
             "agent_model": self.agent_model,
             "agent_provider": self.agent_provider,
+            "user_mode": self.user_mode,
+            "user_llm": self.user_llm,
+            "consolidate_memory": self.consolidate_memory,
         }
         return data
 

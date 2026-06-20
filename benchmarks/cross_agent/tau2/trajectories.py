@@ -7,8 +7,10 @@ from pathlib import Path
 from typing import Any
 
 from ..types import BenchmarkRunResult, QueryRecord, SyntheticFixture
-from .config import Tau2ComparisonConfig, Tau2Domain
+from .agent_loop import Tau2AgentTaskExecution
+from .config import Tau2ComparisonConfig, Tau2Domain, Tau2MatrixCoordinate
 from .environment_runner import Tau2EnvironmentExecution
+from .types import Tau2DomainMetrics
 
 
 def trajectory_record(
@@ -89,6 +91,52 @@ def write_run_trajectory(
             env_executions=env_executions,
         )
         for record in result.queries
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "".join(json.dumps(row, default=str) + "\n" for row in rows),
+        encoding="utf-8",
+    )
+
+
+def write_agent_loop_trajectory(
+    path: Path,
+    *,
+    domain: Tau2Domain,
+    coordinate: Tau2MatrixCoordinate,
+    comparison: Tau2ComparisonConfig,
+    run_id: str,
+    agent_executions: list[Tau2AgentTaskExecution],
+    metrics: Tau2DomainMetrics,
+) -> None:
+    """Write raw agent/environment trajectories for one agent-loop domain run."""
+    rows = [
+        {
+            "run_id": run_id,
+            "domain": domain.value,
+            "agent": coordinate.agent.value,
+            "backend": coordinate.backend.value,
+            "comparison_mode": comparison.mode.value,
+            "use_harness_agent": comparison.use_harness_agent,
+            "agent_executable": comparison.agent_executable,
+            "agent_model": comparison.agent_model,
+            "agent_provider": comparison.agent_provider,
+            "user_mode": comparison.user_mode,
+            "user_llm": comparison.user_llm,
+            "task_id": execution.task_id,
+            "task_success": execution.task_success,
+            "reward": execution.reward,
+            "duration_ms": execution.duration_ms,
+            "harness_label": execution.harness_label,
+            "agent_invocation_mode": execution.agent_invocation_mode,
+            "agent_executable_resolved": execution.agent_executable,
+            "steps": [step.__dict__ for step in execution.steps],
+            "simulation_messages": execution.simulation_messages,
+            "evaluation": execution.evaluation,
+            "error": execution.error,
+            "domain_metrics": metrics.to_dict(),
+        }
+        for execution in agent_executions
     ]
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(

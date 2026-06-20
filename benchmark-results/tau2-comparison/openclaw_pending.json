@@ -18,7 +18,9 @@
       "airline_run_id": null,
       "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
       "retail_trajectory_path": null,
-      "airline_trajectory_path": null
+      "airline_trajectory_path": null,
+      "excluded_from_benchmark_table": true,
+      "exclusion_reason": "mode=harness is harness-only"
     },
     {
       "agent": "openclaw",
@@ -36,7 +38,9 @@
       "airline_run_id": null,
       "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
       "retail_trajectory_path": null,
-      "airline_trajectory_path": null
+      "airline_trajectory_path": null,
+      "excluded_from_benchmark_table": true,
+      "exclusion_reason": "mode=harness is harness-only"
     },
     {
       "agent": "openclaw",
@@ -54,7 +58,9 @@
       "airline_run_id": null,
       "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
       "retail_trajectory_path": null,
-      "airline_trajectory_path": null
+      "airline_trajectory_path": null,
+      "excluded_from_benchmark_table": true,
+      "exclusion_reason": "mode=harness is harness-only"
     },
     {
       "agent": "openclaw",
@@ -72,7 +78,9 @@
       "airline_run_id": null,
       "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
       "retail_trajectory_path": null,
-      "airline_trajectory_path": null
+      "airline_trajectory_path": null,
+      "excluded_from_benchmark_table": true,
+      "exclusion_reason": "mode=harness is harness-only"
     },
     {
       "agent": "openclaw",
@@ -90,7 +98,9 @@
       "airline_run_id": null,
       "rationale": "Deferred pending MEM-75 OpenClaw end-to-end verification.",
       "retail_trajectory_path": null,
-      "airline_trajectory_path": null
+      "airline_trajectory_path": null,
+      "excluded_from_benchmark_table": true,
+      "exclusion_reason": "mode=harness is harness-only"
     }
   ]
 }

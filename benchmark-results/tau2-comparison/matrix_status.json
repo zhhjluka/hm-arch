@@ -9,15 +9,19 @@
         "run_id": "tau2_bench-claude_code-hm_arch-s0-k5-36d8af1ad079b55e",
         "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-hm_arch-s0-k5-36d8af1ad079b55e.jsonl",
         "error": null,
-        "task_success_rate": null,
-        "environment_execution_count": 3
+        "task_success_rate": 1.0,
+        "environment_execution_count": 0,
+        "agent_execution_count": 1,
+        "agent_invocation_mode": "harness_gold_actions"
       },
       "airline": {
         "run_id": "tau2_bench-claude_code-hm_arch-s1-k5-0af1db786f3f4354",
         "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-hm_arch-s1-k5-0af1db786f3f4354.jsonl",
         "error": null,
-        "task_success_rate": null,
-        "environment_execution_count": 3
+        "task_success_rate": 1.0,
+        "environment_execution_count": 0,
+        "agent_execution_count": 1,
+        "agent_invocation_mode": "harness_gold_actions"
       }
     }
   },
@@ -45,15 +49,19 @@
         "run_id": "tau2_bench-claude_code-no_memory-s0-k5-303a0c197b7d8074",
         "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-no_memory-s0-k5-303a0c197b7d8074.jsonl",
         "error": null,
-        "task_success_rate": null,
-        "environment_execution_count": 3
+        "task_success_rate": 1.0,
+        "environment_execution_count": 0,
+        "agent_execution_count": 1,
+        "agent_invocation_mode": "harness_gold_actions"
       },
       "airline": {
         "run_id": "tau2_bench-claude_code-no_memory-s1-k5-e9d5e1cfb31e2aea",
         "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-claude_code-no_memory-s1-k5-e9d5e1cfb31e2aea.jsonl",
         "error": null,
-        "task_success_rate": null,
-        "environment_execution_count": 3
+        "task_success_rate": 1.0,
+        "environment_execution_count": 0,
+        "agent_execution_count": 1,
+        "agent_invocation_mode": "harness_gold_actions"
       }
     }
   },
@@ -74,15 +82,19 @@
         "run_id": "tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1",
         "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1.jsonl",
         "error": null,
-        "task_success_rate": null,
-        "environment_execution_count": 3
+        "task_success_rate": 1.0,
+        "environment_execution_count": 0,
+        "agent_execution_count": 1,
+        "agent_invocation_mode": "harness_gold_actions"
       },
       "airline": {
         "run_id": "tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3",
         "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-hm_arch-s1-k5-3e6f621424c865e3.jsonl",
         "error": null,
-        "task_success_rate": null,
-        "environment_execution_count": 3
+        "task_success_rate": 1.0,
+        "environment_execution_count": 0,
+        "agent_execution_count": 1,
+        "agent_invocation_mode": "harness_gold_actions"
       }
     }
   },
@@ -110,15 +122,19 @@
         "run_id": "tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7",
         "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s0-k5-8bc8fbd75c46b7d7.jsonl",
         "error": null,
-        "task_success_rate": null,
-        "environment_execution_count": 3
+        "task_success_rate": 1.0,
+        "environment_execution_count": 0,
+        "agent_execution_count": 1,
+        "agent_invocation_mode": "harness_gold_actions"
       },
       "airline": {
         "run_id": "tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf",
         "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-codex-no_memory-s1-k5-836706e558bc29bf.jsonl",
         "error": null,
-        "task_success_rate": null,
-        "environment_execution_count": 3
+        "task_success_rate": 1.0,
+        "environment_execution_count": 0,
+        "agent_execution_count": 1,
+        "agent_invocation_mode": "harness_gold_actions"
       }
     }
   },
@@ -139,15 +155,19 @@
         "run_id": "tau2_bench-hermes-hm_arch-s0-k5-6f2f11f4a36d898a",
         "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-hm_arch-s0-k5-6f2f11f4a36d898a.jsonl",
         "error": null,
-        "task_success_rate": null,
-        "environment_execution_count": 3
+        "task_success_rate": 1.0,
+        "environment_execution_count": 0,
+        "agent_execution_count": 1,
+        "agent_invocation_mode": "harness_gold_actions"
       },
       "airline": {
         "run_id": "tau2_bench-hermes-hm_arch-s1-k5-f71ecd9ced1a1ca9",
         "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-hm_arch-s1-k5-f71ecd9ced1a1ca9.jsonl",
         "error": null,
-        "task_success_rate": null,
-        "environment_execution_count": 3
+        "task_success_rate": 1.0,
+        "environment_execution_count": 0,
+        "agent_execution_count": 1,
+        "agent_invocation_mode": "harness_gold_actions"
       }
     }
   },
@@ -175,15 +195,19 @@
         "run_id": "tau2_bench-hermes-no_memory-s0-k5-633d5c04da7f3e90",
         "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-no_memory-s0-k5-633d5c04da7f3e90.jsonl",
         "error": null,
-        "task_success_rate": null,
-        "environment_execution_count": 3
+        "task_success_rate": 1.0,
+        "environment_execution_count": 0,
+        "agent_execution_count": 1,
+        "agent_invocation_mode": "harness_gold_actions"
       },
       "airline": {
         "run_id": "tau2_bench-hermes-no_memory-s1-k5-c7ad6f382c38b1cc",
         "trajectory_path": "/workspace/benchmark-results/tau2-comparison/trajectories/tau2_bench-hermes-no_memory-s1-k5-c7ad6f382c38b1cc.jsonl",
         "error": null,
-        "task_success_rate": null,
-        "environment_execution_count": 3
+        "task_success_rate": 1.0,
+        "environment_execution_count": 0,
+        "agent_execution_count": 1,
+        "agent_invocation_mode": "harness_gold_actions"
       }
     }
   },
