@@ -18,6 +18,9 @@ python3 -m pip install -e ".[dev]"
 
 All commands below are offline and do not require LLM/API keys.
 
+OpenClaw end-to-end verification (automated + manual gateway smoke):
+[openclaw-e2e-smoke.md](openclaw-e2e-smoke.md).
+
 ## Codex (project scope)
 
 ```bash
