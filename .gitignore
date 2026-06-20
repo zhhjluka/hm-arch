@@ -12,6 +12,7 @@ build/
 develop-eggs/
 dist/
 !packages/openclaw-plugin/dist/
+!src/hm_arch/integrations/openclaw/bundled_plugin/dist/
 downloads/
 eggs/
 .eggs/
