@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 import shutil
 import sys
+from importlib import resources
 from pathlib import Path
 
 from hm_arch._version import __version__
 
 _PLUGIN_PACKAGE_DIRNAME = "openclaw-plugin"
+_BUNDLED_PLUGIN_PACKAGE = "hm_arch.integrations.openclaw.bundled_plugin"
 _PLUGIN_PAYLOAD_FILES = (
     "package.json",
     "openclaw.plugin.json",
@@ -19,21 +21,43 @@ _PLUGIN_PAYLOAD_FILES = (
 
 def resolve_bundled_plugin_source() -> Path:
     """Return the canonical @hm-arch/openclaw-plugin package directory."""
-    module_dir = Path(__file__).resolve().parent
-    candidates: list[Path] = []
-    if getattr(sys, "frozen", False):
-        meipass = getattr(sys, "_MEIPASS", None)
-        if meipass:
-            candidates.append(Path(meipass) / _PLUGIN_PACKAGE_DIRNAME)
-    candidates.append(module_dir.parents[3] / "packages" / _PLUGIN_PACKAGE_DIRNAME)
-
-    for candidate in candidates:
+    for candidate in _plugin_source_candidates():
         if _plugin_package_ready(candidate):
             return candidate
 
     raise FileNotFoundError(
         "HM-Arch OpenClaw plugin package is missing from the installation"
     )
+
+
+def _plugin_source_candidates() -> list[Path]:
+    candidates: list[Path] = []
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            candidates.append(Path(meipass) / _PLUGIN_PACKAGE_DIRNAME)
+
+    module_dir = Path(__file__).resolve().parent
+    candidates.append(module_dir.parents[3] / "packages" / _PLUGIN_PACKAGE_DIRNAME)
+
+    wheel_source = _wheel_bundled_plugin_source()
+    if wheel_source is not None:
+        candidates.append(wheel_source)
+
+    return candidates
+
+
+def _wheel_bundled_plugin_source() -> Path | None:
+    """Return the wheel-bundled plugin directory when installed from PyPI."""
+    try:
+        root = resources.files(_BUNDLED_PLUGIN_PACKAGE)
+    except (ModuleNotFoundError, TypeError):
+        return None
+
+    candidate = Path(str(root))
+    if _plugin_package_ready(candidate):
+        return candidate
+    return None
 
 
 def _plugin_package_ready(path: Path) -> bool:

@@ -54,6 +54,13 @@ Changelog = "https://github.com/ZhangHangjianMA/memashuman/blob/main/CHANGELOG.m
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"hm_arch.integrations.openclaw.bundled_plugin" = [
+    "package.json",
+    "openclaw.plugin.json",
+    "dist/index.js",
+]
+
 [tool.setuptools.dynamic]
 version = { attr = "hm_arch._version.__version__" }
 

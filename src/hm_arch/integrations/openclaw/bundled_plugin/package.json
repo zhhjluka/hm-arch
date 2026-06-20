@@ -1,0 +1,32 @@
+{
+  "name": "@hm-arch/openclaw-plugin",
+  "version": "2.0.4",
+  "description": "HM-Arch local SQLite memory plugin for OpenClaw",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "openclaw": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "files": [
+    "dist",
+    "openclaw.plugin.json"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node ./scripts/run-tests.mjs"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "openclaw": "2026.6.8",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

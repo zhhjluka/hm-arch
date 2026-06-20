@@ -1,0 +1,71 @@
+{
+  "id": "memory-hm-arch",
+  "name": "HM-Arch Memory",
+  "description": "HM-Arch local SQLite memory provider for OpenClaw with auto-recall, auto-capture, and sidecar-backed durable storage.",
+  "kind": "memory",
+  "contracts": {
+    "tools": ["memory_recall", "memory_store", "memory_forget"]
+  },
+  "uiHints": {
+    "dbPath": {
+      "label": "Database Path",
+      "placeholder": "hm_arch_memory.db",
+      "help": "SQLite database path relative to the OpenClaw config root, or an absolute path. Supports $OPENCLAW_STATE_DIR."
+    },
+    "sidecarCommand": {
+      "label": "Sidecar Command",
+      "help": "Command prefix that launches the HM-Arch JSONL sidecar process.",
+      "advanced": true
+    },
+    "autoRecall": {
+      "label": "Auto-Recall",
+      "help": "Inject relevant recalled memory before each agent turn."
+    },
+    "autoCapture": {
+      "label": "Auto-Capture",
+      "help": "Persist completed user/assistant turns after each successful agent run."
+    },
+    "topK": {
+      "label": "Recall Top K",
+      "placeholder": "5",
+      "help": "Maximum number of memory hits to retrieve.",
+      "advanced": true
+    },
+    "maxContextChars": {
+      "label": "Max Context Chars",
+      "placeholder": "4000",
+      "help": "Upper bound on recalled context characters injected into prompts.",
+      "advanced": true
+    },
+    "consolidateOnSessionEnd": {
+      "label": "Consolidate On Session End",
+      "help": "Run offline consolidation when a session ends (idle/shutdown reasons).",
+      "advanced": true
+    },
+    "requestTimeoutMs": {
+      "label": "Request Timeout (ms)",
+      "placeholder": "15000",
+      "help": "Per-operation sidecar request timeout.",
+      "advanced": true
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "dbPath": { "type": "string" },
+      "sidecarCommand": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "autoRecall": { "type": "boolean" },
+      "autoCapture": { "type": "boolean" },
+      "topK": { "type": "integer", "minimum": 1 },
+      "maxContextChars": { "type": "integer", "minimum": 1 },
+      "consolidateOnSessionEnd": { "type": "boolean" },
+      "requestTimeoutMs": { "type": "integer", "minimum": 1 },
+      "startupTimeoutMs": { "type": "integer", "minimum": 1 },
+      "maxRestartBackoffMs": { "type": "integer", "minimum": 1 }
+    }
+  }
+}
