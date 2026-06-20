@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from benchmarks.cross_agent.tau2.agent_cli import classify_cli_failure, is_harness_executable
 from benchmarks.cross_agent.tau2.agent_loop import HARNESS_AGENT_LABEL, run_task_agent_loop
 from benchmarks.cross_agent.tau2.availability import tau2_is_available
 from benchmarks.cross_agent.tau2.config import (
@@ -207,3 +208,69 @@ def test_real_fixture_uses_tau2_task_ids() -> None:
         pytest.skip("tau2-bench not installed")
     fixture = get_tau2_domain_fixture(Tau2Domain.RETAIL, mode=Tau2ComparisonMode.HARNESS, num_tasks=2)
     assert all("tau2_task_id" in item.metadata for item in fixture.ingest_items)
+
+
+def test_real_mode_rejects_harness_executable(tmp_path: Path) -> None:
+    config = Tau2ComparisonConfig(
+        output_root=str(tmp_path),
+        mode=Tau2ComparisonMode.REAL,
+        user_mode="scripted",
+        agent_executable=_fake_tau2_cli_executable(),
+    )
+    report = run_tau2_comparison(config)
+    codex = next(row for row in report.rows if row.agent == AgentKind.CODEX.value)
+    assert codex.status == "failed"
+    assert "agent-executable" in (codex.rationale or "").lower()
+    assert report.benchmark_rows == []
+
+
+def test_real_mode_requires_user_llm(tmp_path: Path) -> None:
+    config = Tau2ComparisonConfig(
+        output_root=str(tmp_path),
+        mode=Tau2ComparisonMode.REAL,
+        user_mode="llm",
+        user_llm=None,
+    )
+    report = run_tau2_comparison(config)
+    codex = next(row for row in report.rows if row.agent == AgentKind.CODEX.value)
+    assert codex.status == "failed"
+    assert "user-llm" in (codex.rationale or "").lower()
+    assert report.benchmark_rows == []
+
+
+def test_real_mode_marks_missing_cli_unavailable(tmp_path: Path) -> None:
+    config = Tau2ComparisonConfig(
+        output_root=str(tmp_path),
+        mode=Tau2ComparisonMode.REAL,
+        user_mode="scripted",
+        num_tasks=1,
+    )
+    report = run_tau2_comparison(config)
+    codex = next(
+        row
+        for row in report.rows
+        if row.agent == AgentKind.CODEX.value and row.backend == MemoryBackendKind.NO_MEMORY.value
+    )
+    assert codex.status == "unavailable"
+    assert report.benchmark_rows == []
+
+
+def test_scripted_real_pilot_is_excluded_from_benchmark_table(tmp_path: Path) -> None:
+    config = Tau2ComparisonConfig(
+        output_root=str(tmp_path),
+        mode=Tau2ComparisonMode.REAL,
+        user_mode="scripted",
+        num_tasks=1,
+    )
+    report = run_tau2_comparison(config)
+    assert report.provenance.get("user_simulator_label") == "scripted_user_pilot"
+    assert report.benchmark_rows == []
+
+
+def test_is_harness_executable_detects_fake_cli() -> None:
+    assert is_harness_executable(_fake_tau2_cli_executable())
+
+
+def test_classify_cli_failure_detects_auth_errors() -> None:
+    assert classify_cli_failure("Error: not logged in. Run codex login") == "agent_cli_auth_failure"
+

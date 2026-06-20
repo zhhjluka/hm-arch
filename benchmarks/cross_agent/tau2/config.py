@@ -80,6 +80,39 @@ class Tau2ComparisonConfig:
     user_llm: str | None = None
     consolidate_memory: bool = True
 
+    def user_simulator_label(self) -> str | None:
+        """Label how the tau2 user simulator is configured in REAL mode."""
+        if self.mode is not Tau2ComparisonMode.REAL:
+            return None
+        if self.user_mode == "scripted":
+            return "scripted_user_pilot"
+        if self.user_llm:
+            return "llm_user_simulator"
+        return None
+
+    def validate_real_mode(self) -> tuple[str, str] | None:
+        """Return (status, rationale) when REAL mode configuration is invalid."""
+        if self.mode is not Tau2ComparisonMode.REAL:
+            return None
+        if self.use_mock_agent:
+            return "failed", "REAL mode cannot use --use-mock-agent"
+        if self.use_harness_agent:
+            return "failed", "REAL mode cannot use harness gold-action replay"
+        if self.agent_executable:
+            return (
+                "failed",
+                "REAL mode must resolve production agent CLIs; remove --agent-executable",
+            )
+        if self.user_mode == "llm" and not self.user_llm:
+            return (
+                "failed",
+                "REAL mode requires --user-llm when --user-mode=llm "
+                "(or pass --user-mode scripted for a labeled limited pilot)",
+            )
+        if self.user_mode not in {"llm", "scripted"}:
+            return "failed", f"Unsupported user_mode: {self.user_mode}"
+        return None
+
     def provenance(self) -> dict[str, str | int | bool | None]:
         data: dict[str, str | int | bool | None] = {
             **provenance(),
@@ -93,6 +126,7 @@ class Tau2ComparisonConfig:
             "agent_provider": self.agent_provider,
             "user_mode": self.user_mode,
             "user_llm": self.user_llm,
+            "user_simulator_label": self.user_simulator_label(),
             "consolidate_memory": self.consolidate_memory,
         }
         return data

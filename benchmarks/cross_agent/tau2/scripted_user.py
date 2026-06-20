@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from .availability import _stub_tau2_optional_deps
+
+_stub_tau2_optional_deps()
+
 from tau2.data_model.message import AssistantMessage, UserMessage
 from tau2.user.user_simulator_base import (
     HalfDuplexUser,

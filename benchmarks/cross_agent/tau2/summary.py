@@ -76,6 +76,8 @@ def _row_is_benchmark_eligible(
         return False, f"mode={comparison.mode.value} is harness-only"
     if comparison.use_harness_agent:
         return False, "use_harness_agent is set"
+    if comparison.user_simulator_label() == "scripted_user_pilot":
+        return False, "scripted_user_pilot is a limited pilot, not benchmark-eligible"
     if cell.status != "completed":
         return False, f"cell status={cell.status}"
     return True, None

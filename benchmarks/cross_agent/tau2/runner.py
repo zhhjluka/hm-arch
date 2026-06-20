@@ -22,6 +22,7 @@ from ..types import (
     MemoryBackendKind,
     SyntheticFixture,
 )
+from .agent_cli import classify_cli_failure, is_harness_executable, production_cli_status
 from .agent_loop import HARNESS_AGENT_LABEL, run_domain_agent_loop
 from .availability import tau2_runtime_info
 from .config import (
@@ -260,16 +261,48 @@ def _resolve_cell_status(
     if not runner_supported:
         return "unsupported", runner_reason
 
-    if comparison.mode is Tau2ComparisonMode.REAL and comparison.use_harness_agent:
-        return "failed", "REAL mode cannot combine with use_harness_agent"
+    if comparison.mode is Tau2ComparisonMode.HARNESS:
+        if not comparison.use_harness_agent and not comparison.agent_executable:
+            return (
+                "failed",
+                "HARNESS mode requires --use-harness-agent or --agent-executable",
+            )
+        if comparison.agent_executable and not is_harness_executable(
+            comparison.agent_executable
+        ):
+            return (
+                "failed",
+                "HARNESS mode requires a labeled fake tau2 CLI executable",
+            )
+        return "completed", runner_reason
 
-    if comparison.mode is Tau2ComparisonMode.REAL and comparison.agent_executable:
-        return (
-            "failed",
-            "REAL mode must resolve production agent CLIs; remove agent_executable override",
-        )
+    invalid_real = comparison.validate_real_mode()
+    if invalid_real is not None:
+        return invalid_real
 
-    return "completed", runner_reason
+    cli_status, cli_reason = production_cli_status(
+        coordinate.agent,
+        executable_override=comparison.agent_executable,
+    )
+    if cli_status != "ready":
+        return cli_status, cli_reason
+
+    return "completed", cli_reason
+
+
+def _detect_auth_failure(domain_run: Tau2DomainRun) -> str | None:
+    """Return an auth/login failure message when agent CLI output indicates one."""
+    for execution in domain_run.agent_executions:
+        if execution.error:
+            failure = classify_cli_failure(execution.error)
+            if failure:
+                return f"{failure}: {execution.error}"
+        for step in execution.steps:
+            failure = classify_cli_failure(step.stderr, step.stdout)
+            if failure:
+                detail = step.stderr.strip() or step.stdout.strip() or step.error or ""
+                return f"{failure}: {detail}"
+    return None
 
 
 def _write_provenance(output_root: Path, comparison: Tau2ComparisonConfig) -> None:
@@ -332,6 +365,16 @@ def run_tau2_comparison(
                             output_root=runs_root,
                             trajectories_dir=trajectories_dir,
                         )
+                    if comparison.mode is Tau2ComparisonMode.REAL:
+                        auth_failure = _detect_auth_failure(domain_run)
+                        if auth_failure is not None:
+                            cell.status = "failed"
+                            cell.rationale = auth_failure
+                            cell.domain_results[domain] = Tau2DomainRun(
+                                domain=domain,
+                                error=auth_failure,
+                            )
+                            continue
                     cell.domain_results[domain] = domain_run
                     append_trajectory_index(
                         trajectory_index,

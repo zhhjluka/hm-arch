@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..types import BenchmarkFamily, BenchmarkQuery, IngestItem, SyntheticFixture
-from .availability import require_tau2
+from .availability import ensure_tau2_data_dir, require_tau2
 from .config import Tau2Domain
 from .environment_runner import (
     GOLD_REPLAY_HARNESS_LABEL,
@@ -25,7 +25,11 @@ def load_tau2_tasks(
     task_ids: list[str] | None = None,
 ) -> list[Any]:
     """Load real tau2-bench tasks for *domain*."""
+    data_dir = ensure_tau2_data_dir()
     require_tau2()
+    import tau2.utils.utils as tau2_utils
+
+    tau2_utils.DATA_DIR = data_dir
     from tau2.runner.helpers import get_tasks
 
     return get_tasks(

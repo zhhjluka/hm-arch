@@ -25,6 +25,7 @@ from ..agents.cli_runner import (
 from ..agents.workspace import AgentWorkspace
 from ..metrics import approximate_token_count
 from ..types import AgentKind, BenchmarkRunConfig
+from .agent_cli import is_harness_executable
 from .availability import require_tau2
 from .config import Tau2Domain
 from .loader import _task_reason_for_call
@@ -545,6 +546,11 @@ def run_task_agent_loop(
     timeout_s: float = 120.0,
 ) -> Tau2AgentTaskExecution:
     """Execute one tau2 task with agent-produced tool calls."""
+    if use_harness_agent and executable and not is_harness_executable(executable):
+        raise ValueError("HARNESS mode requires a labeled fake tau2 CLI executable")
+    if not use_harness_agent and is_harness_executable(executable):
+        raise ValueError("REAL mode cannot use harness or fake agent executables")
+
     default_names = {
         AgentKind.CODEX: ("codex",),
         AgentKind.CLAUDE_CODE: ("claude",),
