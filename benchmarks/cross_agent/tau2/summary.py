@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .config import OPENCLAW_PENDING_ISSUE, Tau2Domain
+from .config import OPENCLAW_PENDING_ISSUE, Tau2ComparisonConfig, Tau2Domain
 from .types import Tau2CellResult
 
 
@@ -43,6 +43,8 @@ class Tau2ComparisonReport:
 
     issue: str = "MEM-76"
     openclaw_pending_issue: str = OPENCLAW_PENDING_ISSUE
+    mode: str = "real"
+    provenance: dict[str, Any] = field(default_factory=dict)
     domains: list[str] = field(default_factory=lambda: [d.value for d in Tau2Domain])
     rows: list[Tau2SummaryRow] = field(default_factory=list)
     matrix_status: list[dict[str, Any]] = field(default_factory=list)
@@ -51,15 +53,24 @@ class Tau2ComparisonReport:
         return {
             "issue": self.issue,
             "openclaw_pending_issue": self.openclaw_pending_issue,
+            "mode": self.mode,
+            "provenance": self.provenance,
             "domains": self.domains,
             "rows": [row.to_dict() for row in self.rows],
             "matrix_status": self.matrix_status,
         }
 
 
-def build_summary_table(cell_results: list[Tau2CellResult]) -> Tau2ComparisonReport:
+def build_summary_table(
+    cell_results: list[Tau2CellResult],
+    *,
+    comparison: Tau2ComparisonConfig | None = None,
+) -> Tau2ComparisonReport:
     """Aggregate per-domain runs into the final comparison table."""
     report = Tau2ComparisonReport()
+    if comparison is not None:
+        report.mode = comparison.mode.value
+        report.provenance = comparison.provenance()
 
     for cell in sorted(cell_results, key=lambda item: (item.coordinate.agent.value, item.coordinate.backend.value)):
         report.matrix_status.append(cell.to_status_dict())

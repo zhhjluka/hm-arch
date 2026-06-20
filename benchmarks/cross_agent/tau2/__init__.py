@@ -3,6 +3,7 @@
 from .config import (
     OPENCLAW_PENDING_ISSUE,
     Tau2ComparisonConfig,
+    Tau2ComparisonMode,
     Tau2Domain,
     tau2_matrix_coordinates,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "OPENCLAW_PENDING_ISSUE",
     "Tau2CellResult",
     "Tau2ComparisonConfig",
+    "Tau2ComparisonMode",
     "Tau2Domain",
     "run_tau2_comparison",
     "tau2_matrix_coordinates",

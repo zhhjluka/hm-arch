@@ -75,7 +75,7 @@ def run_cli(
     try:
         completed = subprocess.run(
             list(argv),
-            cwd=str(cwd) if cwd is not None else None,
+            cwd=str(Path(cwd).resolve()) if cwd is not None else None,
             env=merged_env,
             input=input_text,
             capture_output=True,

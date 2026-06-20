@@ -7,6 +7,7 @@ from enum import Enum
 
 from ..compatibility import compatibility_cell, lookup_matrix_cell
 from ..types import AgentKind, MemoryBackendKind
+from .pin import DEFAULT_NUM_TASKS, DEFAULT_TASK_SPLIT, provenance
 
 OPENCLAW_PENDING_ISSUE = "MEM-75"
 
@@ -16,6 +17,13 @@ class Tau2Domain(str, Enum):
 
     RETAIL = "retail"
     AIRLINE = "airline"
+
+
+class Tau2ComparisonMode(str, Enum):
+    """Execution mode for the tau2 comparison sweep."""
+
+    SMOKE = "smoke"
+    REAL = "real"
 
 
 DOMAIN_SEEDS: dict[Tau2Domain, int] = {
@@ -57,9 +65,28 @@ class Tau2ComparisonConfig:
 
     output_root: str = "benchmark-results/tau2-comparison"
     top_k: int = 5
-    use_mock_agent: bool = True
+    mode: Tau2ComparisonMode = Tau2ComparisonMode.REAL
+    use_mock_agent: bool = False
     include_openclaw: bool = False
     domains: tuple[Tau2Domain, ...] = (Tau2Domain.RETAIL, Tau2Domain.AIRLINE)
+    task_split_name: str = DEFAULT_TASK_SPLIT
+    num_tasks: int = DEFAULT_NUM_TASKS
+    agent_executable: str | None = None
+    agent_model: str | None = None
+    agent_provider: str | None = None
+
+    def provenance(self) -> dict[str, str | int | bool | None]:
+        data: dict[str, str | int | bool | None] = {
+            **provenance(),
+            "mode": self.mode.value,
+            "use_mock_agent": self.use_mock_agent,
+            "task_split_name": self.task_split_name,
+            "num_tasks": self.num_tasks,
+            "agent_executable": self.agent_executable,
+            "agent_model": self.agent_model,
+            "agent_provider": self.agent_provider,
+        }
+        return data
 
 
 def tau2_matrix_coordinates() -> tuple[Tau2MatrixCoordinate, ...]:

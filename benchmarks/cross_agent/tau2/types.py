@@ -7,6 +7,7 @@ from typing import Any
 
 from ..types import BenchmarkRunResult
 from .config import Tau2Domain, Tau2MatrixCoordinate
+from .environment_runner import Tau2EnvironmentExecution
 
 
 @dataclass
@@ -17,6 +18,7 @@ class Tau2DomainRun:
     result: BenchmarkRunResult | None = None
     trajectory_path: str | None = None
     error: str | None = None
+    env_executions: list[Tau2EnvironmentExecution] = field(default_factory=list)
 
 
 @dataclass
@@ -44,6 +46,7 @@ class Tau2CellResult:
                         if run.result
                         else None
                     ),
+                    "environment_execution_count": len(run.env_executions),
                 }
                 for domain, run in self.domain_results.items()
             },

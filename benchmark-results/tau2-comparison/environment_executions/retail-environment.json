@@ -1,0 +1,521 @@
+[
+  {
+    "domain": "retail",
+    "task_id": "0",
+    "reward": 1.0,
+    "task_success": true,
+    "action_steps": [
+      {
+        "action_id": "0_0",
+        "tool_name": "find_user_id_by_name_zip",
+        "arguments": {
+          "first_name": "Yusuf",
+          "last_name": "Rossi",
+          "zip": "19122"
+        },
+        "result_preview": "yusuf_rossi_9620",
+        "duration_ms": 0.03521100734360516,
+        "error": null
+      },
+      {
+        "action_id": "0_1",
+        "tool_name": "get_order_details",
+        "arguments": {
+          "order_id": "#W2378156"
+        },
+        "result_preview": "order_id='#W2378156' user_id='yusuf_rossi_9620' address=UserAddress(address1='763 Broadway', address2='Suite 135', city='Philadelphia', country='USA', state='PA', zip='19122') items=[OrderItem(name='Headphones', product_id='6992792935', item_id='4202497723', price=342.81, options={'type': 'over-ear', 'connectivity': 'wireless', 'color': 'blue'}), OrderItem(name='Vacuum Cleaner', product_id='1762337868', item_id='4602305039', price=561.05, options={'type': 'robotic', 'bagged/bagless': 'bagged'...",
+        "duration_ms": 0.06070500239729881,
+        "error": null
+      },
+      {
+        "action_id": "0_2",
+        "tool_name": "get_product_details",
+        "arguments": {
+          "product_id": "1656367028"
+        },
+        "result_preview": "name='Mechanical Keyboard' product_id='1656367028' variants={'9690244451': Variant(item_id='9690244451', options={'switch type': 'clicky', 'backlight': 'RGB', 'size': '60%'}, available=False, price=236.51), '7706410293': Variant(item_id='7706410293', options={'switch type': 'clicky', 'backlight': 'none', 'size': 'full size'}, available=True, price=269.16), '3616838507': Variant(item_id='3616838507', options={'switch type': 'tactile', 'backlight': 'white', 'size': 'full size'}, available=True,...",
+        "duration_ms": 0.059712008805945516,
+        "error": null
+      },
+      {
+        "action_id": "0_3",
+        "tool_name": "get_product_details",
+        "arguments": {
+          "product_id": "4896585277"
+        },
+        "result_preview": "name='Smart Thermostat' product_id='4896585277' variants={'8722653925': Variant(item_id='8722653925', options={'compatibility': 'Google Assistant', 'color': 'white'}, available=False, price=227.8), '8593894906': Variant(item_id='8593894906', options={'compatibility': 'Amazon Alexa', 'color': 'white'}, available=False, price=263.11), '2791467853': Variant(item_id='2791467853', options={'compatibility': 'Google Assistant', 'color': 'stainless steel'}, available=False, price=242.53), '7747408585...",
+        "duration_ms": 0.027510002837516367,
+        "error": null
+      },
+      {
+        "action_id": "0_4",
+        "tool_name": "exchange_delivered_order_items",
+        "arguments": {
+          "order_id": "#W2378156",
+          "item_ids": [
+            "1151293680",
+            "4983901480"
+          ],
+          "new_item_ids": [
+            "7706410293",
+            "7747408585"
+          ],
+          "payment_method_id": "credit_card_9513926"
+        },
+        "result_preview": "order_id='#W2378156' user_id='yusuf_rossi_9620' address=UserAddress(address1='763 Broadway', address2='Suite 135', city='Philadelphia', country='USA', state='PA', zip='19122') items=[OrderItem(name='Headphones', product_id='6992792935', item_id='4202497723', price=342.81, options={'type': 'over-ear', 'connectivity': 'wireless', 'color': 'blue'}), OrderItem(name='Vacuum Cleaner', product_id='1762337868', item_id='4602305039', price=561.05, options={'type': 'robotic', 'bagged/bagless': 'bagged'...",
+        "duration_ms": 0.07111999730113894,
+        "error": null
+      }
+    ],
+    "evaluation": {
+      "reward": 1.0,
+      "action_reward": 1.0,
+      "environment_reward": 1.0,
+      "action_reward_info": {
+        "reward": 1.0,
+        "db_check": null,
+        "env_assertions": null,
+        "action_checks": [
+          {
+            "action": {
+              "action_id": "0_0",
+              "requestor": "assistant",
+              "name": "find_user_id_by_name_zip",
+              "arguments": {
+                "first_name": "Yusuf",
+                "last_name": "Rossi",
+                "zip": "19122"
+              },
+              "info": null,
+              "compare_args": null
+            },
+            "action_match": true,
+            "action_reward": 1.0,
+            "tool_type": "read"
+          },
+          {
+            "action": {
+              "action_id": "0_1",
+              "requestor": "assistant",
+              "name": "get_order_details",
+              "arguments": {
+                "order_id": "#W2378156"
+              },
+              "info": null,
+              "compare_args": null
+            },
+            "action_match": true,
+            "action_reward": 1.0,
+            "tool_type": "read"
+          },
+          {
+            "action": {
+              "action_id": "0_2",
+              "requestor": "assistant",
+              "name": "get_product_details",
+              "arguments": {
+                "product_id": "1656367028"
+              },
+              "info": null,
+              "compare_args": null
+            },
+            "action_match": true,
+            "action_reward": 1.0,
+            "tool_type": "read"
+          },
+          {
+            "action": {
+              "action_id": "0_3",
+              "requestor": "assistant",
+              "name": "get_product_details",
+              "arguments": {
+                "product_id": "4896585277"
+              },
+              "info": null,
+              "compare_args": null
+            },
+            "action_match": true,
+            "action_reward": 1.0,
+            "tool_type": "read"
+          },
+          {
+            "action": {
+              "action_id": "0_4",
+              "requestor": "assistant",
+              "name": "exchange_delivered_order_items",
+              "arguments": {
+                "order_id": "#W2378156",
+                "item_ids": [
+                  "1151293680",
+                  "4983901480"
+                ],
+                "new_item_ids": [
+                  "7706410293",
+                  "7747408585"
+                ],
+                "payment_method_id": "credit_card_9513926"
+              },
+              "info": null,
+              "compare_args": null
+            },
+            "action_match": true,
+            "action_reward": 1.0,
+            "tool_type": "write"
+          }
+        ],
+        "nl_assertions": null,
+        "communicate_checks": null,
+        "reward_basis": [
+          "DB"
+        ],
+        "reward_breakdown": {
+          "ACTION": 1.0
+        },
+        "info": null
+      },
+      "environment_reward_info": {
+        "reward": 1.0,
+        "db_check": {
+          "db_match": true,
+          "db_reward": 1.0
+        },
+        "env_assertions": null,
+        "action_checks": null,
+        "nl_assertions": null,
+        "communicate_checks": null,
+        "reward_basis": [
+          "DB",
+          "NL_ASSERTION"
+        ],
+        "reward_breakdown": {
+          "DB": 1.0
+        },
+        "info": null
+      }
+    },
+    "duration_ms": 219.20358399802353,
+    "error": null
+  },
+  {
+    "domain": "retail",
+    "task_id": "1",
+    "reward": 1.0,
+    "task_success": true,
+    "action_steps": [
+      {
+        "action_id": "1_0",
+        "tool_name": "find_user_id_by_name_zip",
+        "arguments": {
+          "first_name": "Yusuf",
+          "last_name": "Rossi",
+          "zip": "19122"
+        },
+        "result_preview": "yusuf_rossi_9620",
+        "duration_ms": 0.02107099862769246,
+        "error": null
+      },
+      {
+        "action_id": "1_1",
+        "tool_name": "get_order_details",
+        "arguments": {
+          "order_id": "#W2378156"
+        },
+        "result_preview": "order_id='#W2378156' user_id='yusuf_rossi_9620' address=UserAddress(address1='763 Broadway', address2='Suite 135', city='Philadelphia', country='USA', state='PA', zip='19122') items=[OrderItem(name='Headphones', product_id='6992792935', item_id='4202497723', price=342.81, options={'type': 'over-ear', 'connectivity': 'wireless', 'color': 'blue'}), OrderItem(name='Vacuum Cleaner', product_id='1762337868', item_id='4602305039', price=561.05, options={'type': 'robotic', 'bagged/bagless': 'bagged'...",
+        "duration_ms": 0.05206299829296768,
+        "error": null
+      },
+      {
+        "action_id": "1_2",
+        "tool_name": "get_product_details",
+        "arguments": {
+          "product_id": "1656367028"
+        },
+        "result_preview": "name='Mechanical Keyboard' product_id='1656367028' variants={'9690244451': Variant(item_id='9690244451', options={'switch type': 'clicky', 'backlight': 'RGB', 'size': '60%'}, available=False, price=236.51), '7706410293': Variant(item_id='7706410293', options={'switch type': 'clicky', 'backlight': 'none', 'size': 'full size'}, available=True, price=269.16), '3616838507': Variant(item_id='3616838507', options={'switch type': 'tactile', 'backlight': 'white', 'size': 'full size'}, available=True,...",
+        "duration_ms": 0.05962500290479511,
+        "error": null
+      },
+      {
+        "action_id": "1_3",
+        "tool_name": "get_product_details",
+        "arguments": {
+          "product_id": "4896585277"
+        },
+        "result_preview": "name='Smart Thermostat' product_id='4896585277' variants={'8722653925': Variant(item_id='8722653925', options={'compatibility': 'Google Assistant', 'color': 'white'}, available=False, price=227.8), '8593894906': Variant(item_id='8593894906', options={'compatibility': 'Amazon Alexa', 'color': 'white'}, available=False, price=263.11), '2791467853': Variant(item_id='2791467853', options={'compatibility': 'Google Assistant', 'color': 'stainless steel'}, available=False, price=242.53), '7747408585...",
+        "duration_ms": 0.02755400782916695,
+        "error": null
+      },
+      {
+        "action_id": "1_4",
+        "tool_name": "exchange_delivered_order_items",
+        "arguments": {
+          "order_id": "#W2378156",
+          "item_ids": [
+            "4983901480"
+          ],
+          "new_item_ids": [
+            "7747408585"
+          ],
+          "payment_method_id": "credit_card_9513926"
+        },
+        "result_preview": "order_id='#W2378156' user_id='yusuf_rossi_9620' address=UserAddress(address1='763 Broadway', address2='Suite 135', city='Philadelphia', country='USA', state='PA', zip='19122') items=[OrderItem(name='Headphones', product_id='6992792935', item_id='4202497723', price=342.81, options={'type': 'over-ear', 'connectivity': 'wireless', 'color': 'blue'}), OrderItem(name='Vacuum Cleaner', product_id='1762337868', item_id='4602305039', price=561.05, options={'type': 'robotic', 'bagged/bagless': 'bagged'...",
+        "duration_ms": 0.04612799966707826,
+        "error": null
+      }
+    ],
+    "evaluation": {
+      "reward": 1.0,
+      "action_reward": 1.0,
+      "environment_reward": 1.0,
+      "action_reward_info": {
+        "reward": 1.0,
+        "db_check": null,
+        "env_assertions": null,
+        "action_checks": [
+          {
+            "action": {
+              "action_id": "1_0",
+              "requestor": "assistant",
+              "name": "find_user_id_by_name_zip",
+              "arguments": {
+                "first_name": "Yusuf",
+                "last_name": "Rossi",
+                "zip": "19122"
+              },
+              "info": null,
+              "compare_args": null
+            },
+            "action_match": true,
+            "action_reward": 1.0,
+            "tool_type": "read"
+          },
+          {
+            "action": {
+              "action_id": "1_1",
+              "requestor": "assistant",
+              "name": "get_order_details",
+              "arguments": {
+                "order_id": "#W2378156"
+              },
+              "info": null,
+              "compare_args": null
+            },
+            "action_match": true,
+            "action_reward": 1.0,
+            "tool_type": "read"
+          },
+          {
+            "action": {
+              "action_id": "1_2",
+              "requestor": "assistant",
+              "name": "get_product_details",
+              "arguments": {
+                "product_id": "1656367028"
+              },
+              "info": null,
+              "compare_args": null
+            },
+            "action_match": true,
+            "action_reward": 1.0,
+            "tool_type": "read"
+          },
+          {
+            "action": {
+              "action_id": "1_3",
+              "requestor": "assistant",
+              "name": "get_product_details",
+              "arguments": {
+                "product_id": "4896585277"
+              },
+              "info": null,
+              "compare_args": null
+            },
+            "action_match": true,
+            "action_reward": 1.0,
+            "tool_type": "read"
+          },
+          {
+            "action": {
+              "action_id": "1_4",
+              "requestor": "assistant",
+              "name": "exchange_delivered_order_items",
+              "arguments": {
+                "order_id": "#W2378156",
+                "item_ids": [
+                  "4983901480"
+                ],
+                "new_item_ids": [
+                  "7747408585"
+                ],
+                "payment_method_id": "credit_card_9513926"
+              },
+              "info": null,
+              "compare_args": null
+            },
+            "action_match": true,
+            "action_reward": 1.0,
+            "tool_type": "write"
+          }
+        ],
+        "nl_assertions": null,
+        "communicate_checks": null,
+        "reward_basis": [
+          "DB"
+        ],
+        "reward_breakdown": {
+          "ACTION": 1.0
+        },
+        "info": null
+      },
+      "environment_reward_info": {
+        "reward": 1.0,
+        "db_check": {
+          "db_match": true,
+          "db_reward": 1.0
+        },
+        "env_assertions": null,
+        "action_checks": null,
+        "nl_assertions": null,
+        "communicate_checks": null,
+        "reward_basis": [
+          "DB",
+          "NL_ASSERTION"
+        ],
+        "reward_breakdown": {
+          "DB": 1.0
+        },
+        "info": null
+      }
+    },
+    "duration_ms": 108.37466700468212,
+    "error": null
+  },
+  {
+    "domain": "retail",
+    "task_id": "2",
+    "reward": null,
+    "task_success": false,
+    "action_steps": [
+      {
+        "action_id": "2_0",
+        "tool_name": "find_user_id_by_name_zip",
+        "arguments": {
+          "first_name": "Yusuf",
+          "last_name": "Rossi",
+          "zip": "19122"
+        },
+        "result_preview": "yusuf_rossi_9620",
+        "duration_ms": 0.021503001335076988,
+        "error": null
+      },
+      {
+        "action_id": "2_1",
+        "tool_name": "get_product_details",
+        "arguments": {
+          "product_id": "6086499569"
+        },
+        "result_preview": "",
+        "duration_ms": 0.006607006071135402,
+        "error": "Product not found"
+      },
+      {
+        "action_id": "2_3",
+        "tool_name": "get_product_details",
+        "arguments": {
+          "product_id": "9523456873"
+        },
+        "result_preview": "name='T-Shirt' product_id='9523456873' variants={'9612497925': Variant(item_id='9612497925', options={'color': 'blue', 'size': 'M', 'material': 'cotton', 'style': 'crew neck'}, available=True, price=50.88), '8124970213': Variant(item_id='8124970213', options={'color': 'purple', 'size': 'XL', 'material': 'cotton', 'style': 'crew neck'}, available=True, price=49.67), '9354168549': Variant(item_id='9354168549', options={'color': 'red', 'size': 'XXL', 'material': 'cotton', 'style': 'crew neck'}, ...",
+        "duration_ms": 0.05192299431655556,
+        "error": null
+      },
+      {
+        "action_id": "2_4",
+        "tool_name": "get_user_details",
+        "arguments": {
+          "user_id": "yusuf_rossi_9620"
+        },
+        "result_preview": "user_id='yusuf_rossi_9620' name=UserName(first_name='Yusuf', last_name='Rossi') address=UserAddress(address1='763 Broadway', address2='Suite 135', city='Philadelphia', country='USA', state='PA', zip='19122') email='yusuf.rossi7301@example.com' payment_methods={'credit_card_9513926': CreditCard(source='credit_card', id='credit_card_9513926', brand='mastercard', last_four='2478')} orders=['#W6247578', '#W9711842', '#W4776164', '#W6679257', '#W2378156']",
+        "duration_ms": 0.020334991859272122,
+        "error": null
+      },
+      {
+        "action_id": "2_5",
+        "tool_name": "get_order_details",
+        "arguments": {
+          "order_id": "#W6247578"
+        },
+        "result_preview": "order_id='#W6247578' user_id='yusuf_rossi_9620' address=UserAddress(address1='763 Broadway', address2='Suite 135', city='Philadelphia', country='USA', state='PA', zip='19122') items=[OrderItem(name='T-Shirt', product_id='9523456873', item_id='3799046073', price=53.27, options={'color': 'black', 'size': 'XXL', 'material': 'cotton', 'style': 'crew neck'})] status='pending' fulfillments=[] payment_history=[OrderPayment(transaction_type='payment', amount=53.27, payment_method_id='credit_card_9513...",
+        "duration_ms": 0.021204992663115263,
+        "error": null
+      },
+      {
+        "action_id": "2_6",
+        "tool_name": "get_order_details",
+        "arguments": {
+          "order_id": "#W9711842"
+        },
+        "result_preview": "order_id='#W9711842' user_id='yusuf_rossi_9620' address=UserAddress(address1='763 Broadway', address2='Suite 135', city='Philadelphia', country='USA', state='PA', zip='19122') items=[OrderItem(name='Sunglasses', product_id='7314138884', item_id='4245201809', price=281.48, options={'frame color': 'black', 'lens color': 'green', 'lens type': 'non-polarized', 'frame material': 'metal'})] status='cancelled' fulfillments=[OrderFullfilment(tracking_id=['540934230326'], item_ids=['4245201809'])] pay...",
+        "duration_ms": 0.022640000679530203,
+        "error": null
+      },
+      {
+        "action_id": "2_7",
+        "tool_name": "get_order_details",
+        "arguments": {
+          "order_id": "#W4776164"
+        },
+        "result_preview": "order_id='#W4776164' user_id='yusuf_rossi_9620' address=UserAddress(address1='763 Broadway', address2='Suite 135', city='Philadelphia', country='USA', state='PA', zip='19122') items=[OrderItem(name='T-Shirt', product_id='9523456873', item_id='8349118980', price=53.43, options={'color': 'blue', 'size': 'S', 'material': 'cotton', 'style': 'v-neck'}), OrderItem(name='Espresso Machine', product_id='4354588079', item_id='6324294385', price=2719.01, options={'pressure': '9 bar', 'capacity': '1L', '...",
+        "duration_ms": 0.019329003407619894,
+        "error": null
+      },
+      {
+        "action_id": "2_8",
+        "tool_name": "get_order_details",
+        "arguments": {
+          "order_id": "#W6679257"
+        },
+        "result_preview": "order_id='#W6679257' user_id='yusuf_rossi_9620' address=UserAddress(address1='763 Broadway', address2='Suite 135', city='Philadelphia', country='USA', state='PA', zip='19122') items=[OrderItem(name='Digital Camera', product_id='8940227892', item_id='5996159312', price=2895.55, options={'resolution': '24MP', 'zoom': '3x', 'storage': 'SD card'})] status='delivered' fulfillments=[OrderFullfilment(tracking_id=['522129247270'], item_ids=['5996159312'])] payment_history=[OrderPayment(transaction_ty...",
+        "duration_ms": 0.016503006918355823,
+        "error": null
+      },
+      {
+        "action_id": "2_9",
+        "tool_name": "get_order_details",
+        "arguments": {
+          "order_id": "#W2378156"
+        },
+        "result_preview": "order_id='#W2378156' user_id='yusuf_rossi_9620' address=UserAddress(address1='763 Broadway', address2='Suite 135', city='Philadelphia', country='USA', state='PA', zip='19122') items=[OrderItem(name='Headphones', product_id='6992792935', item_id='4202497723', price=342.81, options={'type': 'over-ear', 'connectivity': 'wireless', 'color': 'blue'}), OrderItem(name='Vacuum Cleaner', product_id='1762337868', item_id='4602305039', price=561.05, options={'type': 'robotic', 'bagged/bagless': 'bagged'...",
+        "duration_ms": 0.02882300759665668,
+        "error": null
+      },
+      {
+        "action_id": "2_10",
+        "tool_name": "get_product_details",
+        "arguments": {
+          "product_id": "9523456873"
+        },
+        "result_preview": "name='T-Shirt' product_id='9523456873' variants={'9612497925': Variant(item_id='9612497925', options={'color': 'blue', 'size': 'M', 'material': 'cotton', 'style': 'crew neck'}, available=True, price=50.88), '8124970213': Variant(item_id='8124970213', options={'color': 'purple', 'size': 'XL', 'material': 'cotton', 'style': 'crew neck'}, available=True, price=49.67), '9354168549': Variant(item_id='9354168549', options={'color': 'red', 'size': 'XXL', 'material': 'cotton', 'style': 'crew neck'}, ...",
+        "duration_ms": 0.03378000110387802,
+        "error": null
+      },
+      {
+        "action_id": "2_11",
+        "tool_name": "return_delivered_order_items",
+        "arguments": {
+          "order_id": "#W2378156",
+          "item_ids": [
+            "4602305039",
+            "4202497723",
+            "9408160950"
+          ],
+          "payment_method_id": "credit_card_9513926"
+        },
+        "result_preview": "order_id='#W2378156' user_id='yusuf_rossi_9620' address=UserAddress(address1='763 Broadway', address2='Suite 135', city='Philadelphia', country='USA', state='PA', zip='19122') items=[OrderItem(name='Headphones', product_id='6992792935', item_id='4202497723', price=342.81, options={'type': 'over-ear', 'connectivity': 'wireless', 'color': 'blue'}), OrderItem(name='Vacuum Cleaner', product_id='1762337868', item_id='4602305039', price=561.05, options={'type': 'robotic', 'bagged/bagless': 'bagged'...",
+        "duration_ms": 0.0465039920527488,
+        "error": null
+      }
+    ],
+    "evaluation": {},
+    "duration_ms": 70.53671500761993,
+    "error": "Product not found"
+  }
+]

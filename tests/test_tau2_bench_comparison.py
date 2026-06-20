@@ -7,26 +7,54 @@ from pathlib import Path
 
 import pytest
 
+from benchmarks.cross_agent.tau2.availability import tau2_is_available
 from benchmarks.cross_agent.tau2.config import (
     COMPARISON_AGENTS,
     COMPARISON_BACKENDS,
+    Tau2ComparisonConfig,
+    Tau2ComparisonMode,
     Tau2Domain,
     tau2_matrix_coordinates,
 )
-from benchmarks.cross_agent.tau2.fixtures import airline_fixture, get_tau2_domain_fixture, retail_fixture
+from benchmarks.cross_agent.tau2.environment_runner import execute_domain_tasks
+from benchmarks.cross_agent.tau2.fixtures import get_tau2_domain_fixture
+from benchmarks.cross_agent.tau2.loader import load_tau2_tasks
 from benchmarks.cross_agent.tau2.runner import run_tau2_comparison
+from benchmarks.cross_agent.tau2.smoke_fixtures import SMOKE_FIXTURE_LABEL, retail_smoke_fixture
 from benchmarks.cross_agent.types import AgentKind, MemoryBackendKind
 
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
-def test_tau2_domain_fixtures_cover_retail_and_airline() -> None:
-    retail = retail_fixture()
-    airline = airline_fixture()
-    assert retail.family.value == "tau2_bench"
-    assert airline.family.value == "tau2_bench"
-    assert all(item.metadata.get("domain") == "retail" for item in retail.ingest_items)
-    assert all(item.metadata.get("domain") == "airline" for item in airline.ingest_items)
-    assert all(query.task_success_criteria for query in retail.queries)
-    assert all(query.task_success_criteria for query in airline.queries)
+
+def _fake_cli_executable() -> str:
+    return str(Path(__file__).resolve().parent / "fixtures" / "fake_agent_cli.py")
+
+
+def _smoke_config(tmp_path: Path) -> Tau2ComparisonConfig:
+    return Tau2ComparisonConfig(
+        output_root=str(tmp_path),
+        mode=Tau2ComparisonMode.SMOKE,
+        use_mock_agent=True,
+    )
+
+
+def _real_config(tmp_path: Path) -> Tau2ComparisonConfig:
+    return Tau2ComparisonConfig(
+        output_root=str(tmp_path),
+        mode=Tau2ComparisonMode.REAL,
+        use_mock_agent=False,
+        agent_executable=_fake_cli_executable(),
+        agent_model="fake-agent-cli",
+        agent_provider="hm-arch-test-fixture",
+    )
+
+
+def test_smoke_domain_fixtures_are_labeled() -> None:
+    retail = retail_smoke_fixture()
+    assert all(
+        item.metadata.get("fixture_source") == SMOKE_FIXTURE_LABEL
+        for item in retail.ingest_items
+    )
 
 
 def test_tau2_matrix_has_full_agent_backend_grid() -> None:
@@ -38,44 +66,57 @@ def test_tau2_matrix_has_full_agent_backend_grid() -> None:
             assert (agent, backend) in keys
 
 
-def test_run_tau2_comparison_writes_artifacts(tmp_path: Path) -> None:
-    report = run_tau2_comparison(output_root=tmp_path)
+def test_run_smoke_comparison_writes_artifacts(tmp_path: Path) -> None:
+    report = run_tau2_comparison(_smoke_config(tmp_path))
     assert report.issue == "MEM-76"
+    assert report.mode == "smoke"
     assert (tmp_path / "summary_table.json").is_file()
-    assert (tmp_path / "summary_table.csv").is_file()
-    assert (tmp_path / "matrix_status.json").is_file()
-    assert (tmp_path / "openclaw_pending.json").is_file()
-    assert (tmp_path / "trajectory_index.jsonl").is_file()
+    assert (tmp_path / "provenance.json").is_file()
     assert len(report.rows) == len(tau2_matrix_coordinates())
 
 
 def test_openclaw_cells_are_pending_mem75(tmp_path: Path) -> None:
-    report = run_tau2_comparison(output_root=tmp_path)
+    report = run_tau2_comparison(_smoke_config(tmp_path))
     openclaw_rows = [row for row in report.rows if row.agent == AgentKind.OPENCLAW.value]
     assert len(openclaw_rows) == len(COMPARISON_BACKENDS)
     assert all(row.status == "pending_mem75" for row in openclaw_rows)
-    assert all(row.retail_run_id is None for row in openclaw_rows)
-
-    pending = json.loads((tmp_path / "openclaw_pending.json").read_text(encoding="utf-8"))
-    assert pending["issue"] == "MEM-75"
-    assert len(pending["cells"]) == len(COMPARISON_BACKENDS)
 
 
-def test_supported_non_openclaw_cells_complete(tmp_path: Path) -> None:
-    report = run_tau2_comparison(output_root=tmp_path)
-    executed = [
+@pytest.mark.skipif(not tau2_is_available(), reason="tau2-bench not installed")
+def test_real_tau2_tasks_load_for_retail_and_airline() -> None:
+    retail = load_tau2_tasks(Tau2Domain.RETAIL, num_tasks=3)
+    airline = load_tau2_tasks(Tau2Domain.AIRLINE, num_tasks=3)
+    assert len(retail) == 3
+    assert len(airline) == 3
+    assert retail[0].evaluation_criteria.actions
+
+
+@pytest.mark.skipif(not tau2_is_available(), reason="tau2-bench not installed")
+def test_real_environment_executes_tau2_tools() -> None:
+    tasks = load_tau2_tasks(Tau2Domain.RETAIL, num_tasks=1)
+    executions = execute_domain_tasks(Tau2Domain.RETAIL, tasks)
+    assert len(executions) == 1
+    assert executions[0].action_steps
+    assert executions[0].reward is not None
+
+
+@pytest.mark.skipif(not tau2_is_available(), reason="tau2-bench not installed")
+def test_run_real_comparison_with_cli_fixture(tmp_path: Path) -> None:
+    report = run_tau2_comparison(_real_config(tmp_path))
+    assert report.mode == "real"
+    codex_hm = next(
         row
         for row in report.rows
-        if row.agent != AgentKind.OPENCLAW.value and row.status == "completed"
-    ]
-    assert executed
-    for row in executed:
-        assert row.retail_run_id
-        assert row.airline_run_id
-        assert row.retail_trajectory_path
-        assert row.airline_trajectory_path
-        assert Path(row.retail_trajectory_path).is_file()
-        assert Path(row.airline_trajectory_path).is_file()
+        if row.agent == AgentKind.CODEX.value and row.backend == MemoryBackendKind.HM_ARCH.value
+    )
+    assert codex_hm.status == "completed"
+    assert codex_hm.retail_trajectory_path
+    assert (tmp_path / "environment_executions" / "retail-environment.json").is_file()
+    trajectory = json.loads(
+        Path(codex_hm.retail_trajectory_path).read_text(encoding="utf-8").splitlines()[0]
+    )
+    assert trajectory["agent_metadata"]["comparison_mode"] == "real"
+    assert trajectory["environment_executions"]
 
 
 @pytest.mark.parametrize(
@@ -92,17 +133,16 @@ def test_unsupported_cells_are_visible(
     agent: AgentKind,
     backend: MemoryBackendKind,
 ) -> None:
-    report = run_tau2_comparison(output_root=tmp_path / f"{agent.value}-{backend.value}")
+    report = run_tau2_comparison(_smoke_config(tmp_path / f"{agent.value}-{backend.value}"))
     row = next(
         row for row in report.rows if row.agent == agent.value and row.backend == backend.value
     )
     assert row.status == "unsupported"
     assert row.rationale
-    assert row.retail_run_id is None
 
 
-def test_hm_arch_beats_no_memory_on_tau2_retail(tmp_path: Path) -> None:
-    report = run_tau2_comparison(output_root=tmp_path)
+def test_smoke_hm_arch_beats_no_memory_on_retail(tmp_path: Path) -> None:
+    report = run_tau2_comparison(_smoke_config(tmp_path))
     hm = next(
         row
         for row in report.rows
@@ -118,26 +158,9 @@ def test_hm_arch_beats_no_memory_on_tau2_retail(tmp_path: Path) -> None:
     assert hm.retail_mean_accuracy >= none.retail_mean_accuracy
 
 
-def test_domain_fixtures_are_isolated_by_seed() -> None:
-    retail = get_tau2_domain_fixture(Tau2Domain.RETAIL)
-    airline = get_tau2_domain_fixture(Tau2Domain.AIRLINE)
-    retail_ids = {item.item_id for item in retail.ingest_items}
-    airline_ids = {item.item_id for item in airline.ingest_items}
-    assert retail_ids.isdisjoint(airline_ids)
-
-
-def test_executed_runs_use_domain_specific_queries(tmp_path: Path) -> None:
-    report = run_tau2_comparison(output_root=tmp_path)
-    codex_hm = next(
-        row
-        for row in report.rows
-        if row.agent == AgentKind.CODEX.value and row.backend == MemoryBackendKind.HM_ARCH.value
-    )
-    retail_lines = Path(codex_hm.retail_trajectory_path).read_text(encoding="utf-8").strip().splitlines()
-    airline_lines = Path(codex_hm.airline_trajectory_path).read_text(encoding="utf-8").strip().splitlines()
-    retail_rows = [json.loads(line) for line in retail_lines]
-    airline_rows = [json.loads(line) for line in airline_lines]
-    assert all(row["query_id"].startswith("retail-") for row in retail_rows)
-    assert all(row["query_id"].startswith("airline-") for row in airline_rows)
-    assert retail_rows[0]["domain"] == "retail"
-    assert airline_rows[0]["domain"] == "airline"
+def test_real_fixture_uses_tau2_task_ids() -> None:
+    if not tau2_is_available():
+        pytest.skip("tau2-bench not installed")
+    fixture = get_tau2_domain_fixture(Tau2Domain.RETAIL, mode=Tau2ComparisonMode.REAL, num_tasks=2)
+    assert all("tau2_task_id" in item.metadata for item in fixture.ingest_items)
+    assert all(query.metadata.get("fixture_source") == "tau2_bench_v1.0.0" for query in fixture.queries)

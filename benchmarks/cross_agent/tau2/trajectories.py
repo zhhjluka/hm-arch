@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ..types import BenchmarkRunResult, QueryRecord
-from .config import Tau2Domain
-from .fixtures import get_tau2_domain_fixture
+from ..types import BenchmarkRunResult, QueryRecord, SyntheticFixture
+from .config import Tau2ComparisonConfig, Tau2Domain
+from .environment_runner import Tau2EnvironmentExecution
 
 
 def trajectory_record(
@@ -17,8 +17,21 @@ def trajectory_record(
     result: BenchmarkRunResult,
     record: QueryRecord,
     task_success_criteria: str | None = None,
+    comparison: Tau2ComparisonConfig | None = None,
+    env_executions: list[Tau2EnvironmentExecution] | None = None,
 ) -> dict[str, Any]:
     """Build one raw trajectory row for a completed query."""
+    agent_metadata = dict(result.agent_metadata)
+    if comparison is not None:
+        agent_metadata.update(
+            {
+                "comparison_mode": comparison.mode.value,
+                "use_mock_agent": comparison.use_mock_agent,
+                "agent_executable": comparison.agent_executable,
+                "agent_model": comparison.agent_model,
+                "agent_provider": comparison.agent_provider,
+            }
+        )
     return {
         "run_id": result.run_id,
         "domain": domain.value,
@@ -46,7 +59,10 @@ def trajectory_record(
         "recall_context_chars": record.recall_context_chars,
         "recall_hit_count": record.recall_hit_count,
         "agent_managed": record.agent_managed,
-        "agent_metadata": result.agent_metadata,
+        "agent_metadata": agent_metadata,
+        "environment_executions": [
+            execution.to_dict() for execution in (env_executions or [])
+        ],
     }
 
 
@@ -55,11 +71,13 @@ def write_run_trajectory(
     *,
     domain: Tau2Domain,
     result: BenchmarkRunResult,
+    fixture: SyntheticFixture,
+    comparison: Tau2ComparisonConfig | None = None,
+    env_executions: list[Tau2EnvironmentExecution] | None = None,
 ) -> None:
     """Write raw trajectories for one completed harness run."""
     criteria_by_id = {
-        query.query_id: query.task_success_criteria
-        for query in get_tau2_domain_fixture(domain).queries
+        query.query_id: query.task_success_criteria for query in fixture.queries
     }
     rows = [
         trajectory_record(
@@ -67,6 +85,8 @@ def write_run_trajectory(
             result=result,
             record=record,
             task_success_criteria=criteria_by_id.get(record.query_id),
+            comparison=comparison,
+            env_executions=env_executions,
         )
         for record in result.queries
     ]

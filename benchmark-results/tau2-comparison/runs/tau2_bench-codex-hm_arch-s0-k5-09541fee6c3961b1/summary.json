@@ -8,11 +8,11 @@
     "run_id": null,
     "top_k": 5,
     "resume": false,
-    "use_mock_agent": true,
-    "agent_executable": null,
+    "use_mock_agent": false,
+    "agent_executable": "/workspace/tests/fixtures/fake_agent_cli.py",
     "agent_timeout_s": 120.0
   },
-  "storage_dir": "benchmark-results/tau2-comparison/runs/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1/storage",
+  "storage_dir": "/workspace/benchmark-results/tau2-comparison/runs/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1/storage",
   "phases_completed": [
     "setup",
     "ingest",
@@ -23,113 +23,106 @@
   ],
   "queries": [
     {
+      "query_id": "retail-q0",
+      "family": "tau2_bench",
+      "question": "Did tau2 retail task 0 complete successfully in the real environment run?",
+      "expected_answer": "yes",
+      "prediction": "unknown",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 20.118139989790507,
+      "query_time_ms": 20.118139989790507,
+      "input_tokens": 12,
+      "output_tokens": 1,
+      "failure_count": 0,
+      "input_token_source": "exact",
+      "output_token_source": "exact",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "retail-task-0"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true
+    },
+    {
       "query_id": "retail-q1",
       "family": "tau2_bench",
-      "question": "Did the return initiation for order ORD-4821 succeed?",
+      "question": "Did tau2 retail task 1 complete successfully in the real environment run?",
       "expected_answer": "yes",
-      "prediction": "wrong color",
+      "prediction": "unknown",
       "accuracy": 0.0,
-      "task_success": true,
-      "retrieval_hit_rate": 1.0,
-      "recall_time_ms": 23.72870199906174,
-      "agent_time_ms": 0.04441400233190507,
-      "query_time_ms": 23.78982800291851,
-      "input_tokens": 103,
-      "output_tokens": 2,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 15.823720998014323,
+      "query_time_ms": 15.823720998014323,
+      "input_tokens": 12,
+      "output_tokens": 1,
       "failure_count": 0,
-      "input_token_source": "estimated",
-      "output_token_source": "estimated",
-      "retrieved_ids": [
-        "retail-task-1",
-        "retail-task-2"
-      ],
+      "input_token_source": "exact",
+      "output_token_source": "exact",
+      "retrieved_ids": [],
       "expected_memory_ids": [
-        "retail-task-2"
+        "retail-task-1"
       ],
-      "recall_context_chars": 804,
-      "recall_hit_count": 5,
-      "agent_managed": false
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true
     },
     {
       "query_id": "retail-q2",
       "family": "tau2_bench",
-      "question": "What was the failure reason for the refund task?",
-      "expected_answer": "payment gateway timeout",
-      "prediction": "payment gateway timeout",
-      "accuracy": 1.0,
-      "task_success": true,
-      "retrieval_hit_rate": 1.0,
-      "recall_time_ms": 29.836100002285093,
-      "agent_time_ms": 0.036094999813940376,
-      "query_time_ms": 29.888270997616928,
-      "input_tokens": 104,
-      "output_tokens": 3,
+      "question": "Did tau2 retail task 2 complete successfully in the real environment run?",
+      "expected_answer": "no",
+      "prediction": "unknown",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 15.539826999884099,
+      "query_time_ms": 15.539826999884099,
+      "input_tokens": 12,
+      "output_tokens": 1,
       "failure_count": 0,
-      "input_token_source": "estimated",
-      "output_token_source": "estimated",
-      "retrieved_ids": [
-        "retail-task-2",
-        "retail-task-3"
-      ],
+      "input_token_source": "exact",
+      "output_token_source": "exact",
+      "retrieved_ids": [],
       "expected_memory_ids": [
-        "retail-task-3"
+        "retail-task-2"
       ],
-      "recall_context_chars": 801,
-      "recall_hit_count": 5,
-      "agent_managed": false
-    },
-    {
-      "query_id": "retail-q3",
-      "family": "tau2_bench",
-      "question": "What shipping address was applied to order ORD-5102?",
-      "expected_answer": "221B Baker Street",
-      "prediction": "221B Baker Street",
-      "accuracy": 1.0,
-      "task_success": true,
-      "retrieval_hit_rate": 1.0,
-      "recall_time_ms": 37.99476900167065,
-      "agent_time_ms": 0.03725599526660517,
-      "query_time_ms": 38.048407004680485,
-      "input_tokens": 103,
-      "output_tokens": 3,
-      "failure_count": 0,
-      "input_token_source": "estimated",
-      "output_token_source": "estimated",
-      "retrieved_ids": [
-        "retail-task-1",
-        "retail-task-4"
-      ],
-      "expected_memory_ids": [
-        "retail-task-4"
-      ],
-      "recall_context_chars": 804,
-      "recall_hit_count": 5,
-      "agent_managed": false
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true
     }
   ],
   "aggregates": {
     "query_count": 3,
     "completed_query_count": 3,
-    "mean_accuracy": 0.6666666666666666,
-    "task_success_rate": 1.0,
-    "mean_retrieval_hit_rate": 1.0,
-    "mean_query_time_ms": 30.57550200173864,
-    "total_input_tokens": 310,
-    "total_output_tokens": 8,
+    "mean_accuracy": 0.0,
+    "task_success_rate": null,
+    "mean_retrieval_hit_rate": null,
+    "mean_query_time_ms": 17.160562662562977,
+    "total_input_tokens": 36,
+    "total_output_tokens": 3,
     "total_failure_count": 0
   },
   "environment": {
     "python": "3.12.3",
     "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-    "timestamp_utc": "2026-06-19T14:41:29.451176+00:00"
+    "timestamp_utc": "2026-06-20T06:48:20.006992+00:00"
   },
   "agent_metadata": {
     "matrix_implementation": "real",
     "matrix_rationale": "Install HM-Arch Codex hooks in isolated home; invoke codex CLI boundary.",
-    "support_rationale": "mock runner enabled for offline harness tests",
+    "support_rationale": "Install HM-Arch Codex hooks in isolated home; invoke codex CLI boundary.",
     "supported": true,
-    "use_mock_agent": true,
-    "storage_dir": "benchmark-results/tau2-comparison/runs/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1/storage"
+    "use_mock_agent": false,
+    "agent_home": "/workspace/benchmark-results/tau2-comparison/runs/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1/agent_workspace/agent_home",
+    "workspace_root": "/workspace/benchmark-results/tau2-comparison/runs/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1/agent_workspace",
+    "storage_dir": "/workspace/benchmark-results/tau2-comparison/runs/tau2_bench-codex-hm_arch-s0-k5-09541fee6c3961b1/storage"
   },
   "compatibility": {
     "codex|no_memory": "real",
