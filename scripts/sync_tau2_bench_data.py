@@ -230,6 +230,11 @@ def _write_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, indent=4) + "\n", encoding="utf-8")
 
 
+def _write_normalized_text(path: Path, text: str) -> None:
+    lines = [line.rstrip() for line in text.splitlines()]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def sync_domain(
     checkout: Path,
     domain: str,
@@ -242,7 +247,10 @@ def sync_domain(
     dst.mkdir(parents=True, exist_ok=True)
 
     for name in _STATIC_FILES:
-        shutil.copy2(src / name, dst / name)
+        if name.endswith(".md"):
+            _write_normalized_text(dst / name, (src / name).read_text(encoding="utf-8"))
+        else:
+            shutil.copy2(src / name, dst / name)
 
     split_tasks = _load_json(src / "split_tasks.json")
     task_ids = list(split_tasks.get(task_split_name) or [])[:num_tasks]

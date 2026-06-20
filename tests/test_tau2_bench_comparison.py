@@ -376,4 +376,3 @@ def test_real_mode_cli_user_is_benchmark_eligible_label(tmp_path: Path) -> None:
 
 def test_classify_cli_failure_detects_auth_errors() -> None:
     assert classify_cli_failure("Error: not logged in. Run codex login") == "agent_cli_auth_failure"
-
