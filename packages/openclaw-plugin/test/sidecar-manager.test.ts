@@ -1,0 +1,233 @@
+import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
+import { describe, it } from "node:test";
+
+import { SidecarManager } from "../src/sidecar-manager.js";
+import {
+  fixtureResponder,
+  goldenInitializeResponse,
+  MockSidecarTransport,
+} from "./mock-sidecar.js";
+
+function createFakeSpawn(transportFactory: () => MockSidecarTransport) {
+  return (_command: string, _args: string[]) => {
+    const transport = transportFactory();
+    const child = new EventEmitter() as EventEmitter & {
+      stdin: { write: (line: string) => void; end: () => void };
+      stdout: EventEmitter;
+      stderr: EventEmitter;
+      killed: boolean;
+      kill: () => void;
+    };
+    child.stdin = {
+      write: (line: string) => transport.write(line),
+      end: () => undefined,
+    };
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.killed = false;
+    child.kill = () => {
+      if (!child.killed) {
+        child.killed = true;
+        child.emit("close", 0);
+      }
+    };
+
+    transport.onData((chunk) => child.stdout.emit("data", chunk));
+
+    return child;
+  };
+}
+
+describe("sidecar manager", () => {
+  it("initializes and serves search requests", async () => {
+    const requests: string[] = [];
+    const manager = new SidecarManager({
+      command: ["mock-sidecar"],
+      dbPath: "/tmp/hm-arch.db",
+      requestTimeoutMs: 1000,
+      startupTimeoutMs: 1000,
+      maxRestartBackoffMs: 1000,
+      spawn: createFakeSpawn(
+        () =>
+          new MockSidecarTransport((request) => {
+            requests.push(request.operation);
+            if (request.operation === "initialize") {
+              return goldenInitializeResponse(request);
+            }
+            if (request.operation === "search") {
+              return fixtureResponder({ search: "golden/03-search-response.json" })(
+                request,
+              );
+            }
+            return fixtureResponder({ shutdown: "golden/09-shutdown-response.json" })(
+              request,
+            );
+          }),
+      ),
+    });
+
+    await manager.start();
+    const response = await manager.search({
+      query: "python",
+      topK: 3,
+      maxContextChars: 500,
+    });
+    assert.equal(response.ok, true);
+    assert.ok(requests.includes("initialize"));
+    await manager.stop();
+    assert.ok(requests.includes("shutdown"));
+  });
+
+  it("returns fail-open search results without throwing", async () => {
+    const manager = new SidecarManager({
+      command: ["mock-sidecar"],
+      dbPath: "/tmp/hm-arch.db",
+      requestTimeoutMs: 1000,
+      startupTimeoutMs: 1000,
+      maxRestartBackoffMs: 1000,
+      spawn: createFakeSpawn(
+        () =>
+          new MockSidecarTransport((request) => {
+            if (request.operation === "initialize") {
+              return goldenInitializeResponse(request);
+            }
+            if (request.operation === "search") {
+              return fixtureResponder({
+                search: "golden/04-search-fail-open-response.json",
+              })(request);
+            }
+            return fixtureResponder({ shutdown: "golden/09-shutdown-response.json" })(
+              request,
+            );
+          }),
+      ),
+    });
+    await manager.start();
+    const response = await manager.search({
+      query: "missing",
+      topK: 3,
+      maxContextChars: 500,
+    });
+    assert.equal(response.ok, false);
+    assert.equal(response.result.context, "");
+    await manager.stop();
+  });
+
+  it("single-flights concurrent startup", async () => {
+    let spawnCount = 0;
+    const requests: string[] = [];
+    const manager = new SidecarManager({
+      command: ["mock-sidecar"],
+      dbPath: "/tmp/hm-arch.db",
+      requestTimeoutMs: 1000,
+      startupTimeoutMs: 1000,
+      maxRestartBackoffMs: 1000,
+      spawn: createFakeSpawn(
+        () => {
+          spawnCount += 1;
+          return new MockSidecarTransport((request) => {
+            requests.push(request.operation);
+            if (request.operation === "initialize") {
+              return goldenInitializeResponse(request);
+            }
+            if (request.operation === "search") {
+              return fixtureResponder({ search: "golden/03-search-response.json" })(
+                request,
+              );
+            }
+            return fixtureResponder({ shutdown: "golden/09-shutdown-response.json" })(
+              request,
+            );
+          });
+        },
+      ),
+    });
+
+    await Promise.all([
+      manager.start(),
+      manager.start(),
+      manager.search({
+        query: "python",
+        topK: 3,
+        maxContextChars: 500,
+      }),
+    ]);
+    assert.equal(spawnCount, 1);
+    assert.equal(requests.filter((op) => op === "initialize").length, 1);
+    await manager.stop();
+  });
+
+  it("tears down failed initialize attempts", async () => {
+    let spawnCount = 0;
+    let killCount = 0;
+    const manager = new SidecarManager({
+      command: ["mock-sidecar"],
+      dbPath: "/tmp/hm-arch.db",
+      requestTimeoutMs: 1000,
+      startupTimeoutMs: 1000,
+      maxRestartBackoffMs: 1000,
+      spawn: (_command: string, _args: string[]) => {
+        spawnCount += 1;
+        const transport = new MockSidecarTransport((request) => {
+          if (request.operation === "initialize") {
+            return {
+              protocol_version: "1.0",
+              correlation_id: request.correlation_id,
+              operation: "initialize",
+              ok: false,
+              result: {},
+              error: {
+                code: "STORAGE_ERROR",
+                message: "initialize failed",
+                retryable: true,
+              },
+            };
+          }
+          return fixtureResponder({ shutdown: "golden/09-shutdown-response.json" })(
+            request,
+          );
+        });
+        const child = new EventEmitter() as EventEmitter & {
+          stdin: { write: (line: string) => void; end: () => void };
+          stdout: EventEmitter;
+          stderr: EventEmitter;
+          killed: boolean;
+          kill: () => void;
+        };
+        child.stdin = {
+          write: (line: string) => transport.write(line),
+          end: () => undefined,
+        };
+        child.stdout = new EventEmitter();
+        child.stderr = new EventEmitter();
+        child.killed = false;
+        child.kill = () => {
+          if (!child.killed) {
+            child.killed = true;
+            killCount += 1;
+            child.emit("close", 1);
+          }
+        };
+        transport.onData((chunk) => child.stdout.emit("data", chunk));
+        return child;
+      },
+    });
+
+    await assert.rejects(() => manager.start(), /initialize failed/);
+    assert.equal(spawnCount, 1);
+    assert.equal(killCount, 1);
+
+    await assert.rejects(
+      () =>
+        manager.search({
+          query: "python",
+          topK: 3,
+          maxContextChars: 500,
+        }),
+      /initialize failed/,
+    );
+    assert.equal(spawnCount, 2);
+    await manager.stop();
+  });
+});
