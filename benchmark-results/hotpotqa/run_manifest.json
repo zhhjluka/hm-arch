@@ -18,13 +18,29 @@
     "codex": "codex exec --json [--disable memories] <prompt>",
     "claude_code": "claude -p <prompt> --output-format json",
     "hermes": "hermes -z <prompt>",
-    "openclaw": "openclaw agent --agent main --session-key <id> --message <prompt> --local --json"
+    "openclaw": "openclaw agent --agent main --session-id <id> --message <prompt> --local --json"
   },
   "output_root": "benchmark-results/hotpotqa",
-  "agent_executables": {},
+  "agent_executables": {
+    "openclaw": {
+      "path": "node_modules/openclaw/openclaw.mjs",
+      "source": "path",
+      "is_test_double": false,
+      "cli_mode": "real",
+      "version_probe": {
+        "argv": [
+          "/workspace/node_modules/.bin/openclaw",
+          "--version"
+        ],
+        "exit_code": 0,
+        "output": "OpenClaw 2026.5.7 (eeef486)"
+      },
+      "invocation_template": "openclaw agent --agent main --session-id <id> --message <prompt> --local --json"
+    }
+  },
   "agent_cli_unavailable": [
+    "hermes",
     "codex",
-    "claude_code",
-    "hermes"
+    "claude_code"
   ]
 }

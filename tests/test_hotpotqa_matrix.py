@@ -58,21 +58,22 @@ def test_get_synthetic_fixture_hotpotqa_matches_versioned_subset() -> None:
 def test_matrix_cell_counts() -> None:
     cells = iter_hotpotqa_matrix_cells()
     assert len(cells) == len(MemoryBackendKind) * len(AgentKind) * 2
-    assert expected_runnable_cell_count() == 12
+    assert expected_runnable_cell_count() == 16
     runnable = runnable_non_openclaw_cells()
+    assert len(runnable) == 12
     assert all(cell.agent is not AgentKind.OPENCLAW for cell in runnable)
     assert all(cell.status is CellStatus.RUN for cell in runnable)
 
 
-def test_openclaw_real_cells_are_pending() -> None:
-    pending = [
+def test_openclaw_real_cells_are_runnable() -> None:
+    openclaw_run = [
         cell
         for cell in iter_hotpotqa_matrix_cells()
         if cell.agent is AgentKind.OPENCLAW
         and cell.backend in {MemoryBackendKind.NO_MEMORY, MemoryBackendKind.HM_ARCH}
     ]
-    assert len(pending) == 4
-    assert all(cell.status is CellStatus.PENDING for cell in pending)
+    assert len(openclaw_run) == 4
+    assert all(cell.status is CellStatus.RUN for cell in openclaw_run)
 
 
 def test_run_hotpotqa_matrix_mock_smoke_writes_artifacts(tmp_path: Path) -> None:
@@ -94,15 +95,15 @@ def test_run_hotpotqa_matrix_mock_smoke_writes_artifacts(tmp_path: Path) -> None
     assert loaded["execution_mode"] == "mock_smoke"
     assert loaded["use_mock_agent"] is True
     assert loaded["executed_cells"] == 0
-    assert loaded["mock_smoke_cells"] == 12
+    assert loaded["mock_smoke_cells"] == 16
     assert loaded.get("test_double_cells", 0) == 0
-    assert loaded["pending_cells"] == 4
+    assert loaded["pending_cells"] == 0
     assert loaded["unsupported_cells"] == 24
     assert len(loaded["cells"]) == 40
     assert manifest["execution_mode"] == "mock_smoke"
 
     mock_rows = [row for row in loaded["cells"] if row["run_id"]]
-    assert len(mock_rows) == 12
+    assert len(mock_rows) == 16
     for row in mock_rows:
         assert row["use_mock_agent"] is True
         assert row["runner_implementation"] == "mock-synthetic"
@@ -112,7 +113,7 @@ def test_run_hotpotqa_matrix_mock_smoke_writes_artifacts(tmp_path: Path) -> None
         assert (run_dir / "retrieval_evidence.jsonl").is_file()
 
     pending_dirs = list((tmp_path / "pending").glob("*/status.json"))
-    assert len(pending_dirs) == 4
+    assert len(pending_dirs) == 0
 
     config = load_hotpotqa_config()
     assert summary["answer_prompt_template"] == config["answer_prompt_template"]
@@ -133,14 +134,14 @@ def test_run_hotpotqa_matrix_real_cli_writes_provenance(tmp_path: Path) -> None:
     assert loaded["execution_mode"] == "comparison"
     assert loaded["use_mock_agent"] is False
     assert loaded["executed_cells"] == 0
-    assert loaded["test_double_cells"] == 12
+    assert loaded["test_double_cells"] == 16
     assert loaded["mock_smoke_cells"] == 0
     assert loaded["agent_executables"] is not None
 
     test_double_rows = [
         row for row in loaded["cells"] if row["run_id"] and row["executable_source"] == "fake_double"
     ]
-    assert len(test_double_rows) == 12
+    assert len(test_double_rows) == 16
     for row in test_double_rows:
         assert row["use_mock_agent"] is False
         assert row["runner_implementation"] != "mock-synthetic"
@@ -164,7 +165,10 @@ def test_run_hotpotqa_matrix_real_cli_writes_provenance(tmp_path: Path) -> None:
     assert any("not agent conclusions" in item for item in tradeoffs)
 
 
-def test_run_hotpotqa_matrix_comparison_without_cli_marks_pending(tmp_path: Path) -> None:
+def test_run_hotpotqa_matrix_comparison_without_cli_marks_pending(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PATH", "")
     summary = run_hotpotqa_matrix(
         output_root=tmp_path,
         seed=0,
@@ -177,7 +181,12 @@ def test_run_hotpotqa_matrix_comparison_without_cli_marks_pending(tmp_path: Path
     assert loaded["executed_cells"] == 0
     assert loaded["test_double_cells"] == 0
     assert loaded["pending_cells"] == 16
-    assert sorted(manifest.get("agent_cli_unavailable") or []) == ["claude_code", "codex", "hermes"]
+    assert sorted(manifest.get("agent_cli_unavailable") or []) == [
+        "claude_code",
+        "codex",
+        "hermes",
+        "openclaw",
+    ]
     assert manifest.get("agent_executables") in (None, {})
 
     pending_rows = [row for row in loaded["cells"] if row["status"] == "pending" and row["run_id"] is None]
@@ -185,7 +194,7 @@ def test_run_hotpotqa_matrix_comparison_without_cli_marks_pending(tmp_path: Path
     cli_pending = [
         row
         for row in pending_rows
-        if row["agent"] in {"codex", "claude_code", "hermes"} and row["backend"] in {"no_memory", "hm_arch"}
+        if row["backend"] in {"no_memory", "hm_arch"}
     ]
-    assert len(cli_pending) == 12
+    assert len(cli_pending) == 16
     assert all("not found on PATH" in row["rationale"] for row in cli_pending)

@@ -15,7 +15,7 @@ from ..types import (
     BenchmarkRunResult,
     MemoryBackendKind,
 )
-from .cells import CellStatus, HotpotqaMatrixCell, iter_hotpotqa_matrix_cells, runnable_non_openclaw_cells
+from .cells import CellStatus, HotpotqaMatrixCell, iter_hotpotqa_matrix_cells, runnable_cells
 from .evidence import supporting_facts_index, write_retrieval_evidence
 from .manifest import (
     ResolvedExecutable,
@@ -122,7 +122,6 @@ def run_hotpotqa_matrix(
     output_root: Path,
     seed: int = 0,
     use_mock_agent: bool = False,
-    include_openclaw: bool = False,
     agent_executable: str | None = None,
     allow_test_double: bool = False,
     execution_mode: str = "comparison",
@@ -135,16 +134,7 @@ def run_hotpotqa_matrix(
     harness = CrossAgentBenchmarkHarness(output_root=output_root)
 
     participating_agents = tuple(
-        {
-            cell.agent
-            for cell in iter_hotpotqa_matrix_cells()
-            if cell.status is CellStatus.RUN
-            or (
-                cell.agent is AgentKind.OPENCLAW
-                and include_openclaw
-                and cell.status is not CellStatus.UNSUPPORTED
-            )
-        }
+        {cell.agent for cell in iter_hotpotqa_matrix_cells() if cell.status is CellStatus.RUN}
     )
     agent_executables = (
         {}
@@ -174,22 +164,6 @@ def run_hotpotqa_matrix(
     )
 
     for cell in iter_hotpotqa_matrix_cells():
-        if cell.agent is AgentKind.OPENCLAW and not include_openclaw:
-            if cell.status is CellStatus.PENDING:
-                pending_dir = _write_pending_placeholder(output_root, cell, seed=seed)
-                outcomes.append(HotpotqaMatrixRunOutcome(cell=cell, result=None, run_dir=pending_dir))
-            else:
-                result = _run_unsupported_cell(
-                    cell,
-                    output_root=output_root,
-                    seed=seed,
-                    use_mock_agent=use_mock_agent,
-                    agent_executable=agent_executable,
-                )
-                run_dir = output_root / result.run_id if result is not None else None
-                outcomes.append(HotpotqaMatrixRunOutcome(cell=cell, result=result, run_dir=run_dir))
-            continue
-
         if cell.status is CellStatus.RUN:
             if use_mock_agent:
                 cell_executable = None
@@ -268,4 +242,4 @@ def run_hotpotqa_matrix(
 
 
 def expected_runnable_cell_count() -> int:
-    return len(runnable_non_openclaw_cells())
+    return len(runnable_cells())

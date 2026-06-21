@@ -35,7 +35,7 @@ _AGENT_INVOCATION_TEMPLATES: dict[AgentKind, str] = {
     AgentKind.CLAUDE_CODE: "claude -p <prompt> --output-format json",
     AgentKind.HERMES: "hermes -z <prompt>",
     AgentKind.OPENCLAW: (
-        "openclaw agent --agent main --session-key <id> --message <prompt> --local --json"
+        "openclaw agent --agent main --session-id <id> --message <prompt> --local --json"
     ),
 }
 
@@ -101,6 +101,18 @@ def _is_test_double_path(path: str) -> bool:
     return "fake_agent_cli" in path or path.endswith("fake-agent-cli")
 
 
+def _has_benchmark_subcommand_help(path: str) -> bool:
+    """Return True when *path* exposes the hm-arch-benchmark test double."""
+    try:
+        result = run_cli([path, "hm-arch-benchmark", "--help"], timeout_s=5.0)
+    except Exception:  # noqa: BLE001 — probe only
+        return False
+    if result.exit_code != 0:
+        return False
+    combined = f"{result.stdout}\n{result.stderr}"
+    return "hm-arch-benchmark" in combined or "fake benchmark" in combined
+
+
 def resolve_comparison_executable(
     agent: AgentKind,
     *,
@@ -133,8 +145,7 @@ def resolve_comparison_executable(
         cli_mode = "benchmark"
     else:
         try:
-            result = run_cli([path, "hm-arch-benchmark", "--help"], timeout_s=5.0)
-            if result.exit_code == 0:
+            if _has_benchmark_subcommand_help(path):
                 cli_mode = "benchmark"
         except Exception:  # noqa: BLE001 — probe only
             cli_mode = None

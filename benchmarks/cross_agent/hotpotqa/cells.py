@@ -39,20 +39,6 @@ _NON_OPENCLAW_AGENTS = (
 
 
 def _cell_status(agent: AgentKind, backend: MemoryBackendKind) -> tuple[CellStatus, str]:
-    if agent is AgentKind.OPENCLAW:
-        backend_cell = compatibility_cell(backend, agent)
-        if backend_cell.supported and lookup_matrix_cell(agent, backend).implementation.value == "real":
-            return (
-                CellStatus.PENDING,
-                "Deferred until OpenClaw integration is verified end-to-end (MEM-75).",
-            )
-        if not backend_cell.supported:
-            return CellStatus.UNSUPPORTED, backend_cell.reason or "unsupported backend pairing"
-        return (
-            CellStatus.UNSUPPORTED,
-            lookup_matrix_cell(agent, backend).rationale,
-        )
-
     backend_cell = compatibility_cell(backend, agent)
     if not backend_cell.supported:
         return CellStatus.UNSUPPORTED, backend_cell.reason or "unsupported backend pairing"
@@ -81,6 +67,11 @@ def iter_hotpotqa_matrix_cells() -> tuple[HotpotqaMatrixCell, ...]:
                     )
                 )
     return tuple(cells)
+
+
+def runnable_cells() -> tuple[HotpotqaMatrixCell, ...]:
+    """All supported production coordinates in the HotpotQA matrix."""
+    return tuple(cell for cell in iter_hotpotqa_matrix_cells() if cell.status is CellStatus.RUN)
 
 
 def runnable_non_openclaw_cells() -> tuple[HotpotqaMatrixCell, ...]:

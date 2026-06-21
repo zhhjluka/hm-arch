@@ -1,8 +1,0 @@
-{
-  "status": "pending",
-  "agent": "openclaw",
-  "backend": "hm_arch",
-  "top_k": 20,
-  "seed": 0,
-  "rationale": "Deferred until OpenClaw integration is verified end-to-end (MEM-75)."
-}

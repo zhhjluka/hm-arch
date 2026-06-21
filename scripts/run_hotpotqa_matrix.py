@@ -61,11 +61,6 @@ def main() -> int:
         help="Allow fake_agent_cli test doubles (tests/CI only; not comparison conclusions)",
     )
     parser.add_argument(
-        "--include-openclaw",
-        action="store_true",
-        help="Attempt OpenClaw cells (default: mark as pending per MEM-75)",
-    )
-    parser.add_argument(
         "--agent-executable",
         type=str,
         default=None,
@@ -92,7 +87,7 @@ def main() -> int:
                 "query_count": config["query_count"],
                 "document_count": config["document_count"],
                 "matrix_cells": len(list(iter_hotpotqa_matrix_cells())),
-                "runnable_non_openclaw_cells": expected_runnable_cell_count(),
+                "runnable_cells": expected_runnable_cell_count(),
                 "execution_mode": execution_mode,
                 "use_mock_agent": use_mock_agent,
                 "output_dir": str(output_dir),
@@ -105,7 +100,6 @@ def main() -> int:
         output_root=output_dir,
         seed=args.seed,
         use_mock_agent=use_mock_agent,
-        include_openclaw=args.include_openclaw,
         agent_executable=args.agent_executable,
         allow_test_double=args.allow_test_double,
         execution_mode=execution_mode,

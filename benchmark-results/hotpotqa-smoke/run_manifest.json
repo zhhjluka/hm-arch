@@ -18,7 +18,7 @@
     "codex": "codex exec --json [--disable memories] <prompt>",
     "claude_code": "claude -p <prompt> --output-format json",
     "hermes": "hermes -z <prompt>",
-    "openclaw": "openclaw agent --agent main --session-key <id> --message <prompt> --local --json"
+    "openclaw": "openclaw agent --agent main --session-id <id> --message <prompt> --local --json"
   },
   "output_root": "benchmark-results/hotpotqa-smoke"
 }

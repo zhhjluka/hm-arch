@@ -337,7 +337,10 @@ class CliAgentRunner(ABC):
             )
         except CliInvocationError:
             return False
-        return result.exit_code == 0
+        combined = f"{result.stdout}\n{result.stderr}"
+        return result.exit_code == 0 and (
+            "hm-arch-benchmark" in combined or "fake benchmark" in combined
+        )
 
     @abstractmethod
     def _supports_real_cli(self, executable: str) -> bool:
@@ -512,6 +515,9 @@ class OpenClawCliAgentRunner(CliAgentRunner):
     kind = "openclaw-cli"
     default_executable_names = ("openclaw",)
 
+    def _supports_benchmark_subcommand(self, executable: str) -> bool:
+        return False
+
     def _supports_real_cli(self, executable: str) -> bool:
         try:
             result = run_cli(
@@ -533,7 +539,7 @@ class OpenClawCliAgentRunner(CliAgentRunner):
             "agent",
             "--agent",
             "main",
-            "--session-key",
+            "--session-id",
             self._session_id,
             "--message",
             prompt,
