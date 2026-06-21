@@ -7,6 +7,9 @@ vectors). They do **not** measure distributed load, provider latency, or API cos
 Source contract: original HM-Arch developer PRD (referenced in `docs/spec.md`) and
 `docs/tasks.md` HM-31 acceptance criteria.
 
+For cross-agent memory comparisons (LoCoMo, tau2-bench, HotpotQA), see
+[docs/cross-agent-benchmarks.md](cross-agent-benchmarks.md).
+
 ## Two PRD performance tables
 
 The developer PRD defines **two** tables. Benchmarks report both in

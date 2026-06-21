@@ -280,6 +280,9 @@ files manually only after you no longer need the stored memories. Common paths:
 | Hermes | `hm-arch install hermes` | `hm-arch status hermes`, `hm-arch doctor hermes` |
 | OpenClaw | `hm-arch install openclaw` | `hm-arch status openclaw`, `hm-arch doctor openclaw` |
 
+OpenClaw setup details, sidecar protocol, and smoke tests:
+[docs/agents/openclaw.md](docs/agents/openclaw.md).
+
 Python uninstall commands mirror npm:
 
 ```bash
@@ -288,6 +291,22 @@ hm-arch uninstall claude-code
 hm-arch uninstall hermes
 hm-arch uninstall openclaw
 ```
+
+### Memory modes
+
+Benchmark and integration docs distinguish five memory configurations:
+
+| Mode | Meaning |
+|------|---------|
+| No memory | Agent runs with memory disabled (baseline) |
+| Native memory | Agent built-in memory only |
+| HM-Arch | HM-Arch hooks, Hermes provider, or OpenClaw plugin + sidecar |
+| Mem0 | Mem0 as the active external provider |
+| OpenViking | OpenViking as the active external provider |
+
+See [docs/cross-agent-benchmarks.md](docs/cross-agent-benchmarks.md) for the
+comparison matrix and [docs/agents/openclaw.md](docs/agents/openclaw.md) for
+OpenClaw-specific setup.
 
 Setup guides: [docs/agents/README.md](docs/agents/README.md). Smoke tests:
 [docs/integration-cli-smoke.md](docs/integration-cli-smoke.md).
@@ -310,14 +329,25 @@ When `provider_fallback_to_local=True` (the default), missing credentials, depen
 
 ## Benchmarks
 
-HM-Arch includes reproducible PRD-scale benchmarks for latency, storage, consolidation, and long-running memory behavior.
+HM-Arch includes two benchmark families:
+
+1. **PRD performance** — offline SDK latency, storage, consolidation, and 30-day
+   archive scenarios ([docs/benchmarks.md](docs/benchmarks.md))
+2. **Cross-agent memory** — LoCoMo, tau2-bench, and HotpotQA across agents and
+   memory backends ([docs/cross-agent-benchmarks.md](docs/cross-agent-benchmarks.md))
 
 ```bash
 uv run pytest tests/prd_benchmarks -m benchmark -v
 uv run python scripts/run_prd_benchmarks.py
 ```
 
-The benchmark suite covers 10k L2 memories, search and add latency p95, consolidation runtime, storage size, semantic accuracy, and 30-day archive scenarios. Results and known limitations are documented in [docs/benchmarks.md](docs/benchmarks.md).
+The PRD suite covers 10k L2 memories, search and add latency p95, consolidation
+runtime, storage size, semantic accuracy, and 30-day archive scenarios.
+
+Cross-agent LoCoMo pilot artifacts live under
+`benchmarks/cross_agent/fixtures/locomo/handoff/`. Pilot accuracy uses normalized
+exact match, not official LoCoMo category-aware token F1. Do not publish headline
+cross-agent numbers without a corresponding committed artifact.
 
 ## Development
 
@@ -338,6 +368,8 @@ The default test suite runs fully offline. Benchmark tests are marked separately
 | [docs/api.md](docs/api.md) | Public API reference |
 | [docs/spec.md](docs/spec.md) | Product and API contract |
 | [docs/benchmarks.md](docs/benchmarks.md) | PRD benchmark results and limitations |
+| [docs/cross-agent-benchmarks.md](docs/cross-agent-benchmarks.md) | Cross-agent datasets, matrix, metrics, and result schema |
+| [docs/agents/openclaw.md](docs/agents/openclaw.md) | OpenClaw memory plugin and sidecar setup |
 | [docs/RELEASE_NOTES_v1.0.0.md](docs/RELEASE_NOTES_v1.0.0.md) | v1.0.0 release notes |
 | [docs/RELEASE_NOTES_v2.0.0.md](docs/RELEASE_NOTES_v2.0.0.md) | v2.0.0 coordinated release notes |
 | [docs/RELEASE_NOTES_v2.0.4.md](docs/RELEASE_NOTES_v2.0.4.md) | v2.0.4 three-agent validation and latest install guidance |

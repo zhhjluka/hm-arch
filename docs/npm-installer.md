@@ -12,6 +12,8 @@ Automated agents must **not** run `npm publish` without maintainer approval.
 See also:
 
 - [agent-integration-roadmap.md](agent-integration-roadmap.md) — v2.0.0 Python-free npm path
+- [agents/openclaw.md](agents/openclaw.md) — OpenClaw memory plugin setup
+- [cross-agent-benchmarks.md](cross-agent-benchmarks.md) — benchmark matrix and result schema
 - [v2-migration-guide.md](v2-migration-guide.md) — v2.0.0 migration and compatibility
 - [npm-installer-publication.md](npm-installer-publication.md) — maintainer publication checklist
 - [VERSIONING.md](VERSIONING.md) — cross-channel semver alignment

@@ -11,7 +11,32 @@ publication steps and maintainer approval rules.
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- [docs/agents/openclaw.md](docs/agents/openclaw.md) — OpenClaw memory plugin
+  install/status/doctor/uninstall, sidecar protocol links, memory modes, and
+  provider conflict handling.
+- [docs/cross-agent-benchmarks.md](docs/cross-agent-benchmarks.md) — LoCoMo /
+  tau2-bench / HotpotQA methodology, five memory modes, agent × backend matrix,
+  `real` / `mock-only` / `unavailable` / `unsupported` reporting rules, commands,
+  result JSON schema, and LoCoMo pilot artifact references.
+
+### Changed
+
+- README — memory-mode table, cross-agent benchmark entry point, OpenClaw doc link.
+- [docs/agents/compatibility-matrix.md](docs/agents/compatibility-matrix.md) —
+  OpenClaw row and memory-backend comparison table.
+- [docs/npm-installer.md](docs/npm-installer.md), [docs/integration-cli-smoke.md](docs/integration-cli-smoke.md),
+  [docs/agents/README.md](docs/agents/README.md), [docs/benchmarks.md](docs/benchmarks.md) —
+  synchronized OpenClaw and cross-agent documentation links.
+
+### Pending
+
+- Cross-agent benchmark headline numbers for tau2-bench and HotpotQA (pilot
+  artifacts are committed, but full matrix execution and release validation are
+  still pending).
+- LoCoMo release-note headline numbers (pilot artifact exists; full comparison
+  pending provider capacity and larger query counts).
 
 ## [2.0.4] - 2026-06-14
 
