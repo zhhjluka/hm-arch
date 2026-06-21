@@ -44,7 +44,7 @@ class AgentWorkspace:
         run = run_id or uuid.uuid4().hex[:12]
         prefix = f"hm-arch-bench-{agent.value}-{run}-"
         if parent is not None:
-            root = parent / "agent_workspace"
+            root = parent.resolve() / "agent_workspace"
             if root.exists():
                 shutil.rmtree(root, ignore_errors=True)
             root.mkdir(parents=True, exist_ok=True)

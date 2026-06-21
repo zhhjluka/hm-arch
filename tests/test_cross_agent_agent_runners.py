@@ -209,6 +209,77 @@ def test_cli_runner_captures_exit_status_and_stderr(tmp_path: Path) -> None:
     assert "boom" in outcome.metadata.get("stderr", "")
 
 
+def test_codex_real_argv_allows_isolated_non_git_workspace(tmp_path: Path) -> None:
+    from benchmarks.cross_agent.agents.cli_runner import AgentRunnerContext, CodexCliAgentRunner
+
+    workspace = AgentWorkspace.create(AgentKind.CODEX, parent=tmp_path)
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir()
+    config = BenchmarkRunConfig(
+        family=BenchmarkFamily.HOTPOTQA,
+        agent=AgentKind.CODEX,
+        backend=MemoryBackendKind.NO_MEMORY,
+        use_mock_agent=False,
+    )
+    runner = CodexCliAgentRunner(
+        AgentRunnerContext(
+            workspace=workspace,
+            config=config,
+            storage_dir=storage_dir,
+            executable="codex",
+        )
+    )
+    try:
+        argv = runner._build_real_argv(
+            "codex",
+            {
+                "context": "",
+                "question": "Where?",
+                "seed": 0,
+                "backend": "no_memory",
+                "session_id": "test",
+                "query_id": "q1",
+            },
+        )
+    finally:
+        workspace.cleanup()
+
+    assert "--skip-git-repo-check" in argv
+
+
+def test_hotpotqa_real_prompt_uses_pinned_short_answer_template(tmp_path: Path) -> None:
+    from benchmarks.cross_agent.agents.cli_runner import AgentRunnerContext, CodexCliAgentRunner
+
+    workspace = AgentWorkspace.create(AgentKind.CODEX, parent=tmp_path)
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir()
+    runner = CodexCliAgentRunner(
+        AgentRunnerContext(
+            workspace=workspace,
+            config=BenchmarkRunConfig(
+                family=BenchmarkFamily.HOTPOTQA,
+                agent=AgentKind.CODEX,
+                backend=MemoryBackendKind.NO_MEMORY,
+                use_mock_agent=False,
+            ),
+            storage_dir=storage_dir,
+            executable="codex",
+        )
+    )
+    try:
+        prompt = runner._format_prompt(
+            {"context": "Paris is in France.", "question": "Where is Paris?"}
+        )
+    finally:
+        workspace.cleanup()
+
+    assert prompt == (
+        "Use only the recalled context below to answer the question with a short phrase.\n\n"
+        "Context:\nParis is in France.\n\n"
+        "Question: Where is Paris?\nAnswer:"
+    )
+
+
 def test_smoke_matrix_declares_real_cells() -> None:
     configs = smoke_matrix_configs()
     assert len(configs) == len(AgentKind) * 2

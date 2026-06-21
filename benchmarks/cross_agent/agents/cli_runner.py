@@ -10,8 +10,16 @@ from pathlib import Path
 from typing import Any
 
 from ..compatibility import CellImplementation, lookup_matrix_cell
+from ..fixtures.hotpotqa import load_hotpotqa_config
 from ..metrics import approximate_token_count
-from ..types import AgentKind, AgentOutcome, BenchmarkQuery, BenchmarkRunConfig, MemoryBackendKind
+from ..types import (
+    AgentKind,
+    AgentOutcome,
+    BenchmarkFamily,
+    BenchmarkQuery,
+    BenchmarkRunConfig,
+    MemoryBackendKind,
+)
 from .cli_parsers import (
     parse_claude_json_output,
     parse_codex_exec_jsonl,
@@ -104,6 +112,13 @@ class CliAgentRunner(ABC):
         else:
             raise NotImplementedError(self._unsupported_cli_message())
         self._resolved_executable = executable
+        self._context.metadata.update(
+            {
+                "executable": executable,
+                "cli_mode": self._cli_mode,
+                "runner_kind": self.kind,
+            }
+        )
         self._opened = True
 
     def close(self) -> None:
@@ -296,6 +311,9 @@ class CliAgentRunner(ABC):
     def _format_prompt(self, payload: dict[str, Any]) -> str:
         context = str(payload.get("context", "")).strip()
         question = str(payload.get("question", "")).strip()
+        if self.config.family is BenchmarkFamily.HOTPOTQA:
+            template = str(load_hotpotqa_config()["answer_prompt_template"])
+            return template.format(context=context, question=question)
         if context:
             return f"{context}\n\nQuestion: {question}"
         return question
@@ -330,7 +348,10 @@ class CliAgentRunner(ABC):
             )
         except CliInvocationError:
             return False
-        return result.exit_code == 0
+        combined = f"{result.stdout}\n{result.stderr}"
+        return result.exit_code == 0 and (
+            "hm-arch-benchmark" in combined or "fake benchmark" in combined
+        )
 
     @abstractmethod
     def _supports_real_cli(self, executable: str) -> bool:
@@ -398,6 +419,7 @@ class CodexCliAgentRunner(CliAgentRunner):
             executable,
             "exec",
             "--json",
+            "--skip-git-repo-check",
             prompt,
         ]
         if self.config.backend is not MemoryBackendKind.NATIVE_MEMORY:
@@ -505,6 +527,9 @@ class OpenClawCliAgentRunner(CliAgentRunner):
     kind = "openclaw-cli"
     default_executable_names = ("openclaw",)
 
+    def _supports_benchmark_subcommand(self, executable: str) -> bool:
+        return False
+
     def _supports_real_cli(self, executable: str) -> bool:
         try:
             result = run_cli(
@@ -526,7 +551,7 @@ class OpenClawCliAgentRunner(CliAgentRunner):
             "agent",
             "--agent",
             "main",
-            "--session-key",
+            "--session-id",
             self._session_id,
             "--message",
             prompt,

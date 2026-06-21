@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import string
 
 from .types import AggregateMetrics, QueryRecord
 
@@ -22,6 +23,25 @@ def exact_match_accuracy(expected: str | None, prediction: str | None) -> float 
     if expected is None or prediction is None:
         return None
     return 1.0 if normalize_answer(expected) == normalize_answer(prediction) else 0.0
+
+
+def _normalize_hotpotqa_answer(text: str) -> str:
+    lowered = text.lower()
+    without_punctuation = "".join(char for char in lowered if char not in string.punctuation)
+    without_articles = re.sub(r"\b(a|an|the)\b", " ", without_punctuation)
+    return " ".join(without_articles.split())
+
+
+def hotpotqa_exact_match_accuracy(
+    expected: str | None,
+    prediction: str | None,
+) -> float | None:
+    """HotpotQA exact match using the dataset's standard answer normalization."""
+    if expected is None or prediction is None:
+        return None
+    expected_normalized = _normalize_hotpotqa_answer(expected)
+    prediction_normalized = _normalize_hotpotqa_answer(prediction)
+    return 1.0 if expected_normalized == prediction_normalized else 0.0
 
 
 def retrieval_hit_rate(
@@ -53,10 +73,11 @@ def aggregate_query_records(records: list[QueryRecord]) -> AggregateMetrics:
     hit_rates = [
         r.retrieval_hit_rate for r in records if r.retrieval_hit_rate is not None
     ]
+    completed = [r for r in records if r.failure_count == 0]
 
     return AggregateMetrics(
         query_count=len(records),
-        completed_query_count=len(records),
+        completed_query_count=len(completed),
         mean_accuracy=(sum(accuracies) / len(accuracies)) if accuracies else None,
         task_success_rate=(sum(1 for s in successes if s) / len(successes))
         if successes

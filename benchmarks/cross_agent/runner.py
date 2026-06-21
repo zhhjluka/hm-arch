@@ -22,9 +22,11 @@ from .checkpoint import (
 )
 from .compatibility import compatibility_snapshot, lookup_matrix_cell
 from .fixtures.synthetic import get_synthetic_fixture
+from .failure_provenance import build_query_failure_provenance
 from .metrics import (
     aggregate_query_records,
     exact_match_accuracy,
+    hotpotqa_exact_match_accuracy,
     retrieval_hit_rate,
 )
 from .output import (
@@ -81,6 +83,12 @@ def _query_record_from_checkpoint(row: dict[str, Any]) -> QueryRecord:
         recall_context_chars=int(row.get("recall_context_chars", 0)),
         recall_hit_count=int(row.get("recall_hit_count", 0)),
         agent_managed=bool(row.get("agent_managed", False)),
+        failure_reason=row.get("failure_reason"),
+        failure_category=row.get("failure_category"),
+        recall_failure_reason=row.get("recall_failure_reason"),
+        agent_failure_reason=row.get("agent_failure_reason"),
+        agent_exit_code=row.get("agent_exit_code"),
+        agent_timed_out=row.get("agent_timed_out"),
     )
 
 
@@ -207,6 +215,7 @@ class CrossAgentBenchmarkHarness:
                 try:
                     agent.open()
                     agent_opened = True
+                    agent_metadata.update(agent_context.metadata)
                     backend.open(storage_dir, config)
                     backend_opened = True
                 except NotImplementedError as exc:
@@ -427,13 +436,19 @@ class CrossAgentBenchmarkHarness:
             total_ms = agent_out.agent_time_ms
         else:
             total_ms = (time.perf_counter() - t0) * 1000.0
-        accuracy = exact_match_accuracy(query.expected_answer, agent_out.answer)
+        accuracy_fn = (
+            hotpotqa_exact_match_accuracy
+            if config.family is BenchmarkFamily.HOTPOTQA
+            else exact_match_accuracy
+        )
+        accuracy = accuracy_fn(query.expected_answer, agent_out.answer)
         hit_rate = (
             None
             if hook_managed
             else retrieval_hit_rate(recall.retrieved_ids, query.expected_memory_ids)
         )
         failure_count = recall.failure_count + agent_out.failure_count
+        failure_fields = build_query_failure_provenance(recall=recall, agent_out=agent_out)
 
         return QueryRecord(
             query_id=query.query_id,
@@ -457,6 +472,7 @@ class CrossAgentBenchmarkHarness:
             recall_context_chars=recall.context_chars,
             recall_hit_count=recall.hit_count,
             agent_managed=hook_managed or recall.agent_managed,
+            **failure_fields,
         )
 
     @staticmethod

@@ -107,39 +107,10 @@ def tau2_bench_fixture() -> SyntheticFixture:
 
 
 def hotpotqa_fixture() -> SyntheticFixture:
-    """HotpotQA-style multi-hop QA with supporting facts."""
-    ingest = (
-        IngestItem(
-            item_id="hotpot-doc-a",
-            content="The Orion Telescope was invented by Dr. Lena Ortiz in 1998.",
-            metadata={"title": "Orion Telescope"},
-        ),
-        IngestItem(
-            item_id="hotpot-doc-b",
-            content="Dr. Lena Ortiz received the Nova Science Prize in 2005.",
-            metadata={"title": "Nova Science Prize"},
-        ),
-        IngestItem(
-            item_id="hotpot-doc-c",
-            content="The Nova Science Prize is awarded in Zurich, Switzerland.",
-            metadata={"title": "Nova Science Prize ceremony"},
-        ),
-    )
-    queries = (
-        BenchmarkQuery(
-            query_id="hotpot-q1",
-            question="In which city was the inventor of the Orion Telescope honored?",
-            expected_answer="Zurich",
-            expected_memory_ids=("hotpot-doc-a", "hotpot-doc-b", "hotpot-doc-c"),
-            supporting_facts=("hotpot-doc-a", "hotpot-doc-b", "hotpot-doc-c"),
-        ),
-    )
-    return SyntheticFixture(
-        family=BenchmarkFamily.HOTPOTQA,
-        ingest_items=ingest,
-        queries=queries,
-        consolidate_after_ingest=True,
-    )
+    """HotpotQA-style multi-hop QA with supporting facts (pinned v1 subset)."""
+    from .hotpotqa import get_hotpotqa_fixture
+
+    return get_hotpotqa_fixture()
 
 
 _FIXTURES: dict[BenchmarkFamily, SyntheticFixture] = {

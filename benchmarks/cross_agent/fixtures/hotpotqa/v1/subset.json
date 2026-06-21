@@ -1,0 +1,101 @@
+{
+  "documents": [
+    {
+      "item_id": "hotpot-doc-a",
+      "content": "The Orion Telescope was invented by Dr. Lena Ortiz in 1998.",
+      "metadata": {"title": "Orion Telescope"}
+    },
+    {
+      "item_id": "hotpot-doc-b",
+      "content": "Dr. Lena Ortiz received the Nova Science Prize in 2005.",
+      "metadata": {"title": "Nova Science Prize"}
+    },
+    {
+      "item_id": "hotpot-doc-c",
+      "content": "The Nova Science Prize is awarded in Zurich, Switzerland.",
+      "metadata": {"title": "Nova Science Prize ceremony"}
+    },
+    {
+      "item_id": "hotpot-doc-d",
+      "content": "The Helios Battery was developed by the Aurora Energy Lab in 2010.",
+      "metadata": {"title": "Helios Battery"}
+    },
+    {
+      "item_id": "hotpot-doc-e",
+      "content": "The Aurora Energy Lab is located in Oslo, Norway.",
+      "metadata": {"title": "Aurora Energy Lab"}
+    },
+    {
+      "item_id": "hotpot-doc-f",
+      "content": "Oslo hosts the annual Northern Lights Summit each March.",
+      "metadata": {"title": "Northern Lights Summit"}
+    },
+    {
+      "item_id": "hotpot-doc-g",
+      "content": "The Meridian Map was created by cartographer Elias Venn in 1842.",
+      "metadata": {"title": "Meridian Map"}
+    },
+    {
+      "item_id": "hotpot-doc-h",
+      "content": "Elias Venn was born in Lisbon, Portugal.",
+      "metadata": {"title": "Elias Venn biography"}
+    },
+    {
+      "item_id": "hotpot-doc-i",
+      "content": "Lisbon is the capital city of Portugal.",
+      "metadata": {"title": "Lisbon"}
+    },
+    {
+      "item_id": "hotpot-doc-j",
+      "content": "The Coral Compiler programming language was designed by Mira Solis.",
+      "metadata": {"title": "Coral Compiler"}
+    },
+    {
+      "item_id": "hotpot-doc-k",
+      "content": "Mira Solis graduated from the Pacific Institute of Computing in 2016.",
+      "metadata": {"title": "Mira Solis education"}
+    },
+    {
+      "item_id": "hotpot-doc-l",
+      "content": "The Pacific Institute of Computing is based in Vancouver, Canada.",
+      "metadata": {"title": "Pacific Institute of Computing"}
+    }
+  ],
+  "queries": [
+    {
+      "query_id": "hotpot-q1",
+      "question": "In which city was the inventor of the Orion Telescope honored?",
+      "expected_answer": "Zurich",
+      "expected_memory_ids": ["hotpot-doc-a", "hotpot-doc-b", "hotpot-doc-c"],
+      "supporting_facts": ["hotpot-doc-a", "hotpot-doc-b", "hotpot-doc-c"]
+    },
+    {
+      "query_id": "hotpot-q2",
+      "question": "In which country is the lab that developed the Helios Battery located?",
+      "expected_answer": "Norway",
+      "expected_memory_ids": ["hotpot-doc-d", "hotpot-doc-e"],
+      "supporting_facts": ["hotpot-doc-d", "hotpot-doc-e"]
+    },
+    {
+      "query_id": "hotpot-q3",
+      "question": "What annual event is hosted in the city where the Aurora Energy Lab is located?",
+      "expected_answer": "Northern Lights Summit",
+      "expected_memory_ids": ["hotpot-doc-e", "hotpot-doc-f"],
+      "supporting_facts": ["hotpot-doc-e", "hotpot-doc-f"]
+    },
+    {
+      "query_id": "hotpot-q4",
+      "question": "What is the capital of the country where Elias Venn was born?",
+      "expected_answer": "Lisbon",
+      "expected_memory_ids": ["hotpot-doc-g", "hotpot-doc-h", "hotpot-doc-i"],
+      "supporting_facts": ["hotpot-doc-h", "hotpot-doc-i"]
+    },
+    {
+      "query_id": "hotpot-q5",
+      "question": "In which Canadian city is the institute where Mira Solis studied located?",
+      "expected_answer": "Vancouver",
+      "expected_memory_ids": ["hotpot-doc-j", "hotpot-doc-k", "hotpot-doc-l"],
+      "supporting_facts": ["hotpot-doc-k", "hotpot-doc-l"]
+    }
+  ]
+}

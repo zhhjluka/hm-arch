@@ -1,0 +1,9 @@
+{
+  "version": "v1",
+  "description": "Pinned HotpotQA-style offline subset for MEM-77 cross-agent retrieval comparison",
+  "seed": 0,
+  "answer_prompt_template": "Use only the recalled context below to answer the question with a short phrase.\n\nContext:\n{context}\n\nQuestion: {question}\nAnswer:",
+  "subset_file": "subset.json",
+  "query_count": 5,
+  "document_count": 12
+}

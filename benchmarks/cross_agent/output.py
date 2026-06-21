@@ -29,6 +29,11 @@ _QUERY_CSV_FIELDS = [
     "input_token_source",
     "output_token_source",
     "failure_count",
+    "failure_reason",
+    "failure_category",
+    "agent_failure_reason",
+    "agent_exit_code",
+    "agent_timed_out",
     "recall_context_chars",
     "recall_hit_count",
     "agent_managed",
@@ -50,7 +55,11 @@ def write_summary_json(path: Path, result: BenchmarkRunResult) -> None:
 
 def write_queries_csv(path: Path, result: BenchmarkRunResult) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=_QUERY_CSV_FIELDS)
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=_QUERY_CSV_FIELDS,
+            lineterminator="\n",
+        )
         writer.writeheader()
         for record in result.queries:
             writer.writerow(
@@ -72,6 +81,11 @@ def write_queries_csv(path: Path, result: BenchmarkRunResult) -> None:
                     "input_token_source": record.input_token_source,
                     "output_token_source": record.output_token_source,
                     "failure_count": record.failure_count,
+                    "failure_reason": record.failure_reason,
+                    "failure_category": record.failure_category,
+                    "agent_failure_reason": record.agent_failure_reason,
+                    "agent_exit_code": record.agent_exit_code,
+                    "agent_timed_out": record.agent_timed_out,
                     "recall_context_chars": record.recall_context_chars,
                     "recall_hit_count": record.recall_hit_count,
                     "agent_managed": record.agent_managed,
