@@ -71,6 +71,34 @@ Expected: install writes the HM-Arch provider config and plugin bridge,
 doctor initializes the SQLite schema, and uninstall removes HM-Arch-owned
 config/bridge files while preserving the memory database.
 
+## OpenClaw (memory plugin + sidecar)
+
+```bash
+export OPENCLAW_STATE_DIR=/tmp/hm-arch-smoke-openclaw
+mkdir -p /tmp/hm-arch-smoke-project
+cd /tmp/hm-arch-smoke-project
+
+hm-arch install openclaw
+hm-arch status openclaw
+hm-arch doctor openclaw
+hm-arch uninstall openclaw
+```
+
+Expected:
+
+- `install` exits `0` and prints `openclaw (project): installed`
+- `status` reports `plugins.slots.memory is set to 'memory-hm-arch'`
+- `doctor` exits `0` with database schema initialized
+- plugin manifest exists under `$OPENCLAW_STATE_DIR/extensions/memory-hm-arch/`
+- `uninstall` removes HM-Arch config and plugin files; database is preserved
+
+With another provider occupying `plugins.slots.memory`, `status` and `doctor`
+should report a memory-slot conflict with remediation text.
+
+Gateway-level end-to-end verification:
+[openclaw-e2e-smoke.md](openclaw-e2e-smoke.md). Setup guide:
+[agents/openclaw.md](agents/openclaw.md).
+
 ## Automated offline tests
 
 ```bash

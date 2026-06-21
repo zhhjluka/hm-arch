@@ -8,6 +8,7 @@ and the coordinated Python/npm installer release line.
 | [Codex](codex.md) | `hm-arch install codex` | `hm-arch status codex`, `hm-arch doctor codex` |
 | [Claude Code](claude-code.md) | `hm-arch install claude-code` | `hm-arch status claude-code`, `hm-arch doctor claude-code` |
 | [Hermes](hermes.md) | `hm-arch install hermes` | `hm-arch status hermes`, `hm-arch doctor hermes` |
+| [OpenClaw](openclaw.md) | `hm-arch install openclaw` | `hm-arch status openclaw`, `hm-arch doctor openclaw` |
 
 ## Package install
 
@@ -17,16 +18,17 @@ and the coordinated Python/npm installer release line.
 | PyPI | `pip install hm-arch` or `pipx install hm-arch` | Latest stable release |
 | npm | `npm install -g @hm-arch/installer` | Latest stable release |
 
-The npm CLI is `hm-arch-install`. It installs Codex and Claude Code hooks, and
-installs the Hermes memory provider bridge with `hm-arch-install install hermes`.
-Restart Hermes after installation, then validate with `hm-arch-install status hermes`
-and `hm-arch-install doctor hermes`.
+The npm CLI is `hm-arch-install`. It installs Codex and Claude Code hooks, the
+Hermes memory provider bridge (`hm-arch-install install hermes`), and the OpenClaw
+memory plugin (`hm-arch-install install openclaw`). Restart Hermes or the OpenClaw
+gateway after installation when those agents are already running, then validate
+with `hm-arch-install status <agent>` and `hm-arch-install doctor <agent>`.
 
 Clean-install verification for maintainers:
 [pypi-clean-install.md](../pypi-clean-install.md).
 
-Manual smoke tests for all three agents:
-[integration-cli-smoke.md](../integration-cli-smoke.md).
+Manual smoke tests for all agents:
+[integration-cli-smoke.md](../integration-cli-smoke.md) (includes OpenClaw).
 
 Release notes for the latest patch release:
 [RELEASE_NOTES_v2.0.4.md](../RELEASE_NOTES_v2.0.4.md).
@@ -36,3 +38,6 @@ Memory export, import, migration, and sharing policies:
 
 Agent compatibility matrix (support and limitations):
 [compatibility-matrix.md](compatibility-matrix.md).
+
+Cross-agent benchmark matrix:
+[benchmark-compatibility-matrix.md](benchmark-compatibility-matrix.md).

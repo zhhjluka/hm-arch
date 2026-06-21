@@ -2,7 +2,11 @@
 
 Reproducible harness for **LoCoMo**, **tau2-bench**, and **HotpotQA** across host
 agents and memory providers. The PRD-scale HM-Arch benchmarks live in
-[benchmarks.md](benchmarks.md); this document covers the cross-agent matrix.
+[benchmarks.md](benchmarks.md); this document covers the cross-agent matrix,
+provider contracts, and result schema.
+
+Do not publish headline benchmark numbers unless a corresponding committed result
+artifact exists in the repository.
 
 ## Goals
 
@@ -12,6 +16,45 @@ agents and memory providers. The PRD-scale HM-Arch benchmarks live in
 - Deterministic run identifiers and isolated per-run storage
 - JSONL per-query streaming, CSV roll-up, and JSON summary output
 - Checkpoint/resume between lifecycle phases and individual queries
+- Explicit provider implementation modes so mock/fallback runs are never reported
+  as real external providers
+
+## Memory backends
+
+Each benchmark run selects one memory mode. Modes are mutually exclusive and must
+be distinguishable in result metadata:
+
+| Backend ID | Description |
+|------------|-------------|
+| `no_memory` | Agent runs with memory disabled. Baseline for task success and token use. |
+| `hm_arch` | HM-Arch integration for that agent (hooks, Hermes provider, or OpenClaw plugin + sidecar). |
+| `native_memory` | The agent's built-in memory only. |
+| `mem0` | Mem0 configured as the active external memory provider. |
+| `openviking` | OpenViking configured as the active external memory provider. |
+
+Human-readable aliases (`no-memory`, `hm-arch`, `native-memory`) map to the enum
+values above in CLI flags and JSON output.
+
+## Provider implementation modes
+
+Every matrix cell records **how** the provider was executed. These four values are
+distinct and must appear in `summary.json` / matrix roll-ups:
+
+| Mode | Meaning | Reportable as production benchmark? |
+|------|---------|--------------------------------------|
+| `real` | Live provider or agent integration (installed SDK, configured plugin, agent CLI on PATH). | Yes, when the run completes successfully. |
+| `mock-only` | In-process offline substitute (for example `OfflineMem0Client`, `MockSyntheticAgentRunner`). Contract tests only. | **No** — label results `mock-only`; never compare to `real` runs. |
+| `unavailable` | Supported in the matrix but not runnable on this host (missing package, credentials, agent CLI absent). | No — record reason; do not substitute another provider. |
+| `unsupported` | Provider × agent pair excluded by the compatibility matrix. | No — harness skips or records `unsupported` with reason. |
+
+Rules:
+
+- Mock/fallback clients exercise contracts offline but **must not** be labeled
+  `real` or merged into production comparison tables.
+- `assert_supported()` / compatibility checks **must not** silently substitute
+  another provider when a cell is `unsupported`.
+- Mem0 and OpenViking adapters may use offline fallbacks when the external
+  package is missing; those runs are `mock-only`, not `real`.
 
 ## Registered providers
 
@@ -38,7 +81,7 @@ when the backend matrix permits them. Unsupported cells are reported in
 `agent_metadata` and `compatibility` without silent substitution.
 
 See [agents/benchmark-compatibility-matrix.md](agents/benchmark-compatibility-matrix.md)
-for the full agent × backend grid.
+for the full agent × backend grid with `real` / `unsupported` labels.
 
 ### Provider/agent compatibility matrix
 
@@ -60,6 +103,17 @@ Reason strings are available from
 `benchmarks.cross_agent.compatibility.compatibility_cell` and
 `unsupported_pairs()`.
 
+## Datasets
+
+| Dataset | Primary question | Notes |
+|---------|------------------|-------|
+| **LoCoMo** | Long-conversation user memory and multi-session recall | Pilot uses normalized exact match; not official LoCoMo category-aware token F1 |
+| **tau2-bench** | Multi-turn task completion (retail and airline domains) | Task success/accuracy under memory on vs off |
+| **HotpotQA** | Knowledge retrieval and multi-hop QA | Runs at `top_k = 5` and `top_k = 20` |
+
+Synthetic fixtures in `benchmarks/cross_agent/fixtures/synthetic.py` exercise every
+phase offline without API keys.
+
 ## Lifecycle phases
 
 1. **setup** — create isolated storage directory, always call `backend.open()`
@@ -69,9 +123,6 @@ Reason strings are available from
 5. **evaluate** — aggregate roll-up metrics (no external scorer required offline)
 6. **checkpoint** — persist `checkpoint.json`, JSONL, CSV, and summary JSON
 7. **teardown** — `backend.close()`
-
-Synthetic fixtures in `benchmarks/cross_agent/fixtures/synthetic.py` exercise every
-phase offline without API keys.
 
 ## Metric definitions and timing boundaries
 
@@ -91,6 +142,14 @@ phase offline without API keys.
 | `input_token_source` / `output_token_source` | `exact` when parsed from CLI JSON/JSONL usage; `estimated` otherwise | Agent step |
 | `failure_count` | Sum of recall and agent failures for the query | Recall + agent steps |
 
+### LoCoMo pilot accuracy (MEM-78)
+
+The committed LoCoMo real-CLI pilot (`benchmarks/cross_agent/fixtures/locomo/handoff/`)
+uses **normalized exact match** after whitespace normalization. This pilot metric is
+**not** the official LoCoMo category-aware token F1 reported in the academic benchmark.
+Do not compare pilot `mean_accuracy` values directly to published LoCoMo leaderboard
+scores.
+
 ## Result schema
 
 Each run writes under ``<output-dir>/<run_id>/``:
@@ -106,6 +165,15 @@ Each run writes under ``<output-dir>/<run_id>/``:
 - `mean_accuracy`, `task_success_rate`, `mean_retrieval_hit_rate`
 - `mean_query_time_ms`, `total_input_tokens`, `total_output_tokens`
 - `total_failure_count`
+
+Matrix roll-ups add per-cell status:
+
+| Cell status | Meaning |
+|-------------|---------|
+| `completed` | Run finished with recorded metrics (`implementation_mode` is `real` or `mock-only`) |
+| `unsupported` | Matrix excludes this provider × agent pair |
+| `unavailable` | Supported but could not run on this host |
+| `failed` | Run started but ended with errors/timeouts |
 
 The per-query schema supports all three families:
 
@@ -151,7 +219,13 @@ uv run python scripts/run_locomo_matrix.py --dataset-id locomo10-sample
 uv run python scripts/run_locomo_matrix.py \
   --runner-mode real --dataset-id locomo10-sample --max-conversations 1
 
-# Offline tests (included in default pytest suite)
+# tau2-bench agent experience comparison
+uv run python scripts/run_tau2_bench_comparison.py
+
+# HotpotQA retrieval matrix
+uv run python scripts/run_hotpotqa_matrix.py
+
+# Offline tests (included in the default pytest suite)
 uv run pytest tests/test_cross_agent_benchmark.py tests/test_cross_agent_memory_backends.py -v
 uv run pytest tests/test_locomo_matrix.py -v
 ```
@@ -179,11 +253,42 @@ scripts/run_locomo_matrix_handoff.sh
 ```
 
 Use `--max-queries N` for pilot runs. Per-agent CLI overrides:
-`--codex-executable`, `--claude-code-executable`, `--hermes-executable`, or
-`HM_ARCH_BENCH_*_EXECUTABLE` env vars.
+`--codex-executable`, `--claude-code-executable`, `--hermes-executable`,
+`--openclaw-executable`, or `HM_ARCH_BENCH_*_EXECUTABLE` env vars.
 
-OpenClaw cells default to `pending` (MEM-75). Unsupported cells are listed with
-explicit rationale and are never silently substituted.
+OpenClaw cells are included with `--include-openclaw`. When the OpenClaw CLI is
+absent, cells are recorded as `unavailable` without aborting the matrix.
+Unsupported cells are listed with explicit rationale and are never silently
+substituted.
+
+### Isolation requirements
+
+Benchmark runners must use temporary agent homes (`OPENCLAW_STATE_DIR`, `HERMES_HOME`,
+isolated Codex/Claude project directories) and per-run SQLite stores. Never
+point harness defaults at a developer's live agent configuration.
+
+## Committed pilot artifacts
+
+The LoCoMo handoff pilot is the only committed real-CLI cross-agent comparison
+artifact today. Scope and limitations are documented in
+[benchmarks/cross_agent/fixtures/locomo/handoff/README.md](../benchmarks/cross_agent/fixtures/locomo/handoff/README.md).
+
+| Property | Pilot value |
+|----------|-------------|
+| Dataset | `locomo10-sample` / `2024-03-sample` |
+| Conversations | 1 |
+| Queries per completed cell | 3 |
+| Agents | OpenClaw, Hermes, Claude Code, Codex (`no_memory` + `hm_arch`) |
+| Accuracy metric | Normalized exact match (not official LoCoMo token F1) |
+| Artifact | `benchmarks/cross_agent/fixtures/locomo/handoff/matrix_summary_real.json` |
+
+Read per-cell `status`, `implementation_mode`, and `mean_accuracy` from the
+artifact. Failed, unavailable, and partial cells are first-class outcomes and
+are excluded from completed-query aggregates. Do not quote headline comparison
+numbers outside the artifact context.
+
+tau2-bench and HotpotQA matrix artifacts are not yet committed for release-note
+headlines. Run the harness locally and check in results before publishing claims.
 
 ## External service requirements
 
@@ -223,6 +328,24 @@ executables raise `NotImplementedError` at setup time instead of failing every
 query. Malformed JSON from Claude Code or OpenClaw `--json` output is counted as
 an agent failure, not accepted as raw text.
 
+## Known limitations
+
+- **Not a full academic study** — no rigorous statistical testing; comparisons
+  are engineering benchmarks on fixed harness versions.
+- **Agent CLI variance** — different agent versions, model choices, and gateway
+  settings change absolute scores; compare runs with pinned agent versions recorded
+  in `environment`.
+- **External providers** — Mem0 and OpenViking `real` runs require credentials,
+  network access, and provider-specific setup not needed for offline HM-Arch runs.
+- **Mock-only runs** — offline fallbacks validate contracts but must not be
+  reported as external-provider performance.
+- **Native memory opacity** — `native_memory` behavior depends on each agent's
+  internal storage; treat as best-effort replay, not bit-identical reproduction.
+- **LoCoMo pilot metric** — committed pilot accuracy is normalized exact match,
+  not official LoCoMo category-aware token F1.
+- **Token attribution** — input/output token counts depend on agent telemetry;
+  some runners estimate tokens when the agent does not expose usage metadata.
+
 ## Extending adapters
 
 Register independent implementations without modifying the harness core:
@@ -238,3 +361,11 @@ register_agent_runner(AgentKind.OPENCLAW, MyOpenClawRunner)
 
 Adapters must honor the protocols in `benchmarks/cross_agent/protocol.py` and keep
 storage confined to the per-run directory passed to `open()`.
+
+## Related docs
+
+- [PRD performance benchmarks](benchmarks.md) — SDK latency, storage, consolidation
+- [OpenClaw setup](agents/openclaw.md)
+- [Agent compatibility matrix](agents/compatibility-matrix.md)
+- [Benchmark compatibility matrix](agents/benchmark-compatibility-matrix.md)
+- [Integration CLI smoke tests](integration-cli-smoke.md)
