@@ -42,9 +42,36 @@ exec {sys.executable} {FAKE_CLI} "$@"
     return str(path)
 
 
+def _write_failing_executable(path: Path) -> str:
+    script = """#!/bin/sh
+if [ "$1" = "exec" ] && [ "$2" = "--help" ]; then
+  echo "codex exec help"
+  exit 0
+fi
+if [ "$1" = "agent" ] && [ "$2" = "--help" ]; then
+  echo "openclaw agent --message"
+  exit 0
+fi
+if [ "$1" = "--help" ]; then
+  echo "agent help --output-format -z --oneshot"
+  exit 0
+fi
+echo '{"access_token":"super-secret-benchmark-token"}' >&2
+exit 1
+"""
+    path.write_text(script, encoding="utf-8")
+    path.chmod(path.stat().st_mode | stat.S_IEXEC)
+    return str(path)
+
+
 @pytest.fixture
 def fake_executable(tmp_path: Path) -> str:
     return _write_fake_executable(tmp_path / "fake-agent-cli")
+
+
+@pytest.fixture
+def failing_executable(tmp_path: Path) -> str:
+    return _write_failing_executable(tmp_path / "failing-agent-cli")
 
 
 def test_locomo_category_mapping_matches_official_order() -> None:
@@ -224,6 +251,48 @@ def test_locomo_matrix_real_mode_marks_mem0_cells_unsupported() -> None:
     assert all(not plan.run for plan in non_openclaw)
 
 
+def test_openclaw_deferral_does_not_reference_completed_mem75() -> None:
+    plans = locomo_matrix_plans(
+        include_openclaw=False,
+        runner_mode=MatrixRunnerMode.REAL,
+    )
+    openclaw_plans = [plan for plan in plans if plan.agent is AgentKind.OPENCLAW]
+    assert openclaw_plans
+    assert all("MEM-75" not in plan.rationale for plan in openclaw_plans)
+
+
+def test_real_matrix_marks_all_failed_cells_failed_and_redacts_invocations(
+    tmp_path: Path,
+    failing_executable: str,
+) -> None:
+    summary = run_locomo_matrix(
+        output_root=tmp_path,
+        dataset_id="locomo10-sample",
+        dataset_version="2024-03-sample",
+        runner_mode=MatrixRunnerMode.REAL,
+        include_openclaw=False,
+        max_conversations=1,
+        max_queries=1,
+        agent_executable=failing_executable,
+        agent_timeout_s=10.0,
+    )
+
+    assert summary["completed_run_count"] == 0
+    assert summary["failed_run_count"] == 6
+    assert len(summary["real_results"]) == 6
+    for cell in summary["real_results"]:
+        assert cell["status"] == "failed"
+        assert cell["completed_query_count"] == 0
+        assert cell["total_failure_count"] == 1
+        invocation = json.loads(
+            Path(cell["invocations_jsonl_path"])
+            .read_text(encoding="utf-8")
+            .splitlines()[0]
+        )
+        assert "super-secret-benchmark-token" not in json.dumps(invocation)
+        assert "<redacted>" in invocation["stderr"]
+
+
 def test_max_queries_limits_fixture_queries() -> None:
     fixture = load_locomo_fixture(
         "locomo10-sample",
@@ -271,22 +340,31 @@ def test_locomo_handoff_summary_structure() -> None:
         pytest.skip("handoff artifacts not generated in this checkout")
 
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    pointer = json.loads(
+        (handoff_dir / "matrix_summary.json").read_text(encoding="utf-8")
+    )
+    assert not Path(pointer["path"]).is_absolute()
     assert summary["report_type"] == "real_cli_comparison"
     assert summary.get("test_double_mode") is False
     assert "real_results" in summary
     assert summary["dataset"]["sha256"]
     assert summary["provenance"]["exact_command"]
+    assert "not the official LoCoMo" in summary["metric_definition"]["accuracy"]
 
     real_cells = summary["real_results"]
-    assert len(real_cells) == 6
+    assert len(real_cells) == 8
     agents = {cell["agent"] for cell in real_cells}
     backends = {cell["backend"] for cell in real_cells}
-    assert agents == {"hermes", "claude_code", "codex"}
+    assert agents == {"openclaw", "hermes", "claude_code", "codex"}
     assert backends == {"no_memory", "hm_arch"}
 
     for cell in real_cells:
-        assert cell["runner_mode"] == "real"
+        assert cell["runner_mode"] in {"real", "unavailable"}
         invocations_path = Path(cell["invocations_jsonl_path"])
+        assert not invocations_path.is_absolute()
+        if cell["status"] == "unavailable":
+            continue
+        invocations_path = REPO_ROOT / invocations_path
         assert invocations_path.is_file()
         first_line = invocations_path.read_text(encoding="utf-8").splitlines()[0]
         invocation = json.loads(first_line)
@@ -296,6 +374,10 @@ def test_locomo_handoff_summary_structure() -> None:
         cli = provenance.get("agent_cli", {})
         assert cli.get("executable")
         assert "fake_agent_cli" not in str(cli.get("executable", ""))
+        if cell["completed_query_count"] == 0 and cell["total_failure_count"] > 0:
+            assert cell["status"] == "failed"
+
+    assert not list(handoff_dir.glob("locomo-*/storage"))
 
 
 def test_category_aggregation_groups_by_locomo_category(tmp_path: Path) -> None:

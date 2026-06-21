@@ -111,7 +111,7 @@ def main() -> int:
     parser.add_argument(
         "--include-openclaw",
         action="store_true",
-        help="Attempt OpenClaw cells (default: mark pending for MEM-75)",
+        help="Attempt OpenClaw cells (missing CLIs are reported as unavailable)",
     )
     parser.add_argument(
         "--runner-mode",
@@ -191,11 +191,15 @@ def main() -> int:
     )
     # Keep a stable pointer for tooling that expects matrix_summary.json.
     pointer_path = output_dir / "matrix_summary.json"
+    try:
+        portable_summary_path = str(summary_path.resolve().relative_to(_ROOT))
+    except ValueError:
+        portable_summary_path = str(summary_path)
     pointer_payload = {
         "active_report": summary_name,
         "report_type": summary["report_type"],
         "runner_mode": summary["runner_mode"],
-        "path": str(summary_path),
+        "path": portable_summary_path,
         "test_double_mode": summary.get("test_double_mode"),
     }
     pointer_path.write_text(

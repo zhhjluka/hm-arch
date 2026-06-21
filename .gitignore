@@ -69,6 +69,7 @@ cover/
 benchmark-results/
 !benchmarks/cross_agent/fixtures/locomo/handoff/
 !benchmarks/cross_agent/fixtures/locomo/handoff/**
+benchmarks/cross_agent/fixtures/locomo/handoff/**/storage/
 
 # Translations
 *.mo

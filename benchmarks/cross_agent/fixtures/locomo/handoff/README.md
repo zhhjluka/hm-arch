@@ -21,17 +21,19 @@ The committed pilot uses:
 - Dataset: `locomo10-sample` / `2024-03-sample` (SHA-256 `580e189f…`)
 - Conversations: 1
 - Queries per cell: 3
-- Agents: Hermes, Claude Code, Codex (`no_memory` + `hm_arch`)
-- OpenClaw: `pending` (MEM-75)
+- Agents: OpenClaw, Hermes, Claude Code, Codex (`no_memory` + `hm_arch`)
+- Missing agent CLIs are recorded as `unavailable`; they do not abort the matrix
 - `native_memory`, Mem0, OpenViking: `unsupported` in real mode
+- Accuracy: normalized exact match for this pilot, not official LoCoMo category-aware token F1
 
 ## CLI versions (pilot)
 
 | Agent | Executable | Version |
 |-------|------------|---------|
-| Codex | `~/.npm-global/bin/codex` | codex-cli 0.141.0 |
-| Claude Code | `~/.npm-global/bin/claude` | 2.1.185 |
-| Hermes | `~/.local/bin/hermes` | v0.17.0 (2026.6.19) |
+| Codex | `/opt/homebrew/bin/codex` | codex-cli 0.139.0 |
+| Claude Code | `/opt/homebrew/bin/claude` | 2.1.177 |
+| Hermes | `~/.local/bin/hermes` | v0.11.0 (2026.4.23) |
+| OpenClaw | unavailable | unavailable |
 
 ## Provider authentication
 
@@ -41,10 +43,12 @@ Real CLI invocations require provider credentials:
 - **Claude Code**: `ANTHROPIC_API_KEY` or `claude login`
 - **Hermes**: `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, or `hermes model`
 
-The pilot run in this directory used production CLI binaries with `cli_mode: real`
-but provider auth was unavailable in the cloud agent environment. All 18 queries
-failed with authentication errors (401 / not logged in). Re-run locally with
-credentials for meaningful accuracy metrics:
+The committed pilot uses production CLI binaries with `cli_mode: real`. Hermes
+completed both supported cells (3/3 queries each); Codex completed 1/3 queries in
+the `no_memory` cell and timed out on the remaining attempts; Claude Code returned
+provider status 402; OpenClaw was not installed. Failed and unavailable cells are
+preserved as first-class outcomes and are excluded from completed-query metrics.
+Re-run with provider capacity for a larger comparison:
 
 ```bash
 export OPENAI_API_KEY=...

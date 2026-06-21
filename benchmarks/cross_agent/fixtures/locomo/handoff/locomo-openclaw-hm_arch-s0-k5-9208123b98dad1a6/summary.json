@@ -1,0 +1,85 @@
+{
+  "run_id": "locomo-openclaw-hm_arch-s0-k5-9208123b98dad1a6",
+  "config": {
+    "family": "locomo",
+    "agent": "openclaw",
+    "backend": "hm_arch",
+    "seed": 0,
+    "run_id": null,
+    "top_k": 5,
+    "resume": false,
+    "use_mock_agent": false,
+    "agent_executable": null,
+    "agent_timeout_s": 60.0,
+    "dataset_id": "locomo10-sample",
+    "dataset_version": "2024-03-sample",
+    "max_conversations": 1,
+    "max_queries": 3
+  },
+  "storage_dir": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-hm_arch-s0-k5-9208123b98dad1a6/storage",
+  "phases_completed": [
+    "setup"
+  ],
+  "queries": [],
+  "aggregates": {
+    "query_count": 0,
+    "completed_query_count": 0,
+    "mean_accuracy": null,
+    "task_success_rate": null,
+    "mean_retrieval_hit_rate": null,
+    "mean_query_time_ms": 0.0,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0,
+    "total_failure_count": 0
+  },
+  "environment": {
+    "python": "3.12.11",
+    "platform": "macOS-15.7.4-arm64-arm-64bit",
+    "timestamp_utc": "2026-06-21T15:48:49.231383+00:00"
+  },
+  "agent_metadata": {
+    "matrix_implementation": "real",
+    "matrix_rationale": "Configure HM-Arch OpenClaw plugin slot; invoke openclaw CLI boundary.",
+    "support_rationale": "Configure HM-Arch OpenClaw plugin slot; invoke openclaw CLI boundary.",
+    "supported": true,
+    "use_mock_agent": false,
+    "agent_home": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-hm_arch-s0-k5-9208123b98dad1a6/agent_workspace/agent_home",
+    "workspace_root": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-hm_arch-s0-k5-9208123b98dad1a6/agent_workspace",
+    "storage_dir": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-hm_arch-s0-k5-9208123b98dad1a6/storage",
+    "error": "openclaw CLI executable not found on PATH",
+    "status": "unsupported"
+  },
+  "compatibility": {
+    "codex|no_memory": "real",
+    "codex|native_memory": "unsupported",
+    "codex|hm_arch": "real",
+    "codex|mem0": "unsupported",
+    "codex|openviking": "unsupported",
+    "claude_code|no_memory": "real",
+    "claude_code|native_memory": "unsupported",
+    "claude_code|hm_arch": "real",
+    "claude_code|mem0": "unsupported",
+    "claude_code|openviking": "unsupported",
+    "hermes|no_memory": "real",
+    "hermes|native_memory": "unsupported",
+    "hermes|hm_arch": "real",
+    "hermes|mem0": "unsupported",
+    "hermes|openviking": "unsupported",
+    "openclaw|no_memory": "real",
+    "openclaw|native_memory": "unsupported",
+    "openclaw|hm_arch": "real",
+    "openclaw|mem0": "unsupported",
+    "openclaw|openviking": "unsupported"
+  },
+  "dataset": {
+    "dataset_id": "locomo10-sample",
+    "version": "2024-03-sample",
+    "description": "Pinned one-conversation LoCoMo subset for offline tests",
+    "source_url": "https://github.com/snap-research/locomo/blob/main/data/locomo10.json",
+    "filename": "locomo10-sample.json",
+    "sha256": "580e189fdcaf989caa1512e87b42cb14d90f16522cbeca14f48fa01c5b83ef0f",
+    "conversation_count": 1,
+    "qa_count": 199,
+    "max_conversations": 1
+  }
+}

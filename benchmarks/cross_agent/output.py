@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import csv
 import json
+import shlex
 import shutil
 from pathlib import Path
 from typing import Any
 
 from .agents.cli_process import CliInvocationResult
+from .failure_provenance import redact_sensitive_text
 from .types import BenchmarkRunResult, QueryRecord
 
 
@@ -40,6 +42,19 @@ _QUERY_CSV_FIELDS = [
     "agent_managed",
     "agent_runner_mode",
 ]
+
+
+def _redact_artifact_value(value: Any) -> Any:
+    """Redact strings recursively before persisting diagnostic metadata."""
+    if isinstance(value, str):
+        return redact_sensitive_text(value)
+    if isinstance(value, dict):
+        return {key: _redact_artifact_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_redact_artifact_value(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_redact_artifact_value(item) for item in value)
+    return value
 
 
 def append_query_jsonl(path: Path, record: QueryRecord, *, run_id: str) -> None:
@@ -115,20 +130,21 @@ def append_invocation_jsonl(
     invocation: CliInvocationResult,
     metadata: dict[str, Any] | None = None,
 ) -> None:
-    """Append one CLI invocation record with argv and captured stdout/stderr."""
+    """Append one CLI invocation record with redacted stdout/stderr."""
+    safe_argv = [redact_sensitive_text(arg) or "" for arg in invocation.argv]
     row: dict[str, Any] = {
         "run_id": run_id,
         "query_id": query_id,
-        "argv": list(invocation.argv),
-        "exact_command": " ".join(invocation.argv),
+        "argv": safe_argv,
+        "exact_command": shlex.join(safe_argv),
         "exit_code": invocation.exit_code,
-        "stdout": invocation.stdout,
-        "stderr": invocation.stderr,
+        "stdout": redact_sensitive_text(invocation.stdout) or "",
+        "stderr": redact_sensitive_text(invocation.stderr) or "",
         "wall_clock_ms": invocation.wall_clock_ms,
         "timed_out": invocation.timed_out,
     }
     if metadata:
-        row["metadata"] = metadata
+        row["metadata"] = _redact_artifact_value(metadata)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(row, default=str) + "\n")
 

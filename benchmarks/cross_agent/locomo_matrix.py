@@ -71,6 +71,15 @@ LOCOMO_AGENTS: tuple[AgentKind, ...] = (
 LOCOMO_HANDOFF_DIR = (
     Path(__file__).resolve().parent / "fixtures" / "locomo" / "handoff"
 )
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _portable_artifact_path(path: Path) -> str:
+    resolved = path.resolve()
+    try:
+        return str(resolved.relative_to(_REPO_ROOT))
+    except ValueError:
+        return str(resolved)
 
 
 def _is_test_double_executable(executable: str | None) -> bool:
@@ -134,8 +143,8 @@ def locomo_matrix_plans(
                         backend=backend,
                         status="pending",
                         rationale=(
-                            "OpenClaw cells deferred pending MEM-75 end-to-end "
-                            "integration verification."
+                            "OpenClaw was not requested for this run; pass "
+                            "--include-openclaw to probe its production CLI."
                         ),
                         run=False,
                     )
@@ -261,10 +270,12 @@ def build_matrix_command(
 ) -> str:
     """Return a reproducible shell command for this matrix invocation."""
     argv = [
-        sys.executable,
+        "uv",
+        "run",
+        "python",
         str(Path("scripts") / "run_locomo_matrix.py"),
         "--output-dir",
-        str(output_root),
+        _portable_artifact_path(output_root),
         "--dataset-id",
         dataset_id,
         "--seed",
@@ -300,23 +311,47 @@ def _summarize_completed_cell(
     output_root: Path,
 ) -> dict[str, Any]:
     coordinate = matrix_key(plan.agent, plan.backend)
+    result_status = str(result.agent_metadata.get("status") or "")
+    result_error = str(result.agent_metadata.get("error") or "")
+    if result_status == "unsupported" and "executable" in result_error.lower():
+        cell_status = "unavailable"
+    elif (
+        result.aggregates.query_count > 0
+        and result.aggregates.completed_query_count == 0
+        and result.aggregates.total_failure_count > 0
+    ):
+        cell_status = "failed"
+    elif result.aggregates.completed_query_count == result.aggregates.query_count:
+        cell_status = "completed"
+    elif result.aggregates.completed_query_count > 0:
+        cell_status = "partial"
+    else:
+        cell_status = result_status or "unsupported"
     runner_mode = (
         "mock_only"
         if result.config.use_mock_agent
         else result.agent_metadata.get("runtime_provenance", {})
         .get("cli_mode", "real")
     )
+    if cell_status == "unavailable":
+        runner_mode = "unavailable"
     cell: dict[str, Any] = {
         "coordinate": coordinate,
         "agent": plan.agent.value,
         "backend": plan.backend.value,
-        "status": result.agent_metadata.get("status", "completed"),
+        "status": cell_status,
         "rationale": plan.rationale,
         "runner_mode": runner_mode,
         "run_id": result.run_id,
-        "summary_path": str(output_root / result.run_id / "summary.json"),
-        "queries_jsonl_path": str(output_root / result.run_id / "queries.jsonl"),
-        "invocations_jsonl_path": str(output_root / result.run_id / "invocations.jsonl"),
+        "summary_path": _portable_artifact_path(
+            output_root / result.run_id / "summary.json"
+        ),
+        "queries_jsonl_path": _portable_artifact_path(
+            output_root / result.run_id / "queries.jsonl"
+        ),
+        "invocations_jsonl_path": _portable_artifact_path(
+            output_root / result.run_id / "invocations.jsonl"
+        ),
         "mean_accuracy": result.aggregates.mean_accuracy,
         "mean_retrieval_hit_rate": result.aggregates.mean_retrieval_hit_rate,
         "completed_query_count": result.aggregates.completed_query_count,
@@ -362,7 +397,7 @@ def run_locomo_matrix(
     harness = CrossAgentBenchmarkHarness(output_root=output_root)
 
     cells: list[dict[str, Any]] = []
-    completed_cells: list[dict[str, Any]] = []
+    run_cells: list[dict[str, Any]] = []
     results: list[BenchmarkRunResult] = []
 
     for plan in plans:
@@ -411,7 +446,7 @@ def run_locomo_matrix(
         results.append(result)
         cell = _summarize_completed_cell(result, plan=plan, output_root=output_root)
         cells.append(cell)
-        completed_cells.append(cell)
+        run_cells.append(cell)
 
     exact_command = build_matrix_command(
         runner_mode=runner_mode,
@@ -458,6 +493,13 @@ def run_locomo_matrix(
             "dataset_version": version,
             "max_conversations": max_conversations,
         },
+        "metric_definition": {
+            "accuracy": (
+                "Case-insensitive exact string match after whitespace normalization; "
+                "this pilot metric is not the official LoCoMo category-aware token F1."
+            ),
+            "retrieval": "Evidence-id recall over the fixture's annotated evidence turns.",
+        },
         "matrix": {
             "agents": [agent.value for agent in LOCOMO_AGENTS],
             "backends": [backend.value for backend in LOCOMO_BACKENDS],
@@ -471,20 +513,34 @@ def run_locomo_matrix(
             "max_queries": max_queries,
         },
         "cells": cells,
-        "completed_run_count": len(completed_cells),
+        "attempted_run_count": sum(
+            1 for cell in run_cells if cell["status"] in {"completed", "partial", "failed"}
+        ),
+        "completed_run_count": sum(
+            1 for cell in run_cells if cell["status"] == "completed"
+        ),
+        "partial_run_count": sum(
+            1 for cell in run_cells if cell["status"] == "partial"
+        ),
+        "failed_run_count": sum(
+            1 for cell in run_cells if cell["status"] == "failed"
+        ),
+        "unavailable_run_count": sum(
+            1 for cell in run_cells if cell["status"] == "unavailable"
+        ),
         "unsupported_or_pending_count": sum(
             1 for cell in cells if cell["status"] in {"unsupported", "pending"}
         ),
     }
     if runner_mode is MatrixRunnerMode.MOCK:
-        summary["mock_results"] = completed_cells
+        summary["mock_results"] = run_cells
         summary["notes"] = (
             "Mock results are offline smoke tests only. They do not represent "
             "cross-agent production CLI comparisons. Run with --runner-mode real "
             "for Hermes/Claude/Codex CLI metrics."
         )
     else:
-        summary["real_results"] = completed_cells
+        summary["real_results"] = run_cells
         if test_double_mode:
             summary["notes"] = (
                 "WARNING: This report used a test-double executable "
@@ -499,13 +555,14 @@ def run_locomo_matrix(
                 "Unsupported cells are listed explicitly and were not executed."
             )
             summary["test_double_mode"] = False
-        if completed_cells and all(
+        failed_run_cells = [cell for cell in run_cells if cell["status"] == "failed"]
+        if failed_run_cells and all(
             cell.get("completed_query_count", 0) == 0
             and cell.get("total_failure_count", 0) > 0
-            for cell in completed_cells
+            for cell in failed_run_cells
         ):
             summary["provider_auth_status"] = (
-                "All completed cells reported query failures. "
+                "All failed cells reported zero completed queries. "
                 "Verify provider credentials (OPENAI_API_KEY, ANTHROPIC_API_KEY, "
                 "OPENROUTER_API_KEY, or agent login) before interpreting accuracy."
             )
