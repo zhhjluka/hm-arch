@@ -82,12 +82,12 @@ def aggregate_query_records(records: list[QueryRecord]) -> AggregateMetrics:
             total_failure_count=0,
         )
 
-    accuracies = [r.accuracy for r in records if r.accuracy is not None]
-    successes = [r.task_success for r in records if r.task_success is not None]
-    hit_rates = [
-        r.retrieval_hit_rate for r in records if r.retrieval_hit_rate is not None
-    ]
     completed = [r for r in records if r.failure_count == 0]
+    accuracies = [r.accuracy for r in completed if r.accuracy is not None]
+    successes = [r.task_success for r in completed if r.task_success is not None]
+    hit_rates = [
+        r.retrieval_hit_rate for r in completed if r.retrieval_hit_rate is not None
+    ]
 
     return AggregateMetrics(
         query_count=len(records),
@@ -97,7 +97,11 @@ def aggregate_query_records(records: list[QueryRecord]) -> AggregateMetrics:
         if successes
         else None,
         mean_retrieval_hit_rate=(sum(hit_rates) / len(hit_rates)) if hit_rates else None,
-        mean_query_time_ms=sum(r.query_time_ms for r in records) / len(records),
+        mean_query_time_ms=(
+            sum(r.query_time_ms for r in completed) / len(completed)
+            if completed
+            else 0.0
+        ),
         total_input_tokens=sum(r.input_tokens for r in records),
         total_output_tokens=sum(r.output_tokens for r in records),
         total_failure_count=sum(r.failure_count for r in records),
@@ -105,7 +109,7 @@ def aggregate_query_records(records: list[QueryRecord]) -> AggregateMetrics:
 
 
 def timing_aggregates(records: list[QueryRecord]) -> dict[str, float | int | None]:
-    """Return mean/p95 query latency and token roll-ups."""
+    """Return mean/p95 query latency and token roll-ups for completed queries."""
     if not records:
         return {
             "mean_query_time_ms": 0.0,
@@ -115,11 +119,18 @@ def timing_aggregates(records: list[QueryRecord]) -> dict[str, float | int | Non
             "total_output_tokens": 0,
             "total_failure_count": 0,
         }
-    query_times = [r.query_time_ms for r in records]
+    completed = [r for r in records if r.failure_count == 0]
+    query_times = [r.query_time_ms for r in completed]
     return {
-        "mean_query_time_ms": sum(query_times) / len(query_times),
+        "mean_query_time_ms": (
+            sum(query_times) / len(query_times) if query_times else None
+        ),
         "p95_query_time_ms": percentile(query_times, 95.0),
-        "mean_input_tokens": sum(r.input_tokens for r in records) / len(records),
+        "mean_input_tokens": (
+            sum(r.input_tokens for r in completed) / len(completed)
+            if completed
+            else None
+        ),
         "total_input_tokens": sum(r.input_tokens for r in records),
         "total_output_tokens": sum(r.output_tokens for r in records),
         "total_failure_count": sum(r.failure_count for r in records),

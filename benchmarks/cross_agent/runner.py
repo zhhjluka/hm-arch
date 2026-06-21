@@ -472,13 +472,15 @@ class CrossAgentBenchmarkHarness:
             if config.family is BenchmarkFamily.HOTPOTQA
             else exact_match_accuracy
         )
+        failure_count = recall.failure_count + agent_out.failure_count
         accuracy = accuracy_fn(query.expected_answer, agent_out.answer)
+        if failure_count > 0:
+            accuracy = None
         hit_rate = (
             None
-            if hook_managed
+            if hook_managed or failure_count > 0
             else retrieval_hit_rate(recall.retrieved_ids, query.expected_memory_ids)
         )
-        failure_count = recall.failure_count + agent_out.failure_count
         failure_fields = build_query_failure_provenance(recall=recall, agent_out=agent_out)
         agent_meta = dict(agent_out.metadata)
         if config.use_mock_agent:

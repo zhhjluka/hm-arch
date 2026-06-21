@@ -319,6 +319,7 @@ def _summarize_completed_cell(
         "invocations_jsonl_path": str(output_root / result.run_id / "invocations.jsonl"),
         "mean_accuracy": result.aggregates.mean_accuracy,
         "mean_retrieval_hit_rate": result.aggregates.mean_retrieval_hit_rate,
+        "completed_query_count": result.aggregates.completed_query_count,
         "mean_query_time_ms": result.timing_aggregates.get("mean_query_time_ms"),
         "p95_query_time_ms": result.timing_aggregates.get("p95_query_time_ms"),
         "total_input_tokens": result.aggregates.total_input_tokens,
@@ -499,7 +500,7 @@ def run_locomo_matrix(
             )
             summary["test_double_mode"] = False
         if completed_cells and all(
-            cell.get("mean_accuracy", 0) == 0.0
+            cell.get("completed_query_count", 0) == 0
             and cell.get("total_failure_count", 0) > 0
             for cell in completed_cells
         ):

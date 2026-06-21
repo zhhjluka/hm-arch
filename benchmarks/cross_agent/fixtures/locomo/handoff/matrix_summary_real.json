@@ -120,12 +120,13 @@
       "summary_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-no_memory-s0-k5-bb993deab17cc00b/summary.json",
       "queries_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-no_memory-s0-k5-bb993deab17cc00b/queries.jsonl",
       "invocations_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-no_memory-s0-k5-bb993deab17cc00b/invocations.jsonl",
-      "mean_accuracy": 0.0,
-      "mean_retrieval_hit_rate": 0.0,
-      "mean_query_time_ms": 886.6021856714118,
-      "p95_query_time_ms": 931.9996963007725,
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
       "total_input_tokens": 0,
-      "mean_input_tokens": 0.0,
+      "mean_input_tokens": null,
       "total_failure_count": 3,
       "token_source_counts": {
         "estimated": 6
@@ -133,21 +134,21 @@
       "category_aggregates": {
         "open_domain": {
           "query_count": 1,
-          "mean_accuracy": 0.0,
-          "mean_retrieval_hit_rate": 0.0,
-          "mean_query_time_ms": 851.9389540015254,
-          "p95_query_time_ms": 851.9389540015254,
-          "mean_input_tokens": 0.0,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 1
         },
         "temporal": {
           "query_count": 2,
-          "mean_accuracy": 0.0,
-          "mean_retrieval_hit_rate": 0.0,
-          "mean_query_time_ms": 903.9338015063549,
-          "p95_query_time_ms": 935.5079331500747,
-          "mean_input_tokens": 0.0,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 2
         }
@@ -158,7 +159,7 @@
         "agent_cli": {
           "agent": "hermes",
           "executable": "/home/ubuntu/.local/bin/hermes",
-          "version": "Hermes Agent v0.17.0 (2026.6.19) \u00b7 upstream 15852722",
+          "version": "Hermes Agent v0.17.0 (2026.6.19) \u00b7 upstream f57ff7ae",
           "probe_status": "ok"
         },
         "provider_packages": {},
@@ -167,7 +168,7 @@
       "environment": {
         "python": "3.12.3",
         "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-        "timestamp_utc": "2026-06-20T07:39:40.025361+00:00"
+        "timestamp_utc": "2026-06-21T10:08:16.772013+00:00"
       },
       "sample_argv": [
         "/home/ubuntu/.local/bin/hermes",
@@ -207,12 +208,13 @@
       "summary_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/summary.json",
       "queries_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/queries.jsonl",
       "invocations_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/invocations.jsonl",
-      "mean_accuracy": 0.0,
+      "mean_accuracy": null,
       "mean_retrieval_hit_rate": null,
-      "mean_query_time_ms": 836.8079476689066,
-      "p95_query_time_ms": 840.7493233928108,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
       "total_input_tokens": 0,
-      "mean_input_tokens": 0.0,
+      "mean_input_tokens": null,
       "total_failure_count": 3,
       "token_source_counts": {
         "estimated": 6
@@ -220,21 +222,21 @@
       "category_aggregates": {
         "open_domain": {
           "query_count": 1,
-          "mean_accuracy": 0.0,
+          "mean_accuracy": null,
           "mean_retrieval_hit_rate": null,
-          "mean_query_time_ms": 837.4522940139286,
-          "p95_query_time_ms": 837.4522940139286,
-          "mean_input_tokens": 0.0,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 1
         },
         "temporal": {
           "query_count": 2,
-          "mean_accuracy": 0.0,
+          "mean_accuracy": null,
           "mean_retrieval_hit_rate": null,
-          "mean_query_time_ms": 836.4857744963956,
-          "p95_query_time_ms": 840.6526714410575,
-          "mean_input_tokens": 0.0,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 2
         }
@@ -245,7 +247,7 @@
         "agent_cli": {
           "agent": "hermes",
           "executable": "/home/ubuntu/.local/bin/hermes",
-          "version": "Hermes Agent v0.17.0 (2026.6.19) \u00b7 upstream 15852722",
+          "version": "Hermes Agent v0.17.0 (2026.6.19) \u00b7 upstream f57ff7ae",
           "probe_status": "ok"
         },
         "provider_packages": {
@@ -256,7 +258,7 @@
       "environment": {
         "python": "3.12.3",
         "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-        "timestamp_utc": "2026-06-20T07:39:43.181267+00:00"
+        "timestamp_utc": "2026-06-21T10:08:20.062522+00:00"
       },
       "sample_argv": [
         "/home/ubuntu/.local/bin/hermes",
@@ -275,12 +277,13 @@
       "summary_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e/summary.json",
       "queries_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e/queries.jsonl",
       "invocations_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e/invocations.jsonl",
-      "mean_accuracy": 0.0,
-      "mean_retrieval_hit_rate": 0.0,
-      "mean_query_time_ms": 530.9590589992391,
-      "p95_query_time_ms": 593.5769174975576,
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
       "total_input_tokens": 0,
-      "mean_input_tokens": 0.0,
+      "mean_input_tokens": null,
       "total_failure_count": 3,
       "token_source_counts": {
         "estimated": 6
@@ -288,21 +291,21 @@
       "category_aggregates": {
         "open_domain": {
           "query_count": 1,
-          "mean_accuracy": 0.0,
-          "mean_retrieval_hit_rate": 0.0,
-          "mean_query_time_ms": 484.85213800449856,
-          "p95_query_time_ms": 484.85213800449856,
-          "mean_input_tokens": 0.0,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 1
         },
         "temporal": {
           "query_count": 2,
-          "mean_accuracy": 0.0,
-          "mean_retrieval_hit_rate": 0.0,
-          "mean_query_time_ms": 554.0125194966095,
-          "p95_query_time_ms": 598.5224672476761,
-          "mean_input_tokens": 0.0,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 2
         }
@@ -313,7 +316,7 @@
         "agent_cli": {
           "agent": "claude_code",
           "executable": "/home/ubuntu/.npm-global/bin/claude",
-          "version": "2.1.183 (Claude Code)",
+          "version": "2.1.185 (Claude Code)",
           "probe_status": "ok"
         },
         "provider_packages": {},
@@ -322,7 +325,7 @@
       "environment": {
         "python": "3.12.3",
         "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-        "timestamp_utc": "2026-06-20T07:39:47.390809+00:00"
+        "timestamp_utc": "2026-06-21T10:08:24.431231+00:00"
       },
       "sample_argv": [
         "/home/ubuntu/.npm-global/bin/claude",
@@ -364,12 +367,13 @@
       "summary_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/summary.json",
       "queries_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/queries.jsonl",
       "invocations_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/invocations.jsonl",
-      "mean_accuracy": 0.0,
+      "mean_accuracy": null,
       "mean_retrieval_hit_rate": null,
-      "mean_query_time_ms": 639.4712406666562,
-      "p95_query_time_ms": 657.7629360981518,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
       "total_input_tokens": 0,
-      "mean_input_tokens": 0.0,
+      "mean_input_tokens": null,
       "total_failure_count": 3,
       "token_source_counts": {
         "estimated": 6
@@ -377,21 +381,21 @@
       "category_aggregates": {
         "open_domain": {
           "query_count": 1,
-          "mean_accuracy": 0.0,
+          "mean_accuracy": null,
           "mean_retrieval_hit_rate": null,
-          "mean_query_time_ms": 605.8050569990883,
-          "p95_query_time_ms": 605.8050569990883,
-          "mean_input_tokens": 0.0,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 1
         },
         "temporal": {
           "query_count": 2,
-          "mean_accuracy": 0.0,
+          "mean_accuracy": null,
           "mean_retrieval_hit_rate": null,
-          "mean_query_time_ms": 656.3043325004401,
-          "p95_query_time_ms": 657.9452615478658,
-          "mean_input_tokens": 0.0,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 2
         }
@@ -402,7 +406,7 @@
         "agent_cli": {
           "agent": "claude_code",
           "executable": "/home/ubuntu/.npm-global/bin/claude",
-          "version": "2.1.183 (Claude Code)",
+          "version": "2.1.185 (Claude Code)",
           "probe_status": "ok"
         },
         "provider_packages": {
@@ -413,7 +417,7 @@
       "environment": {
         "python": "3.12.3",
         "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-        "timestamp_utc": "2026-06-20T07:39:49.263901+00:00"
+        "timestamp_utc": "2026-06-21T10:08:34.973613+00:00"
       },
       "sample_argv": [
         "/home/ubuntu/.npm-global/bin/claude",
@@ -434,12 +438,13 @@
       "summary_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/summary.json",
       "queries_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/queries.jsonl",
       "invocations_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/invocations.jsonl",
-      "mean_accuracy": 0.0,
-      "mean_retrieval_hit_rate": 0.0,
-      "mean_query_time_ms": 14994.87904300137,
-      "p95_query_time_ms": 15179.571944000782,
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
       "total_input_tokens": 0,
-      "mean_input_tokens": 0.0,
+      "mean_input_tokens": null,
       "total_failure_count": 3,
       "token_source_counts": {
         "estimated": 6
@@ -447,21 +452,21 @@
       "category_aggregates": {
         "open_domain": {
           "query_count": 1,
-          "mean_accuracy": 0.0,
-          "mean_retrieval_hit_rate": 0.0,
-          "mean_query_time_ms": 15211.13176200015,
-          "p95_query_time_ms": 15211.13176200015,
-          "mean_input_tokens": 0.0,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 1
         },
         "temporal": {
           "query_count": 2,
-          "mean_accuracy": 0.0,
-          "mean_retrieval_hit_rate": 0.0,
-          "mean_query_time_ms": 14886.752683501982,
-          "p95_query_time_ms": 14894.655492156016,
-          "mean_input_tokens": 0.0,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 2
         }
@@ -481,7 +486,7 @@
       "environment": {
         "python": "3.12.3",
         "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-        "timestamp_utc": "2026-06-20T07:39:52.589937+00:00"
+        "timestamp_utc": "2026-06-21T10:08:46.725273+00:00"
       },
       "sample_argv": [
         "/home/ubuntu/.npm-global/bin/codex",
@@ -489,6 +494,7 @@
         "--json",
         "--disable",
         "memories",
+        "--skip-git-repo-check",
         "When did Caroline go to the LGBTQ support group?"
       ]
     },
@@ -524,12 +530,13 @@
       "summary_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-hm_arch-s0-k5-1770641fd28506d0/summary.json",
       "queries_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-hm_arch-s0-k5-1770641fd28506d0/queries.jsonl",
       "invocations_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-hm_arch-s0-k5-1770641fd28506d0/invocations.jsonl",
-      "mean_accuracy": 0.0,
+      "mean_accuracy": null,
       "mean_retrieval_hit_rate": null,
-      "mean_query_time_ms": 15353.931069999817,
-      "p95_query_time_ms": 16038.040113903116,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
       "total_input_tokens": 0,
-      "mean_input_tokens": 0.0,
+      "mean_input_tokens": null,
       "total_failure_count": 3,
       "token_source_counts": {
         "estimated": 6
@@ -537,21 +544,21 @@
       "category_aggregates": {
         "open_domain": {
           "query_count": 1,
-          "mean_accuracy": 0.0,
+          "mean_accuracy": null,
           "mean_retrieval_hit_rate": null,
-          "mean_query_time_ms": 16150.716096002725,
-          "p95_query_time_ms": 16150.716096002725,
-          "mean_input_tokens": 0.0,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 1
         },
         "temporal": {
           "query_count": 2,
-          "mean_accuracy": 0.0,
+          "mean_accuracy": null,
           "mean_retrieval_hit_rate": null,
-          "mean_query_time_ms": 14955.538556998363,
-          "p95_query_time_ms": 15017.114503205812,
-          "mean_input_tokens": 0.0,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 2
         }
@@ -573,7 +580,7 @@
       "environment": {
         "python": "3.12.3",
         "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-        "timestamp_utc": "2026-06-20T07:40:37.817327+00:00"
+        "timestamp_utc": "2026-06-21T10:10:01.886650+00:00"
       },
       "sample_argv": [
         "/home/ubuntu/.npm-global/bin/codex",
@@ -581,6 +588,7 @@
         "--json",
         "--disable",
         "memories",
+        "--skip-git-repo-check",
         "When did Caroline go to the LGBTQ support group?"
       ]
     }
@@ -599,12 +607,13 @@
       "summary_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-no_memory-s0-k5-bb993deab17cc00b/summary.json",
       "queries_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-no_memory-s0-k5-bb993deab17cc00b/queries.jsonl",
       "invocations_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-no_memory-s0-k5-bb993deab17cc00b/invocations.jsonl",
-      "mean_accuracy": 0.0,
-      "mean_retrieval_hit_rate": 0.0,
-      "mean_query_time_ms": 886.6021856714118,
-      "p95_query_time_ms": 931.9996963007725,
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
       "total_input_tokens": 0,
-      "mean_input_tokens": 0.0,
+      "mean_input_tokens": null,
       "total_failure_count": 3,
       "token_source_counts": {
         "estimated": 6
@@ -612,21 +621,21 @@
       "category_aggregates": {
         "open_domain": {
           "query_count": 1,
-          "mean_accuracy": 0.0,
-          "mean_retrieval_hit_rate": 0.0,
-          "mean_query_time_ms": 851.9389540015254,
-          "p95_query_time_ms": 851.9389540015254,
-          "mean_input_tokens": 0.0,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 1
         },
         "temporal": {
           "query_count": 2,
-          "mean_accuracy": 0.0,
-          "mean_retrieval_hit_rate": 0.0,
-          "mean_query_time_ms": 903.9338015063549,
-          "p95_query_time_ms": 935.5079331500747,
-          "mean_input_tokens": 0.0,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 2
         }
@@ -637,7 +646,7 @@
         "agent_cli": {
           "agent": "hermes",
           "executable": "/home/ubuntu/.local/bin/hermes",
-          "version": "Hermes Agent v0.17.0 (2026.6.19) \u00b7 upstream 15852722",
+          "version": "Hermes Agent v0.17.0 (2026.6.19) \u00b7 upstream f57ff7ae",
           "probe_status": "ok"
         },
         "provider_packages": {},
@@ -646,7 +655,7 @@
       "environment": {
         "python": "3.12.3",
         "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-        "timestamp_utc": "2026-06-20T07:39:40.025361+00:00"
+        "timestamp_utc": "2026-06-21T10:08:16.772013+00:00"
       },
       "sample_argv": [
         "/home/ubuntu/.local/bin/hermes",
@@ -665,12 +674,13 @@
       "summary_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/summary.json",
       "queries_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/queries.jsonl",
       "invocations_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/invocations.jsonl",
-      "mean_accuracy": 0.0,
+      "mean_accuracy": null,
       "mean_retrieval_hit_rate": null,
-      "mean_query_time_ms": 836.8079476689066,
-      "p95_query_time_ms": 840.7493233928108,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
       "total_input_tokens": 0,
-      "mean_input_tokens": 0.0,
+      "mean_input_tokens": null,
       "total_failure_count": 3,
       "token_source_counts": {
         "estimated": 6
@@ -678,21 +688,21 @@
       "category_aggregates": {
         "open_domain": {
           "query_count": 1,
-          "mean_accuracy": 0.0,
+          "mean_accuracy": null,
           "mean_retrieval_hit_rate": null,
-          "mean_query_time_ms": 837.4522940139286,
-          "p95_query_time_ms": 837.4522940139286,
-          "mean_input_tokens": 0.0,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 1
         },
         "temporal": {
           "query_count": 2,
-          "mean_accuracy": 0.0,
+          "mean_accuracy": null,
           "mean_retrieval_hit_rate": null,
-          "mean_query_time_ms": 836.4857744963956,
-          "p95_query_time_ms": 840.6526714410575,
-          "mean_input_tokens": 0.0,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 2
         }
@@ -703,7 +713,7 @@
         "agent_cli": {
           "agent": "hermes",
           "executable": "/home/ubuntu/.local/bin/hermes",
-          "version": "Hermes Agent v0.17.0 (2026.6.19) \u00b7 upstream 15852722",
+          "version": "Hermes Agent v0.17.0 (2026.6.19) \u00b7 upstream f57ff7ae",
           "probe_status": "ok"
         },
         "provider_packages": {
@@ -714,7 +724,7 @@
       "environment": {
         "python": "3.12.3",
         "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-        "timestamp_utc": "2026-06-20T07:39:43.181267+00:00"
+        "timestamp_utc": "2026-06-21T10:08:20.062522+00:00"
       },
       "sample_argv": [
         "/home/ubuntu/.local/bin/hermes",
@@ -733,12 +743,13 @@
       "summary_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e/summary.json",
       "queries_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e/queries.jsonl",
       "invocations_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e/invocations.jsonl",
-      "mean_accuracy": 0.0,
-      "mean_retrieval_hit_rate": 0.0,
-      "mean_query_time_ms": 530.9590589992391,
-      "p95_query_time_ms": 593.5769174975576,
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
       "total_input_tokens": 0,
-      "mean_input_tokens": 0.0,
+      "mean_input_tokens": null,
       "total_failure_count": 3,
       "token_source_counts": {
         "estimated": 6
@@ -746,21 +757,21 @@
       "category_aggregates": {
         "open_domain": {
           "query_count": 1,
-          "mean_accuracy": 0.0,
-          "mean_retrieval_hit_rate": 0.0,
-          "mean_query_time_ms": 484.85213800449856,
-          "p95_query_time_ms": 484.85213800449856,
-          "mean_input_tokens": 0.0,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 1
         },
         "temporal": {
           "query_count": 2,
-          "mean_accuracy": 0.0,
-          "mean_retrieval_hit_rate": 0.0,
-          "mean_query_time_ms": 554.0125194966095,
-          "p95_query_time_ms": 598.5224672476761,
-          "mean_input_tokens": 0.0,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 2
         }
@@ -771,7 +782,7 @@
         "agent_cli": {
           "agent": "claude_code",
           "executable": "/home/ubuntu/.npm-global/bin/claude",
-          "version": "2.1.183 (Claude Code)",
+          "version": "2.1.185 (Claude Code)",
           "probe_status": "ok"
         },
         "provider_packages": {},
@@ -780,7 +791,7 @@
       "environment": {
         "python": "3.12.3",
         "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-        "timestamp_utc": "2026-06-20T07:39:47.390809+00:00"
+        "timestamp_utc": "2026-06-21T10:08:24.431231+00:00"
       },
       "sample_argv": [
         "/home/ubuntu/.npm-global/bin/claude",
@@ -801,12 +812,13 @@
       "summary_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/summary.json",
       "queries_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/queries.jsonl",
       "invocations_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/invocations.jsonl",
-      "mean_accuracy": 0.0,
+      "mean_accuracy": null,
       "mean_retrieval_hit_rate": null,
-      "mean_query_time_ms": 639.4712406666562,
-      "p95_query_time_ms": 657.7629360981518,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
       "total_input_tokens": 0,
-      "mean_input_tokens": 0.0,
+      "mean_input_tokens": null,
       "total_failure_count": 3,
       "token_source_counts": {
         "estimated": 6
@@ -814,21 +826,21 @@
       "category_aggregates": {
         "open_domain": {
           "query_count": 1,
-          "mean_accuracy": 0.0,
+          "mean_accuracy": null,
           "mean_retrieval_hit_rate": null,
-          "mean_query_time_ms": 605.8050569990883,
-          "p95_query_time_ms": 605.8050569990883,
-          "mean_input_tokens": 0.0,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 1
         },
         "temporal": {
           "query_count": 2,
-          "mean_accuracy": 0.0,
+          "mean_accuracy": null,
           "mean_retrieval_hit_rate": null,
-          "mean_query_time_ms": 656.3043325004401,
-          "p95_query_time_ms": 657.9452615478658,
-          "mean_input_tokens": 0.0,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 2
         }
@@ -839,7 +851,7 @@
         "agent_cli": {
           "agent": "claude_code",
           "executable": "/home/ubuntu/.npm-global/bin/claude",
-          "version": "2.1.183 (Claude Code)",
+          "version": "2.1.185 (Claude Code)",
           "probe_status": "ok"
         },
         "provider_packages": {
@@ -850,7 +862,7 @@
       "environment": {
         "python": "3.12.3",
         "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-        "timestamp_utc": "2026-06-20T07:39:49.263901+00:00"
+        "timestamp_utc": "2026-06-21T10:08:34.973613+00:00"
       },
       "sample_argv": [
         "/home/ubuntu/.npm-global/bin/claude",
@@ -871,12 +883,13 @@
       "summary_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/summary.json",
       "queries_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/queries.jsonl",
       "invocations_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/invocations.jsonl",
-      "mean_accuracy": 0.0,
-      "mean_retrieval_hit_rate": 0.0,
-      "mean_query_time_ms": 14994.87904300137,
-      "p95_query_time_ms": 15179.571944000782,
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
       "total_input_tokens": 0,
-      "mean_input_tokens": 0.0,
+      "mean_input_tokens": null,
       "total_failure_count": 3,
       "token_source_counts": {
         "estimated": 6
@@ -884,21 +897,21 @@
       "category_aggregates": {
         "open_domain": {
           "query_count": 1,
-          "mean_accuracy": 0.0,
-          "mean_retrieval_hit_rate": 0.0,
-          "mean_query_time_ms": 15211.13176200015,
-          "p95_query_time_ms": 15211.13176200015,
-          "mean_input_tokens": 0.0,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 1
         },
         "temporal": {
           "query_count": 2,
-          "mean_accuracy": 0.0,
-          "mean_retrieval_hit_rate": 0.0,
-          "mean_query_time_ms": 14886.752683501982,
-          "p95_query_time_ms": 14894.655492156016,
-          "mean_input_tokens": 0.0,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 2
         }
@@ -918,7 +931,7 @@
       "environment": {
         "python": "3.12.3",
         "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-        "timestamp_utc": "2026-06-20T07:39:52.589937+00:00"
+        "timestamp_utc": "2026-06-21T10:08:46.725273+00:00"
       },
       "sample_argv": [
         "/home/ubuntu/.npm-global/bin/codex",
@@ -926,6 +939,7 @@
         "--json",
         "--disable",
         "memories",
+        "--skip-git-repo-check",
         "When did Caroline go to the LGBTQ support group?"
       ]
     },
@@ -940,12 +954,13 @@
       "summary_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-hm_arch-s0-k5-1770641fd28506d0/summary.json",
       "queries_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-hm_arch-s0-k5-1770641fd28506d0/queries.jsonl",
       "invocations_jsonl_path": "/workspace/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-hm_arch-s0-k5-1770641fd28506d0/invocations.jsonl",
-      "mean_accuracy": 0.0,
+      "mean_accuracy": null,
       "mean_retrieval_hit_rate": null,
-      "mean_query_time_ms": 15353.931069999817,
-      "p95_query_time_ms": 16038.040113903116,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
       "total_input_tokens": 0,
-      "mean_input_tokens": 0.0,
+      "mean_input_tokens": null,
       "total_failure_count": 3,
       "token_source_counts": {
         "estimated": 6
@@ -953,21 +968,21 @@
       "category_aggregates": {
         "open_domain": {
           "query_count": 1,
-          "mean_accuracy": 0.0,
+          "mean_accuracy": null,
           "mean_retrieval_hit_rate": null,
-          "mean_query_time_ms": 16150.716096002725,
-          "p95_query_time_ms": 16150.716096002725,
-          "mean_input_tokens": 0.0,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 1
         },
         "temporal": {
           "query_count": 2,
-          "mean_accuracy": 0.0,
+          "mean_accuracy": null,
           "mean_retrieval_hit_rate": null,
-          "mean_query_time_ms": 14955.538556998363,
-          "p95_query_time_ms": 15017.114503205812,
-          "mean_input_tokens": 0.0,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
           "total_input_tokens": 0,
           "total_failure_count": 2
         }
@@ -989,7 +1004,7 @@
       "environment": {
         "python": "3.12.3",
         "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-        "timestamp_utc": "2026-06-20T07:40:37.817327+00:00"
+        "timestamp_utc": "2026-06-21T10:10:01.886650+00:00"
       },
       "sample_argv": [
         "/home/ubuntu/.npm-global/bin/codex",
@@ -997,6 +1012,7 @@
         "--json",
         "--disable",
         "memories",
+        "--skip-git-repo-check",
         "When did Caroline go to the LGBTQ support group?"
       ]
     }

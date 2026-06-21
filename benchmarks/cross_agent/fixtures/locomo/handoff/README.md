@@ -30,7 +30,7 @@ The committed pilot uses:
 | Agent | Executable | Version |
 |-------|------------|---------|
 | Codex | `~/.npm-global/bin/codex` | codex-cli 0.141.0 |
-| Claude Code | `~/.npm-global/bin/claude` | 2.1.183 |
+| Claude Code | `~/.npm-global/bin/claude` | 2.1.185 |
 | Hermes | `~/.local/bin/hermes` | v0.17.0 (2026.6.19) |
 
 ## Provider authentication
