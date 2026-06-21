@@ -69,10 +69,18 @@ dev = [
     "pyinstaller>=6.20.0",
     "pytest>=9.0.3",
 ]
+benchmark = [
+    "tau2 @ git+https://github.com/sierra-research/tau2-bench@v1.0.0 ; python_version >= '3.12' and python_version < '3.14'",
+    "scipy>=1.10.0 ; python_version >= '3.12' and python_version < '3.14'",
+    "rank-bm25>=0.2.2 ; python_version >= '3.12' and python_version < '3.14'",
+    "gymnasium>=1.0.0 ; python_version >= '3.12' and python_version < '3.14'",
+    "websockets>=12.0 ; python_version >= '3.12' and python_version < '3.14'",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 markers = [
     "benchmark: PRD scale and performance validation (excluded from default pytest)",
+    "tau2_integration: requires tau2-bench installed (benchmark extra, Python 3.12+)",
 ]
 addopts = ["-m", "not benchmark"]

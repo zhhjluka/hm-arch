@@ -245,3 +245,8 @@ packages/installer/dist/
 
 # npm installer managed runtime (local overrides)
 .hm-arch/
+
+# Benchmark run storage (SQLite checkpoints are reproducible locally)
+benchmark-results/**/storage/
+benchmark-results/**/*.db
+benchmark-results/**/*.db-*

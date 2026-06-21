@@ -110,7 +110,8 @@ class CrossAgentBenchmarkHarness:
     def run(self, config: BenchmarkRunConfig) -> BenchmarkRunResult:
         run_id = resolve_run_id(config)
         fixture = get_synthetic_fixture(config.family)
-        paths = default_output_paths(self.output_root, run_id)
+        output_root = self.output_root.resolve()
+        paths = default_output_paths(output_root, run_id)
         prepare_run_directory(paths, resume=config.resume)
         storage_dir = paths["run_dir"] / "storage"
         storage_dir.mkdir(parents=True, exist_ok=True)

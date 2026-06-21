@@ -1,0 +1,142 @@
+[
+  {
+    "agent": "claude_code",
+    "backend": "hm_arch",
+    "status": "unavailable",
+    "rationale": "claude_code production CLI not found on PATH (expected one of: claude)",
+    "domains": {}
+  },
+  {
+    "agent": "claude_code",
+    "backend": "mem0",
+    "status": "unsupported",
+    "rationale": "Claude Code has no Mem0 hook or memory provider slot.",
+    "domains": {}
+  },
+  {
+    "agent": "claude_code",
+    "backend": "native_memory",
+    "status": "unsupported",
+    "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+    "domains": {}
+  },
+  {
+    "agent": "claude_code",
+    "backend": "no_memory",
+    "status": "unavailable",
+    "rationale": "claude_code production CLI not found on PATH (expected one of: claude)",
+    "domains": {}
+  },
+  {
+    "agent": "claude_code",
+    "backend": "openviking",
+    "status": "unsupported",
+    "rationale": "Claude Code has no OpenViking hook integration.",
+    "domains": {}
+  },
+  {
+    "agent": "codex",
+    "backend": "hm_arch",
+    "status": "unavailable",
+    "rationale": "codex production CLI not found on PATH (expected one of: codex)",
+    "domains": {}
+  },
+  {
+    "agent": "codex",
+    "backend": "mem0",
+    "status": "unsupported",
+    "rationale": "Codex has no Mem0 hook or memory provider slot.",
+    "domains": {}
+  },
+  {
+    "agent": "codex",
+    "backend": "native_memory",
+    "status": "unsupported",
+    "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+    "domains": {}
+  },
+  {
+    "agent": "codex",
+    "backend": "no_memory",
+    "status": "unavailable",
+    "rationale": "codex production CLI not found on PATH (expected one of: codex)",
+    "domains": {}
+  },
+  {
+    "agent": "codex",
+    "backend": "openviking",
+    "status": "unsupported",
+    "rationale": "Codex has no OpenViking hook integration.",
+    "domains": {}
+  },
+  {
+    "agent": "hermes",
+    "backend": "hm_arch",
+    "status": "unavailable",
+    "rationale": "hermes production CLI not found on PATH (expected one of: hermes)",
+    "domains": {}
+  },
+  {
+    "agent": "hermes",
+    "backend": "mem0",
+    "status": "unsupported",
+    "rationale": "Mem0 backend exists; CLI runners do not configure Hermes Mem0 provider yet.",
+    "domains": {}
+  },
+  {
+    "agent": "hermes",
+    "backend": "native_memory",
+    "status": "unsupported",
+    "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+    "domains": {}
+  },
+  {
+    "agent": "hermes",
+    "backend": "no_memory",
+    "status": "unavailable",
+    "rationale": "hermes production CLI not found on PATH (expected one of: hermes)",
+    "domains": {}
+  },
+  {
+    "agent": "hermes",
+    "backend": "openviking",
+    "status": "unsupported",
+    "rationale": "Hermes has no packaged OpenViking memory provider.",
+    "domains": {}
+  },
+  {
+    "agent": "openclaw",
+    "backend": "hm_arch",
+    "status": "unavailable",
+    "rationale": "openclaw production CLI not found on PATH (expected one of: openclaw)",
+    "domains": {}
+  },
+  {
+    "agent": "openclaw",
+    "backend": "mem0",
+    "status": "unsupported",
+    "rationale": "Mem0 backend exists; CLI runners do not configure OpenClaw Mem0 plugin yet.",
+    "domains": {}
+  },
+  {
+    "agent": "openclaw",
+    "backend": "native_memory",
+    "status": "unsupported",
+    "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet.",
+    "domains": {}
+  },
+  {
+    "agent": "openclaw",
+    "backend": "no_memory",
+    "status": "unavailable",
+    "rationale": "openclaw production CLI not found on PATH (expected one of: openclaw)",
+    "domains": {}
+  },
+  {
+    "agent": "openclaw",
+    "backend": "openviking",
+    "status": "unsupported",
+    "rationale": "OpenViking backend exists; CLI runners do not configure OpenClaw OpenViking plugin yet.",
+    "domains": {}
+  }
+]

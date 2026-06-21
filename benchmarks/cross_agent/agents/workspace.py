@@ -81,8 +81,12 @@ class AgentWorkspace:
         if not self._active:
             return
         previous_pwd = self._previous_env.get("PWD")
-        if previous_pwd:
+        if previous_pwd and Path(previous_pwd).exists():
             os.chdir(previous_pwd)
+        elif self.root.parent.exists():
+            os.chdir(self.root.parent)
+        else:
+            os.chdir(Path.cwd().anchor or "/")
         for key, value in self._previous_env.items():
             if key == "PWD":
                 continue

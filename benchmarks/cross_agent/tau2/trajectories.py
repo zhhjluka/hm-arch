@@ -1,0 +1,155 @@
+"""Raw trajectory writers for tau2-bench comparison runs."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+from ..types import BenchmarkRunResult, QueryRecord, SyntheticFixture
+from .agent_loop import Tau2AgentTaskExecution
+from .config import Tau2ComparisonConfig, Tau2Domain, Tau2MatrixCoordinate
+from .environment_runner import Tau2EnvironmentExecution
+from .types import Tau2DomainMetrics
+
+
+def trajectory_record(
+    *,
+    domain: Tau2Domain,
+    result: BenchmarkRunResult,
+    record: QueryRecord,
+    task_success_criteria: str | None = None,
+    comparison: Tau2ComparisonConfig | None = None,
+    env_executions: list[Tau2EnvironmentExecution] | None = None,
+) -> dict[str, Any]:
+    """Build one raw trajectory row for a completed query."""
+    agent_metadata = dict(result.agent_metadata)
+    if comparison is not None:
+        agent_metadata.update(
+            {
+                "comparison_mode": comparison.mode.value,
+                "use_mock_agent": comparison.use_mock_agent,
+                "agent_executable": comparison.agent_executable,
+                "agent_model": comparison.agent_model,
+                "agent_provider": comparison.agent_provider,
+            }
+        )
+    return {
+        "run_id": result.run_id,
+        "domain": domain.value,
+        "agent": result.config.agent.value,
+        "backend": result.config.backend.value,
+        "seed": result.config.seed,
+        "query_id": record.query_id,
+        "question": record.question,
+        "expected_answer": record.expected_answer,
+        "prediction": record.prediction,
+        "accuracy": record.accuracy,
+        "task_success": record.task_success,
+        "task_success_criteria": task_success_criteria,
+        "retrieval_hit_rate": record.retrieval_hit_rate,
+        "recall_time_ms": record.recall_time_ms,
+        "agent_time_ms": record.agent_time_ms,
+        "query_time_ms": record.query_time_ms,
+        "input_tokens": record.input_tokens,
+        "output_tokens": record.output_tokens,
+        "input_token_source": record.input_token_source,
+        "output_token_source": record.output_token_source,
+        "failure_count": record.failure_count,
+        "retrieved_ids": list(record.retrieved_ids),
+        "expected_memory_ids": list(record.expected_memory_ids),
+        "recall_context_chars": record.recall_context_chars,
+        "recall_hit_count": record.recall_hit_count,
+        "agent_managed": record.agent_managed,
+        "agent_metadata": agent_metadata,
+        "environment_executions": [
+            execution.to_dict() for execution in (env_executions or [])
+        ],
+    }
+
+
+def write_run_trajectory(
+    path: Path,
+    *,
+    domain: Tau2Domain,
+    result: BenchmarkRunResult,
+    fixture: SyntheticFixture,
+    comparison: Tau2ComparisonConfig | None = None,
+    env_executions: list[Tau2EnvironmentExecution] | None = None,
+) -> None:
+    """Write raw trajectories for one completed harness run."""
+    criteria_by_id = {
+        query.query_id: query.task_success_criteria for query in fixture.queries
+    }
+    rows = [
+        trajectory_record(
+            domain=domain,
+            result=result,
+            record=record,
+            task_success_criteria=criteria_by_id.get(record.query_id),
+            comparison=comparison,
+            env_executions=env_executions,
+        )
+        for record in result.queries
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "".join(json.dumps(row, default=str) + "\n" for row in rows),
+        encoding="utf-8",
+    )
+
+
+def write_agent_loop_trajectory(
+    path: Path,
+    *,
+    domain: Tau2Domain,
+    coordinate: Tau2MatrixCoordinate,
+    comparison: Tau2ComparisonConfig,
+    run_id: str,
+    agent_executions: list[Tau2AgentTaskExecution],
+    metrics: Tau2DomainMetrics,
+) -> None:
+    """Write raw agent/environment trajectories for one agent-loop domain run."""
+    rows = [
+        {
+            "run_id": run_id,
+            "domain": domain.value,
+            "agent": coordinate.agent.value,
+            "backend": coordinate.backend.value,
+            "comparison_mode": comparison.mode.value,
+            "use_harness_agent": comparison.use_harness_agent,
+            "agent_executable": comparison.agent_executable,
+            "agent_model": comparison.agent_model,
+            "agent_provider": comparison.agent_provider,
+            "user_mode": comparison.user_mode,
+            "user_llm": comparison.user_llm,
+            "user_cli": comparison.user_cli,
+            "user_cli_executable": comparison.user_cli_executable,
+            "task_id": execution.task_id,
+            "task_success": execution.task_success,
+            "reward": execution.reward,
+            "duration_ms": execution.duration_ms,
+            "harness_label": execution.harness_label,
+            "agent_invocation_mode": execution.agent_invocation_mode,
+            "agent_executable_resolved": execution.agent_executable,
+            "steps": [step.__dict__ for step in execution.steps],
+            "simulation_messages": execution.simulation_messages,
+            "evaluation": execution.evaluation,
+            "error": execution.error,
+            "domain_metrics": metrics.to_dict(),
+        }
+        for execution in agent_executions
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "".join(json.dumps(row, default=str) + "\n" for row in rows),
+        encoding="utf-8",
+    )
+
+
+def append_trajectory_index(path: Path, entries: list[dict[str, Any]]) -> None:
+    """Append trajectory index rows to the comparison-level index file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        for entry in entries:
+            handle.write(json.dumps(entry, default=str) + "\n")

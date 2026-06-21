@@ -1,0 +1,20 @@
+{
+    "tau2_bench_version": "v1.0.0",
+    "tau2_bench_commit": "17e07b1da2bbc0cadfddeea36412686e0604127b",
+    "task_split": "base",
+    "num_tasks": 3,
+    "domains": {
+        "retail": {
+            "tasks": 3,
+            "products": 37,
+            "users": 1,
+            "orders": 5
+        },
+        "airline": {
+            "tasks": 3,
+            "products": 0,
+            "users": 3,
+            "orders": 0
+        }
+    }
+}

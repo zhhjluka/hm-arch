@@ -1,0 +1,23 @@
+{
+  "issue": "MEM-76",
+  "tau2_bench_repo": "https://github.com/sierra-research/tau2-bench",
+  "tau2_bench_version": "v1.0.0",
+  "tau2_bench_commit": "17e07b1da2bbc0cadfddeea36412686e0604127b",
+  "tau2_data_root": "/workspace/fixtures/tau2-bench/v1.0.0/data",
+  "task_split": "base",
+  "mode": "real",
+  "use_mock_agent": false,
+  "use_harness_agent": false,
+  "task_split_name": "base",
+  "num_tasks": 1,
+  "agent_executable": null,
+  "agent_model": null,
+  "agent_provider": null,
+  "user_mode": "scripted",
+  "user_llm": null,
+  "user_cli": "auto",
+  "user_cli_executable": null,
+  "user_simulator_label": "scripted_user_pilot",
+  "consolidate_memory": true,
+  "tau2_importable": false
+}
