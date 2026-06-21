@@ -32,8 +32,9 @@ publication steps and maintainer approval rules.
 
 ### Pending
 
-- Cross-agent benchmark headline numbers for tau2-bench and HotpotQA (awaiting
-  reproducible result artifacts after full matrix execution).
+- Cross-agent benchmark headline numbers for tau2-bench and HotpotQA (pilot
+  artifacts are committed, but full matrix execution and release validation are
+  still pending).
 - LoCoMo release-note headline numbers (pilot artifact exists; full comparison
   pending provider capacity and larger query counts).
 

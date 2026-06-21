@@ -170,7 +170,8 @@ Matrix roll-ups add per-cell status:
 
 | Cell status | Meaning |
 |-------------|---------|
-| `completed` | Run finished with recorded metrics (`implementation_mode` is `real` or `mock-only`) |
+| `completed` | Run finished with recorded metrics |
+| `partial` | Run produced some query results but did not complete the requested workload |
 | `unsupported` | Matrix excludes this provider × agent pair |
 | `unavailable` | Supported but could not run on this host |
 | `failed` | Run started but ended with errors/timeouts |
@@ -186,14 +187,15 @@ The per-query schema supports all three families:
 When `run_id` is omitted, the harness derives:
 
 ```
-sha256("{family}|{agent}|{backend}|{seed}|{top_k}")[:16]
+sha256("{family}|{agent}|{backend}|{seed}|{top_k}|{dataset_id}|{dataset_version}|{max_conversations}|{max_queries}")[:16]
 ```
 
 prefixed as `{family}-{agent}-{backend}-s{seed}-k{top_k}-<digest>`.
 
-All result-affecting matrix coordinates (`family`, `agent`, `backend`, `seed`,
-`top_k`) are included so runs with different retrieval depth never share storage
-or checkpoints. The full config is also persisted in `checkpoint.json`.
+All result-affecting matrix coordinates are included so runs with different
+datasets or workload limits never share storage or checkpoints. Optional fields
+are encoded as empty strings when unset. The full config is also persisted in
+`checkpoint.json`.
 
 Fresh runs (`resume=False`) reset the run directory before writing artifacts.
 Re-running with the same derived id therefore replaces `queries.jsonl`, CSV, and
@@ -241,9 +243,10 @@ versioned LoCoMo ingestion. Two runner modes are reported separately:
 | `real` | `--runner-mode real` | `matrix_summary_real.json` | Production CLI runs for supported cells |
 
 `matrix_summary.json` is a pointer to the active report file. Each completed
-cell links to per-run `summary.json`, `queries.jsonl`, and `invocations.jsonl`
-(raw argv/stdout/stderr). Real-mode summaries include CLI/provider version
-provenance and the exact reproducible shell command.
+cell links to per-run `summary.json`, `queries.jsonl`, and `invocations.jsonl`.
+Invocation arguments, stdout, and stderr are captured with recursive secret
+redaction. Real-mode summaries include CLI/provider version provenance and the
+exact reproducible shell command.
 
 **Handoff artifacts** (committed real-CLI pilot results) live under
 `benchmarks/cross_agent/fixtures/locomo/handoff/`. Regenerate with:
@@ -269,8 +272,11 @@ point harness defaults at a developer's live agent configuration.
 
 ## Committed pilot artifacts
 
-The LoCoMo handoff pilot is the only committed real-CLI cross-agent comparison
-artifact today. Scope and limitations are documented in
+The repository contains pilot artifacts for all three benchmark families. They
+record failures, unavailable agents, and unsupported cells instead of filling
+gaps with synthetic results; none is a complete release-scale comparison.
+
+The LoCoMo handoff scope and limitations are documented in
 [benchmarks/cross_agent/fixtures/locomo/handoff/README.md](../benchmarks/cross_agent/fixtures/locomo/handoff/README.md).
 
 | Property | Pilot value |
@@ -282,13 +288,23 @@ artifact today. Scope and limitations are documented in
 | Accuracy metric | Normalized exact match (not official LoCoMo token F1) |
 | Artifact | `benchmarks/cross_agent/fixtures/locomo/handoff/matrix_summary_real.json` |
 
-Read per-cell `status`, `implementation_mode`, and `mean_accuracy` from the
-artifact. Failed, unavailable, and partial cells are first-class outcomes and
-are excluded from completed-query aggregates. Do not quote headline comparison
-numbers outside the artifact context.
+Read per-cell `status`, `runner_mode`, and `mean_accuracy` from the artifact;
+the top-level `test_double_mode` flag identifies offline test-double output.
+Failed, unavailable, and partial cells are first-class outcomes and are excluded
+from completed-query aggregates. Do not quote headline comparison numbers
+outside the artifact context.
 
-tau2-bench and HotpotQA matrix artifacts are not yet committed for release-note
-headlines. Run the harness locally and check in results before publishing claims.
+The HotpotQA pilot under `benchmark-results/hotpotqa/` records 40 matrix cells:
+4 completed, 4 failed, 8 pending, and 24 unsupported. Only Codex and Claude Code
+were available for those completed cells, so this is not a complete four-agent,
+five-backend comparison. Its manifest records `execution_mode` and
+`use_mock_agent`; mock smoke artifacts are kept separately under
+`benchmark-results/hotpotqa-smoke/`.
+
+The tau2-bench pilot under `benchmark-results/tau2-comparison/` contains
+provenance and matrix status, but its provenance records `tau2_importable` as
+false and no real comparison cell completed. Treat it as an environment and
+availability record, not as benchmark results suitable for a headline.
 
 ## External service requirements
 

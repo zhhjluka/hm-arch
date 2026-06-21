@@ -89,8 +89,13 @@ Expected:
 - `install` exits `0` and prints `openclaw (project): installed`
 - `status` reports `plugins.slots.memory is set to 'memory-hm-arch'`
 - `doctor` exits `0` with database schema initialized
-- plugin manifest exists under `$OPENCLAW_STATE_DIR/extensions/memory-hm-arch/`
+- plugin manifest exists under
+  `/tmp/hm-arch-smoke-project/.openclaw/extensions/memory-hm-arch/`
 - `uninstall` removes HM-Arch config and plugin files; database is preserved
+
+`OPENCLAW_STATE_DIR` controls global-scope installs. This example intentionally
+uses project scope, so its config and extension files live under the current
+project's `.openclaw/` directory.
 
 With another provider occupying `plugins.slots.memory`, `status` and `doctor`
 should report a memory-slot conflict with remediation text.
