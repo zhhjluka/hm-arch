@@ -1,0 +1,309 @@
+{
+  "run_id": "locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2",
+  "config": {
+    "family": "locomo",
+    "agent": "hermes",
+    "backend": "hm_arch",
+    "seed": 0,
+    "run_id": null,
+    "top_k": 5,
+    "resume": false,
+    "use_mock_agent": false,
+    "agent_executable": "/Users/lukaluka/.local/bin/hermes",
+    "agent_timeout_s": 60.0,
+    "dataset_id": "locomo10-sample",
+    "dataset_version": "2024-03-sample",
+    "max_conversations": 1,
+    "max_queries": 3
+  },
+  "storage_dir": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/storage",
+  "phases_completed": [
+    "setup",
+    "ingest",
+    "consolidate",
+    "query",
+    "evaluate",
+    "teardown",
+    "checkpoint"
+  ],
+  "queries": [
+    {
+      "query_id": "conv-0-q0",
+      "family": "locomo",
+      "question": "When did Caroline go to the LGBTQ support group?",
+      "expected_answer": "7 May 2023",
+      "prediction": "",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 5578.801458002999,
+      "query_time_ms": 5578.801458002999,
+      "input_tokens": 9,
+      "output_tokens": 0,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:3"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true,
+      "failure_reason": null,
+      "failure_category": null,
+      "recall_failure_reason": null,
+      "agent_failure_reason": null,
+      "agent_exit_code": 0,
+      "agent_timed_out": null,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "hm_arch",
+        "memory_mode": "hm_arch",
+        "agent_home": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/agent_workspace/agent_home",
+        "workspace_root": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/agent_workspace",
+        "hm_arch_db_path": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/storage/hm_arch.db",
+        "session_id": "bench-locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2",
+        "prompt_payload_keys": [
+          "backend",
+          "context",
+          "query_id",
+          "question",
+          "seed",
+          "session_id"
+        ],
+        "exit_code": 0,
+        "argv": [
+          "/Users/lukaluka/.local/bin/hermes",
+          "-z",
+          "When did Caroline go to the LGBTQ support group?"
+        ],
+        "cli_runner": "hermes-oneshot",
+        "input_token_source": "estimated",
+        "output_token_source": "estimated"
+      }
+    },
+    {
+      "query_id": "conv-0-q1",
+      "family": "locomo",
+      "question": "When did Melanie paint a sunrise?",
+      "expected_answer": "2022",
+      "prediction": "",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 7294.02129095979,
+      "query_time_ms": 7294.02129095979,
+      "input_tokens": 6,
+      "output_tokens": 0,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:12"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true,
+      "failure_reason": null,
+      "failure_category": null,
+      "recall_failure_reason": null,
+      "agent_failure_reason": null,
+      "agent_exit_code": 0,
+      "agent_timed_out": null,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "hm_arch",
+        "memory_mode": "hm_arch",
+        "agent_home": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/agent_workspace/agent_home",
+        "workspace_root": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/agent_workspace",
+        "hm_arch_db_path": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/storage/hm_arch.db",
+        "session_id": "bench-locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2",
+        "prompt_payload_keys": [
+          "backend",
+          "context",
+          "query_id",
+          "question",
+          "seed",
+          "session_id"
+        ],
+        "exit_code": 0,
+        "argv": [
+          "/Users/lukaluka/.local/bin/hermes",
+          "-z",
+          "When did Melanie paint a sunrise?"
+        ],
+        "cli_runner": "hermes-oneshot",
+        "input_token_source": "estimated",
+        "output_token_source": "estimated"
+      }
+    },
+    {
+      "query_id": "conv-0-q2",
+      "family": "locomo",
+      "question": "What fields would Caroline be likely to pursue in her educaton?",
+      "expected_answer": "Psychology, counseling certification",
+      "prediction": "",
+      "accuracy": 0.0,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 4867.376832989976,
+      "query_time_ms": 4867.376832989976,
+      "input_tokens": 11,
+      "output_tokens": 0,
+      "failure_count": 0,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:9",
+        "D1:11"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true,
+      "failure_reason": null,
+      "failure_category": null,
+      "recall_failure_reason": null,
+      "agent_failure_reason": null,
+      "agent_exit_code": 0,
+      "agent_timed_out": null,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "hm_arch",
+        "memory_mode": "hm_arch",
+        "agent_home": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/agent_workspace/agent_home",
+        "workspace_root": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/agent_workspace",
+        "hm_arch_db_path": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/storage/hm_arch.db",
+        "session_id": "bench-locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2",
+        "prompt_payload_keys": [
+          "backend",
+          "context",
+          "query_id",
+          "question",
+          "seed",
+          "session_id"
+        ],
+        "exit_code": 0,
+        "argv": [
+          "/Users/lukaluka/.local/bin/hermes",
+          "-z",
+          "What fields would Caroline be likely to pursue in her educaton?"
+        ],
+        "cli_runner": "hermes-oneshot",
+        "input_token_source": "estimated",
+        "output_token_source": "estimated"
+      }
+    }
+  ],
+  "aggregates": {
+    "query_count": 3,
+    "completed_query_count": 3,
+    "mean_accuracy": 0.0,
+    "task_success_rate": null,
+    "mean_retrieval_hit_rate": null,
+    "mean_query_time_ms": 5913.399860650922,
+    "total_input_tokens": 26,
+    "total_output_tokens": 0,
+    "total_failure_count": 0
+  },
+  "environment": {
+    "python": "3.12.11",
+    "platform": "macOS-15.7.4-arm64-arm-64bit",
+    "timestamp_utc": "2026-06-21T15:49:12.737943+00:00"
+  },
+  "agent_metadata": {
+    "matrix_implementation": "real",
+    "matrix_rationale": "Install HM-Arch Hermes provider bridge; invoke hermes CLI boundary.",
+    "support_rationale": "Install HM-Arch Hermes provider bridge; invoke hermes CLI boundary.",
+    "supported": true,
+    "use_mock_agent": false,
+    "agent_home": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/agent_workspace/agent_home",
+    "workspace_root": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/agent_workspace",
+    "storage_dir": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/storage",
+    "executable": "/Users/lukaluka/.local/bin/hermes",
+    "cli_mode": "real",
+    "runner_kind": "hermes-cli",
+    "runtime_provenance": {
+      "python": "3.12.11",
+      "platform": "macOS-15.7.4-arm64-arm-64bit",
+      "agent_cli": {
+        "agent": "hermes",
+        "executable": "/Users/lukaluka/.local/bin/hermes",
+        "version": "Hermes Agent v0.11.0 (2026.4.23)",
+        "probe_status": "ok"
+      },
+      "provider_packages": {
+        "hm_arch": "2.0.4"
+      },
+      "cli_mode": "real"
+    }
+  },
+  "compatibility": {
+    "codex|no_memory": "real",
+    "codex|native_memory": "unsupported",
+    "codex|hm_arch": "real",
+    "codex|mem0": "unsupported",
+    "codex|openviking": "unsupported",
+    "claude_code|no_memory": "real",
+    "claude_code|native_memory": "unsupported",
+    "claude_code|hm_arch": "real",
+    "claude_code|mem0": "unsupported",
+    "claude_code|openviking": "unsupported",
+    "hermes|no_memory": "real",
+    "hermes|native_memory": "unsupported",
+    "hermes|hm_arch": "real",
+    "hermes|mem0": "unsupported",
+    "hermes|openviking": "unsupported",
+    "openclaw|no_memory": "real",
+    "openclaw|native_memory": "unsupported",
+    "openclaw|hm_arch": "real",
+    "openclaw|mem0": "unsupported",
+    "openclaw|openviking": "unsupported"
+  },
+  "dataset": {
+    "dataset_id": "locomo10-sample",
+    "version": "2024-03-sample",
+    "description": "Pinned one-conversation LoCoMo subset for offline tests",
+    "source_url": "https://github.com/snap-research/locomo/blob/main/data/locomo10.json",
+    "filename": "locomo10-sample.json",
+    "sha256": "580e189fdcaf989caa1512e87b42cb14d90f16522cbeca14f48fa01c5b83ef0f",
+    "conversation_count": 1,
+    "qa_count": 199,
+    "max_conversations": 1
+  },
+  "category_aggregates": {
+    "open_domain": {
+      "query_count": 1,
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": null,
+      "mean_query_time_ms": 4867.376832989976,
+      "p95_query_time_ms": 4867.376832989976,
+      "mean_input_tokens": 11.0,
+      "total_input_tokens": 11,
+      "total_failure_count": 0
+    },
+    "temporal": {
+      "query_count": 2,
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": null,
+      "mean_query_time_ms": 6436.411374481395,
+      "p95_query_time_ms": 7208.260299311951,
+      "mean_input_tokens": 7.5,
+      "total_input_tokens": 15,
+      "total_failure_count": 0
+    }
+  },
+  "timing_aggregates": {
+    "mean_query_time_ms": 5913.399860650922,
+    "p95_query_time_ms": 7122.499307664111,
+    "mean_input_tokens": 8.666666666666666,
+    "total_input_tokens": 26,
+    "total_output_tokens": 0,
+    "total_failure_count": 0
+  }
+}

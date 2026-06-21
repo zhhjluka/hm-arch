@@ -21,15 +21,18 @@ from .checkpoint import (
     write_checkpoint,
 )
 from .compatibility import compatibility_snapshot, lookup_matrix_cell
-from .fixtures.synthetic import get_synthetic_fixture
 from .failure_provenance import build_query_failure_provenance
+from .fixtures.resolve import resolve_fixture
 from .metrics import (
+    aggregate_by_category,
     aggregate_query_records,
     exact_match_accuracy,
     hotpotqa_exact_match_accuracy,
     retrieval_hit_rate,
+    timing_aggregates,
 )
 from .output import (
+    append_invocation_jsonl,
     append_query_jsonl,
     default_output_paths,
     prepare_run_directory,
@@ -39,6 +42,7 @@ from .output import (
 )
 from .protocol import AgentRunner, MemoryBackend
 from .run_id import resolve_run_id
+from .fixtures.locomo.loader import get_dataset_manifest
 from .types import (
     AgentOutcome,
     BenchmarkFamily,
@@ -117,7 +121,8 @@ class CrossAgentBenchmarkHarness:
 
     def run(self, config: BenchmarkRunConfig) -> BenchmarkRunResult:
         run_id = resolve_run_id(config)
-        fixture = get_synthetic_fixture(config.family)
+        fixture = resolve_fixture(config)
+        dataset_meta = self._dataset_metadata(config)
         output_root = self.output_root.resolve()
         paths = default_output_paths(output_root, run_id)
         prepare_run_directory(paths, resume=config.resume)
@@ -200,6 +205,7 @@ class CrossAgentBenchmarkHarness:
                     "status": "unsupported",
                 },
                 compatibility=compatibility_snapshot(),
+                dataset=dataset_meta,
             )
             write_summary_json(paths["summary_json"], result)
             write_queries_csv(paths["queries_csv"], result)
@@ -234,6 +240,7 @@ class CrossAgentBenchmarkHarness:
                             "status": "unsupported",
                         },
                         compatibility=compatibility_snapshot(),
+                        dataset=dataset_meta,
                     )
                     write_summary_json(paths["summary_json"], result)
                     write_queries_csv(paths["queries_csv"], result)
@@ -297,6 +304,15 @@ class CrossAgentBenchmarkHarness:
                     query_records.append(record)
                     completed_query_ids.append(query.query_id)
                     append_query_jsonl(paths["queries_jsonl"], record, run_id=run_id)
+                    last_invocation = getattr(agent, "last_invocation", None)
+                    if last_invocation is not None:
+                        append_invocation_jsonl(
+                            paths["invocations_jsonl"],
+                            run_id=run_id,
+                            query_id=query.query_id,
+                            invocation=last_invocation,
+                            metadata=record.agent_metadata or None,
+                        )
                     self._persist_checkpoint(
                         storage_dir,
                         run_id=run_id,
@@ -352,6 +368,11 @@ class CrossAgentBenchmarkHarness:
             environment=environment,
             agent_metadata=agent_metadata,
             compatibility=compatibility_snapshot(),
+            dataset=dataset_meta,
+            category_aggregates=aggregate_by_category(query_records, fixture.queries)
+            if fixture.family is BenchmarkFamily.LOCOMO and fixture.queries
+            else {},
+            timing_aggregates=timing_aggregates(query_records),
         )
 
         mark_phase(phases_completed, RunPhase.CHECKPOINT)
@@ -398,6 +419,16 @@ class CrossAgentBenchmarkHarness:
         for item in fixture.ingest_items:
             backend.ingest(item)
 
+    @staticmethod
+    def _dataset_metadata(config: BenchmarkRunConfig) -> dict[str, Any]:
+        if not config.dataset_id:
+            return {}
+        manifest = get_dataset_manifest(config.dataset_id)
+        return {
+            **manifest.to_dict(),
+            "max_conversations": config.max_conversations,
+        }
+
     def _run_query(
         self,
         *,
@@ -441,14 +472,21 @@ class CrossAgentBenchmarkHarness:
             if config.family is BenchmarkFamily.HOTPOTQA
             else exact_match_accuracy
         )
+        failure_count = recall.failure_count + agent_out.failure_count
         accuracy = accuracy_fn(query.expected_answer, agent_out.answer)
+        if failure_count > 0:
+            accuracy = None
         hit_rate = (
             None
-            if hook_managed
+            if hook_managed or failure_count > 0
             else retrieval_hit_rate(recall.retrieved_ids, query.expected_memory_ids)
         )
-        failure_count = recall.failure_count + agent_out.failure_count
         failure_fields = build_query_failure_provenance(recall=recall, agent_out=agent_out)
+        agent_meta = dict(agent_out.metadata)
+        if config.use_mock_agent:
+            agent_meta.setdefault("runner_mode", "mock_only")
+        elif getattr(agent, "cli_mode", None):
+            agent_meta.setdefault("runner_mode", agent.cli_mode)
 
         return QueryRecord(
             query_id=query.query_id,
@@ -473,6 +511,7 @@ class CrossAgentBenchmarkHarness:
             recall_hit_count=recall.hit_count,
             agent_managed=hook_managed or recall.agent_managed,
             **failure_fields,
+            agent_metadata=agent_meta,
         )
 
     @staticmethod

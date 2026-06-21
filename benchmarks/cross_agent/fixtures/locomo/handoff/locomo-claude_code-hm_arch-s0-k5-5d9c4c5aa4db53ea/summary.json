@@ -1,0 +1,276 @@
+{
+  "run_id": "locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea",
+  "config": {
+    "family": "locomo",
+    "agent": "claude_code",
+    "backend": "hm_arch",
+    "seed": 0,
+    "run_id": null,
+    "top_k": 5,
+    "resume": false,
+    "use_mock_agent": false,
+    "agent_executable": "/opt/homebrew/bin/claude",
+    "agent_timeout_s": 60.0,
+    "dataset_id": "locomo10-sample",
+    "dataset_version": "2024-03-sample",
+    "max_conversations": 1,
+    "max_queries": 3
+  },
+  "storage_dir": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/storage",
+  "phases_completed": [
+    "setup",
+    "ingest",
+    "consolidate",
+    "query",
+    "evaluate",
+    "teardown",
+    "checkpoint"
+  ],
+  "queries": [
+    {
+      "query_id": "conv-0-q0",
+      "family": "locomo",
+      "question": "When did Caroline go to the LGBTQ support group?",
+      "expected_answer": "7 May 2023",
+      "prediction": "",
+      "accuracy": null,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 1396.6462910175323,
+      "query_time_ms": 1396.6462910175323,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "failure_count": 1,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:3"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true,
+      "failure_reason": "agent: CLI exited 1: {\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":402,\"duration_ms\":671,\"duration_api_ms\":0,\"num_turns\":1,\"result\":\"API Error: 402 Insufficient Balance\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"fa0ef756-ad33-4578-b495-1ca1dc4be9cd\",\"total_cost_usd\":0,\"usage\":{\"input_tokens\":0,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":0,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_cre...",
+      "failure_category": "agent_cli_exit",
+      "recall_failure_reason": null,
+      "agent_failure_reason": "CLI exited 1: {\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":402,\"duration_ms\":671,\"duration_api_ms\":0,\"num_turns\":1,\"result\":\"API Error: 402 Insufficient Balance\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"fa0ef756-ad33-4578-b495-1ca1dc4be9cd\",\"total_cost_usd\":0,\"usage\":{\"input_tokens\":0,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":0,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_cre...",
+      "agent_exit_code": 1,
+      "agent_timed_out": false,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "hm_arch",
+        "exit_code": 1,
+        "stderr": "",
+        "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":402,\"duration_ms\":671,\"duration_api_ms\":0,\"num_turns\":1,\"result\":\"API Error: 402 Insufficient Balance\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"fa0ef756-ad33-4578-b495-1ca1dc4be9cd\",\"total_cost_usd\":0,\"usage\":{\"input_tokens\":0,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":0,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"947b5e49-105a-42a0-b0fe-c3c3cbbd9149\"}\n",
+        "argv": [
+          "/opt/homebrew/bin/claude",
+          "-p",
+          "When did Caroline go to the LGBTQ support group?",
+          "--output-format",
+          "json"
+        ],
+        "timed_out": false
+      }
+    },
+    {
+      "query_id": "conv-0-q1",
+      "family": "locomo",
+      "question": "When did Melanie paint a sunrise?",
+      "expected_answer": "2022",
+      "prediction": "",
+      "accuracy": null,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 1320.387625019066,
+      "query_time_ms": 1320.387625019066,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "failure_count": 1,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:12"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true,
+      "failure_reason": "agent: CLI exited 1: {\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":402,\"duration_ms\":532,\"duration_api_ms\":0,\"num_turns\":1,\"result\":\"API Error: 402 Insufficient Balance\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"d0adae21-77d8-4e25-9bc6-c396092e62a0\",\"total_cost_usd\":0,\"usage\":{\"input_tokens\":0,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":0,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_cre...",
+      "failure_category": "agent_cli_exit",
+      "recall_failure_reason": null,
+      "agent_failure_reason": "CLI exited 1: {\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":402,\"duration_ms\":532,\"duration_api_ms\":0,\"num_turns\":1,\"result\":\"API Error: 402 Insufficient Balance\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"d0adae21-77d8-4e25-9bc6-c396092e62a0\",\"total_cost_usd\":0,\"usage\":{\"input_tokens\":0,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":0,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_cre...",
+      "agent_exit_code": 1,
+      "agent_timed_out": false,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "hm_arch",
+        "exit_code": 1,
+        "stderr": "",
+        "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":402,\"duration_ms\":532,\"duration_api_ms\":0,\"num_turns\":1,\"result\":\"API Error: 402 Insufficient Balance\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"d0adae21-77d8-4e25-9bc6-c396092e62a0\",\"total_cost_usd\":0,\"usage\":{\"input_tokens\":0,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":0,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"6e2f550c-c6e9-40a8-ac47-06775b5dcfe5\"}\n",
+        "argv": [
+          "/opt/homebrew/bin/claude",
+          "-p",
+          "When did Melanie paint a sunrise?",
+          "--output-format",
+          "json"
+        ],
+        "timed_out": false
+      }
+    },
+    {
+      "query_id": "conv-0-q2",
+      "family": "locomo",
+      "question": "What fields would Caroline be likely to pursue in her educaton?",
+      "expected_answer": "Psychology, counseling certification",
+      "prediction": "",
+      "accuracy": null,
+      "task_success": null,
+      "retrieval_hit_rate": null,
+      "recall_time_ms": 0.0,
+      "agent_time_ms": 1365.4852911131456,
+      "query_time_ms": 1365.4852911131456,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "failure_count": 1,
+      "input_token_source": "estimated",
+      "output_token_source": "estimated",
+      "retrieved_ids": [],
+      "expected_memory_ids": [
+        "D1:9",
+        "D1:11"
+      ],
+      "recall_context_chars": 0,
+      "recall_hit_count": 0,
+      "agent_managed": true,
+      "failure_reason": "agent: CLI exited 1: {\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":402,\"duration_ms\":631,\"duration_api_ms\":0,\"num_turns\":1,\"result\":\"API Error: 402 Insufficient Balance\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"2b71f3e5-7992-42d1-b750-e83f46d86867\",\"total_cost_usd\":0,\"usage\":{\"input_tokens\":0,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":0,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_cre...",
+      "failure_category": "agent_cli_exit",
+      "recall_failure_reason": null,
+      "agent_failure_reason": "CLI exited 1: {\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":402,\"duration_ms\":631,\"duration_api_ms\":0,\"num_turns\":1,\"result\":\"API Error: 402 Insufficient Balance\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"2b71f3e5-7992-42d1-b750-e83f46d86867\",\"total_cost_usd\":0,\"usage\":{\"input_tokens\":0,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":0,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_cre...",
+      "agent_exit_code": 1,
+      "agent_timed_out": false,
+      "agent_metadata": {
+        "runner_mode": "real",
+        "backend": "hm_arch",
+        "exit_code": 1,
+        "stderr": "",
+        "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":402,\"duration_ms\":631,\"duration_api_ms\":0,\"num_turns\":1,\"result\":\"API Error: 402 Insufficient Balance\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"2b71f3e5-7992-42d1-b750-e83f46d86867\",\"total_cost_usd\":0,\"usage\":{\"input_tokens\":0,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":0,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"720e6cee-4313-46cd-a74e-6c47b37161a4\"}\n",
+        "argv": [
+          "/opt/homebrew/bin/claude",
+          "-p",
+          "What fields would Caroline be likely to pursue in her educaton?",
+          "--output-format",
+          "json"
+        ],
+        "timed_out": false
+      }
+    }
+  ],
+  "aggregates": {
+    "query_count": 3,
+    "completed_query_count": 0,
+    "mean_accuracy": null,
+    "task_success_rate": null,
+    "mean_retrieval_hit_rate": null,
+    "mean_query_time_ms": 0.0,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0,
+    "total_failure_count": 3
+  },
+  "environment": {
+    "python": "3.12.11",
+    "platform": "macOS-15.7.4-arm64-arm-64bit",
+    "timestamp_utc": "2026-06-21T15:49:38.107257+00:00"
+  },
+  "agent_metadata": {
+    "matrix_implementation": "real",
+    "matrix_rationale": "Install HM-Arch Claude Code hooks in isolated home; invoke claude CLI boundary.",
+    "support_rationale": "Install HM-Arch Claude Code hooks in isolated home; invoke claude CLI boundary.",
+    "supported": true,
+    "use_mock_agent": false,
+    "agent_home": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/agent_workspace/agent_home",
+    "workspace_root": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/agent_workspace",
+    "storage_dir": "/private/tmp/hm-mem78-takeover/benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/storage",
+    "executable": "/opt/homebrew/bin/claude",
+    "cli_mode": "real",
+    "runner_kind": "claude-code-cli",
+    "runtime_provenance": {
+      "python": "3.12.11",
+      "platform": "macOS-15.7.4-arm64-arm-64bit",
+      "agent_cli": {
+        "agent": "claude_code",
+        "executable": "/opt/homebrew/bin/claude",
+        "version": "2.1.177 (Claude Code)",
+        "probe_status": "ok"
+      },
+      "provider_packages": {
+        "hm_arch": "2.0.4"
+      },
+      "cli_mode": "real"
+    }
+  },
+  "compatibility": {
+    "codex|no_memory": "real",
+    "codex|native_memory": "unsupported",
+    "codex|hm_arch": "real",
+    "codex|mem0": "unsupported",
+    "codex|openviking": "unsupported",
+    "claude_code|no_memory": "real",
+    "claude_code|native_memory": "unsupported",
+    "claude_code|hm_arch": "real",
+    "claude_code|mem0": "unsupported",
+    "claude_code|openviking": "unsupported",
+    "hermes|no_memory": "real",
+    "hermes|native_memory": "unsupported",
+    "hermes|hm_arch": "real",
+    "hermes|mem0": "unsupported",
+    "hermes|openviking": "unsupported",
+    "openclaw|no_memory": "real",
+    "openclaw|native_memory": "unsupported",
+    "openclaw|hm_arch": "real",
+    "openclaw|mem0": "unsupported",
+    "openclaw|openviking": "unsupported"
+  },
+  "dataset": {
+    "dataset_id": "locomo10-sample",
+    "version": "2024-03-sample",
+    "description": "Pinned one-conversation LoCoMo subset for offline tests",
+    "source_url": "https://github.com/snap-research/locomo/blob/main/data/locomo10.json",
+    "filename": "locomo10-sample.json",
+    "sha256": "580e189fdcaf989caa1512e87b42cb14d90f16522cbeca14f48fa01c5b83ef0f",
+    "conversation_count": 1,
+    "qa_count": 199,
+    "max_conversations": 1
+  },
+  "category_aggregates": {
+    "open_domain": {
+      "query_count": 1,
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
+      "mean_input_tokens": null,
+      "total_input_tokens": 0,
+      "total_failure_count": 1
+    },
+    "temporal": {
+      "query_count": 2,
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
+      "mean_input_tokens": null,
+      "total_input_tokens": 0,
+      "total_failure_count": 2
+    }
+  },
+  "timing_aggregates": {
+    "mean_query_time_ms": null,
+    "p95_query_time_ms": null,
+    "mean_input_tokens": null,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0,
+    "total_failure_count": 3
+  }
+}

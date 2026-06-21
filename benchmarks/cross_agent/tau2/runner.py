@@ -48,10 +48,16 @@ def _patch_tau2_fixture(
 ) -> Iterator[None]:
     """Temporarily route tau2_bench family loads to the active domain fixture."""
     from benchmarks.cross_agent import runner as runner_module
+    from benchmarks.cross_agent.fixtures import resolve as resolve_module
     from benchmarks.cross_agent.fixtures import synthetic as synthetic_module
 
     original_fixture_loader = synthetic_module.get_synthetic_fixture
-    original_runner_loader = runner_module.get_synthetic_fixture
+    original_resolve_fixture = resolve_module.resolve_fixture
+
+    def patched_resolve(config: BenchmarkRunConfig) -> SyntheticFixture:
+        if config.family is BenchmarkFamily.TAU2_BENCH:
+            return fixture
+        return original_resolve_fixture(config)
 
     def patched(family: BenchmarkFamily):
         if family is BenchmarkFamily.TAU2_BENCH:
@@ -59,12 +65,12 @@ def _patch_tau2_fixture(
         return original_fixture_loader(family)
 
     synthetic_module.get_synthetic_fixture = patched  # type: ignore[assignment]
-    runner_module.get_synthetic_fixture = patched  # type: ignore[assignment]
+    resolve_module.resolve_fixture = patched_resolve  # type: ignore[assignment]
     try:
         yield
     finally:
         synthetic_module.get_synthetic_fixture = original_fixture_loader  # type: ignore[assignment]
-        runner_module.get_synthetic_fixture = original_runner_loader  # type: ignore[assignment]
+        resolve_module.resolve_fixture = original_resolve_fixture  # type: ignore[assignment]
 
 
 def _create_backend(

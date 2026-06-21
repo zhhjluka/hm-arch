@@ -20,6 +20,32 @@ _AGENT_HOME_ENV: dict[AgentKind, str] = {
     AgentKind.OPENCLAW: "OPENCLAW_STATE_DIR",
 }
 
+_CREDENTIAL_ALLOWLIST: dict[AgentKind, tuple[tuple[str, str], ...]] = {
+    AgentKind.CODEX: ((".codex/auth.json", "auth.json"),),
+    AgentKind.HERMES: (
+        (".hermes/.env", ".env"),
+        (".hermes/auth.json", "auth.json"),
+        (".hermes/auth", "auth"),
+    ),
+}
+
+
+def _stage_cli_credentials(
+    agent: AgentKind,
+    *,
+    source_home: Path,
+    agent_home: Path,
+) -> None:
+    """Copy only agent authentication material into an isolated home."""
+    for source_relative, destination_relative in _CREDENTIAL_ALLOWLIST.get(agent, ()):
+        source = source_home / source_relative
+        destination = agent_home / destination_relative
+        if source.is_file():
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+        elif source.is_dir():
+            shutil.copytree(source, destination)
+
 
 @dataclass
 class AgentWorkspace:
@@ -40,6 +66,7 @@ class AgentWorkspace:
         *,
         run_id: str | None = None,
         parent: Path | None = None,
+        credential_source_home: Path | None = None,
     ) -> AgentWorkspace:
         run = run_id or uuid.uuid4().hex[:12]
         prefix = f"hm-arch-bench-{agent.value}-{run}-"
@@ -54,6 +81,11 @@ class AgentWorkspace:
         agent_home = root / "agent_home"
         workspace.mkdir()
         agent_home.mkdir()
+        _stage_cli_credentials(
+            agent,
+            source_home=credential_source_home or Path.home(),
+            agent_home=agent_home,
+        )
         return cls(
             agent=agent,
             run_id=run,

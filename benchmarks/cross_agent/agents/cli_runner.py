@@ -25,6 +25,7 @@ from .cli_parsers import (
     parse_codex_exec_jsonl,
     parse_openclaw_agent_json,
 )
+from .cli_versions import collect_runtime_provenance
 from .cli_process import (
     CliInvocationError,
     CliInvocationResult,
@@ -119,6 +120,12 @@ class CliAgentRunner(ABC):
                 "runner_kind": self.kind,
             }
         )
+        self._context.metadata["runtime_provenance"] = collect_runtime_provenance(
+            agent=self.agent,
+            backend=self.config.backend,
+            executable=executable,
+            cli_mode=self._cli_mode,
+        )
         self._opened = True
 
     def close(self) -> None:
@@ -128,6 +135,19 @@ class CliAgentRunner(ABC):
             self._opened = False
             self._resolved_executable = None
             self._cli_mode = None
+            self._last_invocation = None
+
+    @property
+    def last_invocation(self) -> CliInvocationResult | None:
+        return self._last_invocation
+
+    @property
+    def cli_mode(self) -> str | None:
+        return self._cli_mode
+
+    @property
+    def resolved_executable(self) -> str | None:
+        return self._resolved_executable
 
     def reset_session(self) -> None:
         """Reset agent session state without tearing down the workspace."""

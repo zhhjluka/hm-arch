@@ -93,6 +93,10 @@ class BenchmarkRunConfig:
     use_mock_agent: bool = True
     agent_executable: str | None = None
     agent_timeout_s: float = 120.0
+    dataset_id: str | None = None
+    dataset_version: str | None = None
+    max_conversations: int | None = None
+    max_queries: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -106,6 +110,10 @@ class BenchmarkRunConfig:
             "use_mock_agent": self.use_mock_agent,
             "agent_executable": self.agent_executable,
             "agent_timeout_s": self.agent_timeout_s,
+            "dataset_id": self.dataset_id,
+            "dataset_version": self.dataset_version,
+            "max_conversations": self.max_conversations,
+            "max_queries": self.max_queries,
         }
 
     @classmethod
@@ -121,6 +129,10 @@ class BenchmarkRunConfig:
             use_mock_agent=bool(data.get("use_mock_agent", True)),
             agent_executable=data.get("agent_executable"),
             agent_timeout_s=float(data.get("agent_timeout_s", 120.0)),
+            dataset_id=data.get("dataset_id"),
+            dataset_version=data.get("dataset_version"),
+            max_conversations=data.get("max_conversations"),
+            max_queries=data.get("max_queries"),
         )
 
 
@@ -185,6 +197,7 @@ class QueryRecord:
     agent_failure_reason: str | None = None
     agent_exit_code: int | None = None
     agent_timed_out: bool | None = None
+    agent_metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -221,9 +234,12 @@ class BenchmarkRunResult:
     environment: dict[str, Any] = field(default_factory=dict)
     agent_metadata: dict[str, Any] = field(default_factory=dict)
     compatibility: dict[str, str] = field(default_factory=dict)
+    dataset: dict[str, Any] = field(default_factory=dict)
+    category_aggregates: dict[str, Any] = field(default_factory=dict)
+    timing_aggregates: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "run_id": self.run_id,
             "config": self.config.to_dict(),
             "storage_dir": self.storage_dir,
@@ -234,3 +250,10 @@ class BenchmarkRunResult:
             "agent_metadata": self.agent_metadata,
             "compatibility": self.compatibility,
         }
+        if self.dataset:
+            payload["dataset"] = self.dataset
+        if self.category_aggregates:
+            payload["category_aggregates"] = self.category_aggregates
+        if self.timing_aggregates:
+            payload["timing_aggregates"] = self.timing_aggregates
+        return payload

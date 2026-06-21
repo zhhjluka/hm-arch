@@ -60,6 +60,38 @@ def fake_executable(tmp_path: Path) -> str:
     return _write_fake_executable(tmp_path / "fake-agent-cli")
 
 
+@pytest.mark.parametrize(
+    ("agent", "credential_paths"),
+    [
+        (AgentKind.CODEX, (".codex/auth.json",)),
+        (AgentKind.HERMES, (".hermes/.env", ".hermes/auth.json")),
+    ],
+)
+def test_agent_workspace_stages_only_allowlisted_credentials(
+    tmp_path: Path,
+    agent: AgentKind,
+    credential_paths: tuple[str, ...],
+) -> None:
+    source_home = tmp_path / "source-home"
+    for relative_path in credential_paths:
+        source = source_home / relative_path
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text("credential", encoding="utf-8")
+    memory = source_home / f".{agent.value}" / "memories" / "MEMORY.md"
+    memory.parent.mkdir(parents=True, exist_ok=True)
+    memory.write_text("must not leak", encoding="utf-8")
+
+    workspace = AgentWorkspace.create(
+        agent,
+        parent=tmp_path / "run",
+        credential_source_home=source_home,
+    )
+
+    expected_names = {Path(path).name for path in credential_paths}
+    assert expected_names.issubset({path.name for path in workspace.agent_home.iterdir()})
+    assert not (workspace.agent_home / "memories").exists()
+
+
 def test_parse_codex_exec_jsonl_fixture() -> None:
     stdout = (FIXTURES / "codex_exec_success.jsonl").read_text(encoding="utf-8")
     parsed = parse_codex_exec_jsonl(stdout, prompt_text="ignored")

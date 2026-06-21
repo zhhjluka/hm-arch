@@ -144,9 +144,46 @@ uv run python scripts/run_cross_agent_benchmark.py --matrix
 uv run python scripts/run_cross_agent_benchmark.py \
   --family hotpotqa --agent hermes --backend no_memory --seed 1
 
+# LoCoMo cross-agent memory matrix (MEM-78)
+uv run python scripts/run_locomo_matrix.py --dataset-id locomo10-sample
+
+# Real supported agent CLI comparison (Hermes/Claude/Codex no_memory + hm_arch)
+uv run python scripts/run_locomo_matrix.py \
+  --runner-mode real --dataset-id locomo10-sample --max-conversations 1
+
 # Offline tests (included in default pytest suite)
 uv run pytest tests/test_cross_agent_benchmark.py tests/test_cross_agent_memory_backends.py -v
+uv run pytest tests/test_locomo_matrix.py -v
 ```
+
+### LoCoMo matrix reporting (MEM-78)
+
+`scripts/run_locomo_matrix.py` orchestrates the 4×5 agent × backend grid with
+versioned LoCoMo ingestion. Two runner modes are reported separately:
+
+| Mode | Flag | Output | Purpose |
+|------|------|--------|---------|
+| `mock` | default | `matrix_summary_mock.json` | Offline smoke only — **not** cross-agent CLI comparison |
+| `real` | `--runner-mode real` | `matrix_summary_real.json` | Production CLI runs for supported cells |
+
+`matrix_summary.json` is a pointer to the active report file. Each completed
+cell links to per-run `summary.json`, `queries.jsonl`, and `invocations.jsonl`
+(raw argv/stdout/stderr). Real-mode summaries include CLI/provider version
+provenance and the exact reproducible shell command.
+
+**Handoff artifacts** (committed real-CLI pilot results) live under
+`benchmarks/cross_agent/fixtures/locomo/handoff/`. Regenerate with:
+
+```bash
+scripts/run_locomo_matrix_handoff.sh
+```
+
+Use `--max-queries N` for pilot runs. Per-agent CLI overrides:
+`--codex-executable`, `--claude-code-executable`, `--hermes-executable`, or
+`HM_ARCH_BENCH_*_EXECUTABLE` env vars.
+
+OpenClaw cells default to `pending` (MEM-75). Unsupported cells are listed with
+explicit rationale and are never silently substituted.
 
 ## External service requirements
 

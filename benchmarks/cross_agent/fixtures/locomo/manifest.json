@@ -1,0 +1,22 @@
+{
+  "datasets": {
+    "locomo10": {
+      "version": "2024-03",
+      "description": "LoCoMo 10-conversation long-dialogue memory QA benchmark",
+      "source_url": "https://github.com/snap-research/locomo/blob/main/data/locomo10.json",
+      "filename": "locomo10.json",
+      "sha256": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+      "conversation_count": 10,
+      "qa_count": 1986
+    },
+    "locomo10-sample": {
+      "version": "2024-03-sample",
+      "description": "Pinned one-conversation LoCoMo subset for offline tests",
+      "source_url": "https://github.com/snap-research/locomo/blob/main/data/locomo10.json",
+      "filename": "locomo10-sample.json",
+      "sha256": "580e189fdcaf989caa1512e87b42cb14d90f16522cbeca14f48fa01c5b83ef0f",
+      "conversation_count": 1,
+      "qa_count": 199
+    }
+  }
+}

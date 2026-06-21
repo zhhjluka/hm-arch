@@ -8,19 +8,30 @@ from typing import Any
 from .types import AgentOutcome, RecallOutcome
 
 _SECRET_PATTERNS = (
-    re.compile(r"sk-[a-zA-Z0-9]{20,}"),
-    re.compile(r"(?i)(api[_-]?key|authorization|bearer|token)[=:\s]+\S+"),
-    re.compile(r"(?i)(password|secret)[=:\s]+\S+"),
+    re.compile(r"sk-[a-zA-Z0-9_-]{20,}"),
+    re.compile(
+        r"(?i)\b(api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|secret)"
+        r"[\"']?\s*[:=]\s*[\"']?[^\"'\s,}]+"
+    ),
+    re.compile(r"(?i)\b(?:authorization\s*[:=]\s*)?bearer\s+\S+"),
 )
+
+
+def redact_sensitive_text(text: str | None) -> str | None:
+    """Redact likely credentials while preserving artifact formatting."""
+    if not text:
+        return None
+    cleaned = text
+    for pattern in _SECRET_PATTERNS:
+        cleaned = pattern.sub("<redacted>", cleaned)
+    return cleaned or None
 
 
 def sanitize_failure_text(text: str | None, *, max_len: int = 500) -> str | None:
     """Redact likely secrets and cap length for committed benchmark artifacts."""
     if not text:
         return None
-    cleaned = text.strip()
-    for pattern in _SECRET_PATTERNS:
-        cleaned = pattern.sub("<redacted>", cleaned)
+    cleaned = (redact_sensitive_text(text) or "").strip()
     cleaned = " ".join(cleaned.split())
     if len(cleaned) > max_len:
         return cleaned[: max_len - 3] + "..."

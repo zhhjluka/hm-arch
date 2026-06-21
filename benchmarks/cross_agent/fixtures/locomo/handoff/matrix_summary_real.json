@@ -1,0 +1,1134 @@
+{
+  "benchmark": "locomo_cross_agent_memory",
+  "report_type": "real_cli_comparison",
+  "runner_mode": "real",
+  "provenance": {
+    "exact_command": "uv run python scripts/run_locomo_matrix.py --output-dir benchmarks/cross_agent/fixtures/locomo/handoff --dataset-id locomo10-sample --seed 0 --top-k 5 --runner-mode real --dataset-version 2024-03-sample --max-conversations 1 --max-queries 3 --include-openclaw --claude-code-executable /opt/homebrew/bin/claude --codex-executable /opt/homebrew/bin/codex --hermes-executable /Users/lukaluka/.local/bin/hermes --agent-timeout-s 60.0",
+    "argv": [
+      "uv",
+      "run",
+      "python",
+      "scripts/run_locomo_matrix.py",
+      "--output-dir",
+      "benchmarks/cross_agent/fixtures/locomo/handoff",
+      "--dataset-id",
+      "locomo10-sample",
+      "--seed",
+      "0",
+      "--top-k",
+      "5",
+      "--runner-mode",
+      "real",
+      "--dataset-version",
+      "2024-03-sample",
+      "--max-conversations",
+      "1",
+      "--max-queries",
+      "3",
+      "--include-openclaw",
+      "--claude-code-executable",
+      "/opt/homebrew/bin/claude",
+      "--codex-executable",
+      "/opt/homebrew/bin/codex",
+      "--hermes-executable",
+      "/Users/lukaluka/.local/bin/hermes",
+      "--agent-timeout-s",
+      "60.0"
+    ],
+    "python": "3.12.11"
+  },
+  "dataset": {
+    "dataset_id": "locomo10-sample",
+    "version": "2024-03-sample",
+    "description": "Pinned one-conversation LoCoMo subset for offline tests",
+    "source_url": "https://github.com/snap-research/locomo/blob/main/data/locomo10.json",
+    "filename": "locomo10-sample.json",
+    "sha256": "580e189fdcaf989caa1512e87b42cb14d90f16522cbeca14f48fa01c5b83ef0f",
+    "conversation_count": 1,
+    "qa_count": 199,
+    "dataset_version": "2024-03-sample",
+    "max_conversations": 1
+  },
+  "metric_definition": {
+    "accuracy": "Case-insensitive exact string match after whitespace normalization; this pilot metric is not the official LoCoMo category-aware token F1.",
+    "retrieval": "Evidence-id recall over the fixture's annotated evidence turns."
+  },
+  "matrix": {
+    "agents": [
+      "openclaw",
+      "hermes",
+      "claude_code",
+      "codex"
+    ],
+    "backends": [
+      "no_memory",
+      "native_memory",
+      "mem0",
+      "openviking",
+      "hm_arch"
+    ],
+    "include_openclaw": true,
+    "runner_mode": "real",
+    "seed": 0,
+    "top_k": 5,
+    "agent_executable": null,
+    "agent_executables": {
+      "codex": "/opt/homebrew/bin/codex",
+      "claude_code": "/opt/homebrew/bin/claude",
+      "hermes": "/Users/lukaluka/.local/bin/hermes"
+    },
+    "agent_timeout_s": 60.0,
+    "max_queries": 3
+  },
+  "cells": [
+    {
+      "coordinate": "openclaw|no_memory",
+      "agent": "openclaw",
+      "backend": "no_memory",
+      "status": "unavailable",
+      "rationale": "Invoke openclaw CLI in isolated state dir without memory plugin slot.",
+      "runner_mode": "unavailable",
+      "run_id": "locomo-openclaw-no_memory-s0-k5-0a27ef7ed8033dca",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-no_memory-s0-k5-0a27ef7ed8033dca/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-no_memory-s0-k5-0a27ef7ed8033dca/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-no_memory-s0-k5-0a27ef7ed8033dca/invocations.jsonl",
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
+      "total_input_tokens": 0,
+      "mean_input_tokens": null,
+      "total_failure_count": 0,
+      "token_source_counts": {},
+      "category_aggregates": {},
+      "runtime_provenance": null,
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:48:49.228643+00:00"
+      }
+    },
+    {
+      "coordinate": "openclaw|native_memory",
+      "agent": "openclaw",
+      "backend": "native_memory",
+      "status": "unsupported",
+      "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet."
+    },
+    {
+      "coordinate": "openclaw|mem0",
+      "agent": "openclaw",
+      "backend": "mem0",
+      "status": "unsupported",
+      "rationale": "Mem0 backend requires the mem0ai package. Install with: pip install mem0ai"
+    },
+    {
+      "coordinate": "openclaw|openviking",
+      "agent": "openclaw",
+      "backend": "openviking",
+      "status": "unsupported",
+      "rationale": "OpenViking backend requires the openviking package. Install with: pip install openviking"
+    },
+    {
+      "coordinate": "openclaw|hm_arch",
+      "agent": "openclaw",
+      "backend": "hm_arch",
+      "status": "unavailable",
+      "rationale": "Configure HM-Arch OpenClaw plugin slot; invoke openclaw CLI boundary.",
+      "runner_mode": "unavailable",
+      "run_id": "locomo-openclaw-hm_arch-s0-k5-9208123b98dad1a6",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-hm_arch-s0-k5-9208123b98dad1a6/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-hm_arch-s0-k5-9208123b98dad1a6/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-hm_arch-s0-k5-9208123b98dad1a6/invocations.jsonl",
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
+      "total_input_tokens": 0,
+      "mean_input_tokens": null,
+      "total_failure_count": 0,
+      "token_source_counts": {},
+      "category_aggregates": {},
+      "runtime_provenance": null,
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:48:49.231383+00:00"
+      }
+    },
+    {
+      "coordinate": "hermes|no_memory",
+      "agent": "hermes",
+      "backend": "no_memory",
+      "status": "completed",
+      "rationale": "Invoke hermes CLI in isolated HERMES_HOME without durable memory provider.",
+      "runner_mode": "real",
+      "run_id": "locomo-hermes-no_memory-s0-k5-bb993deab17cc00b",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-no_memory-s0-k5-bb993deab17cc00b/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-no_memory-s0-k5-bb993deab17cc00b/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-no_memory-s0-k5-bb993deab17cc00b/invocations.jsonl",
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": 0.0,
+      "completed_query_count": 3,
+      "mean_query_time_ms": 6653.38994434569,
+      "p95_query_time_ms": 7640.529225044884,
+      "total_input_tokens": 26,
+      "mean_input_tokens": 8.666666666666666,
+      "total_failure_count": 0,
+      "token_source_counts": {
+        "estimated": 6
+      },
+      "category_aggregates": {
+        "open_domain": {
+          "query_count": 1,
+          "mean_accuracy": 0.0,
+          "mean_retrieval_hit_rate": 0.0,
+          "mean_query_time_ms": 7543.151249992661,
+          "p95_query_time_ms": 7543.151249992661,
+          "mean_input_tokens": 11.0,
+          "total_input_tokens": 11,
+          "total_failure_count": 0
+        },
+        "temporal": {
+          "query_count": 2,
+          "mean_accuracy": 0.0,
+          "mean_retrieval_hit_rate": 0.0,
+          "mean_query_time_ms": 6208.509291522205,
+          "p95_query_time_ms": 7507.065029197838,
+          "mean_input_tokens": 7.5,
+          "total_input_tokens": 15,
+          "total_failure_count": 0
+        }
+      },
+      "runtime_provenance": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "agent_cli": {
+          "agent": "hermes",
+          "executable": "/Users/lukaluka/.local/bin/hermes",
+          "version": "Hermes Agent v0.11.0 (2026.4.23)",
+          "probe_status": "ok"
+        },
+        "provider_packages": {},
+        "cli_mode": "real"
+      },
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:48:49.273577+00:00"
+      },
+      "sample_argv": [
+        "/Users/lukaluka/.local/bin/hermes",
+        "-z",
+        "When did Caroline go to the LGBTQ support group?"
+      ]
+    },
+    {
+      "coordinate": "hermes|native_memory",
+      "agent": "hermes",
+      "backend": "native_memory",
+      "status": "unsupported",
+      "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet."
+    },
+    {
+      "coordinate": "hermes|mem0",
+      "agent": "hermes",
+      "backend": "mem0",
+      "status": "unsupported",
+      "rationale": "Mem0 backend requires the mem0ai package. Install with: pip install mem0ai"
+    },
+    {
+      "coordinate": "hermes|openviking",
+      "agent": "hermes",
+      "backend": "openviking",
+      "status": "unsupported",
+      "rationale": "Hermes has no packaged OpenViking memory provider."
+    },
+    {
+      "coordinate": "hermes|hm_arch",
+      "agent": "hermes",
+      "backend": "hm_arch",
+      "status": "completed",
+      "rationale": "Install HM-Arch Hermes provider bridge; invoke hermes CLI boundary.",
+      "runner_mode": "real",
+      "run_id": "locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/invocations.jsonl",
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 3,
+      "mean_query_time_ms": 5913.399860650922,
+      "p95_query_time_ms": 7122.499307664111,
+      "total_input_tokens": 26,
+      "mean_input_tokens": 8.666666666666666,
+      "total_failure_count": 0,
+      "token_source_counts": {
+        "estimated": 6
+      },
+      "category_aggregates": {
+        "open_domain": {
+          "query_count": 1,
+          "mean_accuracy": 0.0,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": 4867.376832989976,
+          "p95_query_time_ms": 4867.376832989976,
+          "mean_input_tokens": 11.0,
+          "total_input_tokens": 11,
+          "total_failure_count": 0
+        },
+        "temporal": {
+          "query_count": 2,
+          "mean_accuracy": 0.0,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": 6436.411374481395,
+          "p95_query_time_ms": 7208.260299311951,
+          "mean_input_tokens": 7.5,
+          "total_input_tokens": 15,
+          "total_failure_count": 0
+        }
+      },
+      "runtime_provenance": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "agent_cli": {
+          "agent": "hermes",
+          "executable": "/Users/lukaluka/.local/bin/hermes",
+          "version": "Hermes Agent v0.11.0 (2026.4.23)",
+          "probe_status": "ok"
+        },
+        "provider_packages": {
+          "hm_arch": "2.0.4"
+        },
+        "cli_mode": "real"
+      },
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:49:12.737943+00:00"
+      },
+      "sample_argv": [
+        "/Users/lukaluka/.local/bin/hermes",
+        "-z",
+        "When did Caroline go to the LGBTQ support group?"
+      ]
+    },
+    {
+      "coordinate": "claude_code|no_memory",
+      "agent": "claude_code",
+      "backend": "no_memory",
+      "status": "failed",
+      "rationale": "Invoke claude CLI in isolated CLAUDE_CONFIG_DIR without HM-Arch hooks.",
+      "runner_mode": "real",
+      "run_id": "locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e/invocations.jsonl",
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
+      "total_input_tokens": 0,
+      "mean_input_tokens": null,
+      "total_failure_count": 3,
+      "token_source_counts": {
+        "estimated": 6
+      },
+      "category_aggregates": {
+        "open_domain": {
+          "query_count": 1,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 1
+        },
+        "temporal": {
+          "query_count": 2,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 2
+        }
+      },
+      "runtime_provenance": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "agent_cli": {
+          "agent": "claude_code",
+          "executable": "/opt/homebrew/bin/claude",
+          "version": "2.1.177 (Claude Code)",
+          "probe_status": "ok"
+        },
+        "provider_packages": {},
+        "cli_mode": "real"
+      },
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:49:33.809425+00:00"
+      },
+      "sample_argv": [
+        "/opt/homebrew/bin/claude",
+        "-p",
+        "When did Caroline go to the LGBTQ support group?",
+        "--output-format",
+        "json"
+      ]
+    },
+    {
+      "coordinate": "claude_code|native_memory",
+      "agent": "claude_code",
+      "backend": "native_memory",
+      "status": "unsupported",
+      "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet."
+    },
+    {
+      "coordinate": "claude_code|mem0",
+      "agent": "claude_code",
+      "backend": "mem0",
+      "status": "unsupported",
+      "rationale": "Claude Code has no Mem0 hook or memory provider slot."
+    },
+    {
+      "coordinate": "claude_code|openviking",
+      "agent": "claude_code",
+      "backend": "openviking",
+      "status": "unsupported",
+      "rationale": "Claude Code has no OpenViking hook integration."
+    },
+    {
+      "coordinate": "claude_code|hm_arch",
+      "agent": "claude_code",
+      "backend": "hm_arch",
+      "status": "failed",
+      "rationale": "Install HM-Arch Claude Code hooks in isolated home; invoke claude CLI boundary.",
+      "runner_mode": "real",
+      "run_id": "locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/invocations.jsonl",
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
+      "total_input_tokens": 0,
+      "mean_input_tokens": null,
+      "total_failure_count": 3,
+      "token_source_counts": {
+        "estimated": 6
+      },
+      "category_aggregates": {
+        "open_domain": {
+          "query_count": 1,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 1
+        },
+        "temporal": {
+          "query_count": 2,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 2
+        }
+      },
+      "runtime_provenance": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "agent_cli": {
+          "agent": "claude_code",
+          "executable": "/opt/homebrew/bin/claude",
+          "version": "2.1.177 (Claude Code)",
+          "probe_status": "ok"
+        },
+        "provider_packages": {
+          "hm_arch": "2.0.4"
+        },
+        "cli_mode": "real"
+      },
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:49:38.107257+00:00"
+      },
+      "sample_argv": [
+        "/opt/homebrew/bin/claude",
+        "-p",
+        "When did Caroline go to the LGBTQ support group?",
+        "--output-format",
+        "json"
+      ]
+    },
+    {
+      "coordinate": "codex|no_memory",
+      "agent": "codex",
+      "backend": "no_memory",
+      "status": "partial",
+      "rationale": "Invoke codex CLI in isolated CODEX_HOME without HM-Arch hooks.",
+      "runner_mode": "real",
+      "run_id": "locomo-codex-no_memory-s0-k5-a946b3bfb4255103",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/invocations.jsonl",
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": 0.0,
+      "completed_query_count": 1,
+      "mean_query_time_ms": 21532.87662495859,
+      "p95_query_time_ms": 21532.87662495859,
+      "total_input_tokens": 39079,
+      "mean_input_tokens": 39079.0,
+      "total_failure_count": 2,
+      "token_source_counts": {
+        "estimated": 4,
+        "exact": 2
+      },
+      "category_aggregates": {
+        "open_domain": {
+          "query_count": 1,
+          "mean_accuracy": 0.0,
+          "mean_retrieval_hit_rate": 0.0,
+          "mean_query_time_ms": 21532.87662495859,
+          "p95_query_time_ms": 21532.87662495859,
+          "mean_input_tokens": 39079.0,
+          "total_input_tokens": 39079,
+          "total_failure_count": 0
+        },
+        "temporal": {
+          "query_count": 2,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 2
+        }
+      },
+      "runtime_provenance": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "agent_cli": {
+          "agent": "codex",
+          "executable": "/opt/homebrew/bin/codex",
+          "version": "codex-cli 0.139.0",
+          "probe_status": "ok"
+        },
+        "provider_packages": {},
+        "cli_mode": "real"
+      },
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:49:42.484815+00:00"
+      },
+      "sample_argv": [
+        "/opt/homebrew/bin/codex",
+        "exec",
+        "--json",
+        "--disable",
+        "memories",
+        "--skip-git-repo-check",
+        "When did Caroline go to the LGBTQ support group?"
+      ]
+    },
+    {
+      "coordinate": "codex|native_memory",
+      "agent": "codex",
+      "backend": "native_memory",
+      "status": "unsupported",
+      "rationale": "Native memory requires an agent-specific bridge for the shared ingest lifecycle; no production bridge is wired yet."
+    },
+    {
+      "coordinate": "codex|mem0",
+      "agent": "codex",
+      "backend": "mem0",
+      "status": "unsupported",
+      "rationale": "Codex has no Mem0 hook or memory provider slot."
+    },
+    {
+      "coordinate": "codex|openviking",
+      "agent": "codex",
+      "backend": "openviking",
+      "status": "unsupported",
+      "rationale": "Codex has no OpenViking hook integration."
+    },
+    {
+      "coordinate": "codex|hm_arch",
+      "agent": "codex",
+      "backend": "hm_arch",
+      "status": "failed",
+      "rationale": "Install HM-Arch Codex hooks in isolated home; invoke codex CLI boundary.",
+      "runner_mode": "real",
+      "run_id": "locomo-codex-hm_arch-s0-k5-1770641fd28506d0",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-hm_arch-s0-k5-1770641fd28506d0/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-hm_arch-s0-k5-1770641fd28506d0/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-hm_arch-s0-k5-1770641fd28506d0/invocations.jsonl",
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
+      "total_input_tokens": 0,
+      "mean_input_tokens": null,
+      "total_failure_count": 3,
+      "token_source_counts": {
+        "estimated": 6
+      },
+      "category_aggregates": {
+        "open_domain": {
+          "query_count": 1,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 1
+        },
+        "temporal": {
+          "query_count": 2,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 2
+        }
+      },
+      "runtime_provenance": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "agent_cli": {
+          "agent": "codex",
+          "executable": "/opt/homebrew/bin/codex",
+          "version": "codex-cli 0.139.0",
+          "probe_status": "ok"
+        },
+        "provider_packages": {
+          "hm_arch": "2.0.4"
+        },
+        "cli_mode": "real"
+      },
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:52:04.645912+00:00"
+      },
+      "sample_argv": [
+        "/opt/homebrew/bin/codex",
+        "exec",
+        "--json",
+        "--disable",
+        "memories",
+        "--skip-git-repo-check",
+        "When did Caroline go to the LGBTQ support group?"
+      ]
+    }
+  ],
+  "attempted_run_count": 6,
+  "completed_run_count": 2,
+  "partial_run_count": 1,
+  "failed_run_count": 3,
+  "unavailable_run_count": 2,
+  "unsupported_or_pending_count": 12,
+  "real_results": [
+    {
+      "coordinate": "openclaw|no_memory",
+      "agent": "openclaw",
+      "backend": "no_memory",
+      "status": "unavailable",
+      "rationale": "Invoke openclaw CLI in isolated state dir without memory plugin slot.",
+      "runner_mode": "unavailable",
+      "run_id": "locomo-openclaw-no_memory-s0-k5-0a27ef7ed8033dca",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-no_memory-s0-k5-0a27ef7ed8033dca/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-no_memory-s0-k5-0a27ef7ed8033dca/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-no_memory-s0-k5-0a27ef7ed8033dca/invocations.jsonl",
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
+      "total_input_tokens": 0,
+      "mean_input_tokens": null,
+      "total_failure_count": 0,
+      "token_source_counts": {},
+      "category_aggregates": {},
+      "runtime_provenance": null,
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:48:49.228643+00:00"
+      }
+    },
+    {
+      "coordinate": "openclaw|hm_arch",
+      "agent": "openclaw",
+      "backend": "hm_arch",
+      "status": "unavailable",
+      "rationale": "Configure HM-Arch OpenClaw plugin slot; invoke openclaw CLI boundary.",
+      "runner_mode": "unavailable",
+      "run_id": "locomo-openclaw-hm_arch-s0-k5-9208123b98dad1a6",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-hm_arch-s0-k5-9208123b98dad1a6/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-hm_arch-s0-k5-9208123b98dad1a6/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-openclaw-hm_arch-s0-k5-9208123b98dad1a6/invocations.jsonl",
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
+      "total_input_tokens": 0,
+      "mean_input_tokens": null,
+      "total_failure_count": 0,
+      "token_source_counts": {},
+      "category_aggregates": {},
+      "runtime_provenance": null,
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:48:49.231383+00:00"
+      }
+    },
+    {
+      "coordinate": "hermes|no_memory",
+      "agent": "hermes",
+      "backend": "no_memory",
+      "status": "completed",
+      "rationale": "Invoke hermes CLI in isolated HERMES_HOME without durable memory provider.",
+      "runner_mode": "real",
+      "run_id": "locomo-hermes-no_memory-s0-k5-bb993deab17cc00b",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-no_memory-s0-k5-bb993deab17cc00b/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-no_memory-s0-k5-bb993deab17cc00b/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-no_memory-s0-k5-bb993deab17cc00b/invocations.jsonl",
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": 0.0,
+      "completed_query_count": 3,
+      "mean_query_time_ms": 6653.38994434569,
+      "p95_query_time_ms": 7640.529225044884,
+      "total_input_tokens": 26,
+      "mean_input_tokens": 8.666666666666666,
+      "total_failure_count": 0,
+      "token_source_counts": {
+        "estimated": 6
+      },
+      "category_aggregates": {
+        "open_domain": {
+          "query_count": 1,
+          "mean_accuracy": 0.0,
+          "mean_retrieval_hit_rate": 0.0,
+          "mean_query_time_ms": 7543.151249992661,
+          "p95_query_time_ms": 7543.151249992661,
+          "mean_input_tokens": 11.0,
+          "total_input_tokens": 11,
+          "total_failure_count": 0
+        },
+        "temporal": {
+          "query_count": 2,
+          "mean_accuracy": 0.0,
+          "mean_retrieval_hit_rate": 0.0,
+          "mean_query_time_ms": 6208.509291522205,
+          "p95_query_time_ms": 7507.065029197838,
+          "mean_input_tokens": 7.5,
+          "total_input_tokens": 15,
+          "total_failure_count": 0
+        }
+      },
+      "runtime_provenance": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "agent_cli": {
+          "agent": "hermes",
+          "executable": "/Users/lukaluka/.local/bin/hermes",
+          "version": "Hermes Agent v0.11.0 (2026.4.23)",
+          "probe_status": "ok"
+        },
+        "provider_packages": {},
+        "cli_mode": "real"
+      },
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:48:49.273577+00:00"
+      },
+      "sample_argv": [
+        "/Users/lukaluka/.local/bin/hermes",
+        "-z",
+        "When did Caroline go to the LGBTQ support group?"
+      ]
+    },
+    {
+      "coordinate": "hermes|hm_arch",
+      "agent": "hermes",
+      "backend": "hm_arch",
+      "status": "completed",
+      "rationale": "Install HM-Arch Hermes provider bridge; invoke hermes CLI boundary.",
+      "runner_mode": "real",
+      "run_id": "locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-hermes-hm_arch-s0-k5-0c55d4b399ca44e2/invocations.jsonl",
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 3,
+      "mean_query_time_ms": 5913.399860650922,
+      "p95_query_time_ms": 7122.499307664111,
+      "total_input_tokens": 26,
+      "mean_input_tokens": 8.666666666666666,
+      "total_failure_count": 0,
+      "token_source_counts": {
+        "estimated": 6
+      },
+      "category_aggregates": {
+        "open_domain": {
+          "query_count": 1,
+          "mean_accuracy": 0.0,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": 4867.376832989976,
+          "p95_query_time_ms": 4867.376832989976,
+          "mean_input_tokens": 11.0,
+          "total_input_tokens": 11,
+          "total_failure_count": 0
+        },
+        "temporal": {
+          "query_count": 2,
+          "mean_accuracy": 0.0,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": 6436.411374481395,
+          "p95_query_time_ms": 7208.260299311951,
+          "mean_input_tokens": 7.5,
+          "total_input_tokens": 15,
+          "total_failure_count": 0
+        }
+      },
+      "runtime_provenance": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "agent_cli": {
+          "agent": "hermes",
+          "executable": "/Users/lukaluka/.local/bin/hermes",
+          "version": "Hermes Agent v0.11.0 (2026.4.23)",
+          "probe_status": "ok"
+        },
+        "provider_packages": {
+          "hm_arch": "2.0.4"
+        },
+        "cli_mode": "real"
+      },
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:49:12.737943+00:00"
+      },
+      "sample_argv": [
+        "/Users/lukaluka/.local/bin/hermes",
+        "-z",
+        "When did Caroline go to the LGBTQ support group?"
+      ]
+    },
+    {
+      "coordinate": "claude_code|no_memory",
+      "agent": "claude_code",
+      "backend": "no_memory",
+      "status": "failed",
+      "rationale": "Invoke claude CLI in isolated CLAUDE_CONFIG_DIR without HM-Arch hooks.",
+      "runner_mode": "real",
+      "run_id": "locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-no_memory-s0-k5-b28fc5ba6bcb1b6e/invocations.jsonl",
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
+      "total_input_tokens": 0,
+      "mean_input_tokens": null,
+      "total_failure_count": 3,
+      "token_source_counts": {
+        "estimated": 6
+      },
+      "category_aggregates": {
+        "open_domain": {
+          "query_count": 1,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 1
+        },
+        "temporal": {
+          "query_count": 2,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 2
+        }
+      },
+      "runtime_provenance": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "agent_cli": {
+          "agent": "claude_code",
+          "executable": "/opt/homebrew/bin/claude",
+          "version": "2.1.177 (Claude Code)",
+          "probe_status": "ok"
+        },
+        "provider_packages": {},
+        "cli_mode": "real"
+      },
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:49:33.809425+00:00"
+      },
+      "sample_argv": [
+        "/opt/homebrew/bin/claude",
+        "-p",
+        "When did Caroline go to the LGBTQ support group?",
+        "--output-format",
+        "json"
+      ]
+    },
+    {
+      "coordinate": "claude_code|hm_arch",
+      "agent": "claude_code",
+      "backend": "hm_arch",
+      "status": "failed",
+      "rationale": "Install HM-Arch Claude Code hooks in isolated home; invoke claude CLI boundary.",
+      "runner_mode": "real",
+      "run_id": "locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-claude_code-hm_arch-s0-k5-5d9c4c5aa4db53ea/invocations.jsonl",
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
+      "total_input_tokens": 0,
+      "mean_input_tokens": null,
+      "total_failure_count": 3,
+      "token_source_counts": {
+        "estimated": 6
+      },
+      "category_aggregates": {
+        "open_domain": {
+          "query_count": 1,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 1
+        },
+        "temporal": {
+          "query_count": 2,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 2
+        }
+      },
+      "runtime_provenance": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "agent_cli": {
+          "agent": "claude_code",
+          "executable": "/opt/homebrew/bin/claude",
+          "version": "2.1.177 (Claude Code)",
+          "probe_status": "ok"
+        },
+        "provider_packages": {
+          "hm_arch": "2.0.4"
+        },
+        "cli_mode": "real"
+      },
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:49:38.107257+00:00"
+      },
+      "sample_argv": [
+        "/opt/homebrew/bin/claude",
+        "-p",
+        "When did Caroline go to the LGBTQ support group?",
+        "--output-format",
+        "json"
+      ]
+    },
+    {
+      "coordinate": "codex|no_memory",
+      "agent": "codex",
+      "backend": "no_memory",
+      "status": "partial",
+      "rationale": "Invoke codex CLI in isolated CODEX_HOME without HM-Arch hooks.",
+      "runner_mode": "real",
+      "run_id": "locomo-codex-no_memory-s0-k5-a946b3bfb4255103",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-no_memory-s0-k5-a946b3bfb4255103/invocations.jsonl",
+      "mean_accuracy": 0.0,
+      "mean_retrieval_hit_rate": 0.0,
+      "completed_query_count": 1,
+      "mean_query_time_ms": 21532.87662495859,
+      "p95_query_time_ms": 21532.87662495859,
+      "total_input_tokens": 39079,
+      "mean_input_tokens": 39079.0,
+      "total_failure_count": 2,
+      "token_source_counts": {
+        "estimated": 4,
+        "exact": 2
+      },
+      "category_aggregates": {
+        "open_domain": {
+          "query_count": 1,
+          "mean_accuracy": 0.0,
+          "mean_retrieval_hit_rate": 0.0,
+          "mean_query_time_ms": 21532.87662495859,
+          "p95_query_time_ms": 21532.87662495859,
+          "mean_input_tokens": 39079.0,
+          "total_input_tokens": 39079,
+          "total_failure_count": 0
+        },
+        "temporal": {
+          "query_count": 2,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 2
+        }
+      },
+      "runtime_provenance": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "agent_cli": {
+          "agent": "codex",
+          "executable": "/opt/homebrew/bin/codex",
+          "version": "codex-cli 0.139.0",
+          "probe_status": "ok"
+        },
+        "provider_packages": {},
+        "cli_mode": "real"
+      },
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:49:42.484815+00:00"
+      },
+      "sample_argv": [
+        "/opt/homebrew/bin/codex",
+        "exec",
+        "--json",
+        "--disable",
+        "memories",
+        "--skip-git-repo-check",
+        "When did Caroline go to the LGBTQ support group?"
+      ]
+    },
+    {
+      "coordinate": "codex|hm_arch",
+      "agent": "codex",
+      "backend": "hm_arch",
+      "status": "failed",
+      "rationale": "Install HM-Arch Codex hooks in isolated home; invoke codex CLI boundary.",
+      "runner_mode": "real",
+      "run_id": "locomo-codex-hm_arch-s0-k5-1770641fd28506d0",
+      "summary_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-hm_arch-s0-k5-1770641fd28506d0/summary.json",
+      "queries_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-hm_arch-s0-k5-1770641fd28506d0/queries.jsonl",
+      "invocations_jsonl_path": "benchmarks/cross_agent/fixtures/locomo/handoff/locomo-codex-hm_arch-s0-k5-1770641fd28506d0/invocations.jsonl",
+      "mean_accuracy": null,
+      "mean_retrieval_hit_rate": null,
+      "completed_query_count": 0,
+      "mean_query_time_ms": null,
+      "p95_query_time_ms": null,
+      "total_input_tokens": 0,
+      "mean_input_tokens": null,
+      "total_failure_count": 3,
+      "token_source_counts": {
+        "estimated": 6
+      },
+      "category_aggregates": {
+        "open_domain": {
+          "query_count": 1,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 1
+        },
+        "temporal": {
+          "query_count": 2,
+          "mean_accuracy": null,
+          "mean_retrieval_hit_rate": null,
+          "mean_query_time_ms": null,
+          "p95_query_time_ms": null,
+          "mean_input_tokens": null,
+          "total_input_tokens": 0,
+          "total_failure_count": 2
+        }
+      },
+      "runtime_provenance": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "agent_cli": {
+          "agent": "codex",
+          "executable": "/opt/homebrew/bin/codex",
+          "version": "codex-cli 0.139.0",
+          "probe_status": "ok"
+        },
+        "provider_packages": {
+          "hm_arch": "2.0.4"
+        },
+        "cli_mode": "real"
+      },
+      "environment": {
+        "python": "3.12.11",
+        "platform": "macOS-15.7.4-arm64-arm-64bit",
+        "timestamp_utc": "2026-06-21T15:52:04.645912+00:00"
+      },
+      "sample_argv": [
+        "/opt/homebrew/bin/codex",
+        "exec",
+        "--json",
+        "--disable",
+        "memories",
+        "--skip-git-repo-check",
+        "When did Caroline go to the LGBTQ support group?"
+      ]
+    }
+  ],
+  "notes": "Real CLI results invoke production agent boundaries. Unsupported cells are listed explicitly and were not executed.",
+  "test_double_mode": false,
+  "provider_auth_status": "All failed cells reported zero completed queries. Verify provider credentials (OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or agent login) before interpreting accuracy."
+}
