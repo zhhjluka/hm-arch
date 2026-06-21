@@ -32,11 +32,10 @@ publication steps and maintainer approval rules.
 
 ### Pending
 
-- Cross-agent benchmark headline numbers for tau2-bench and HotpotQA (pilot
-  artifacts are committed, but full matrix execution and release validation are
-  still pending).
+- Cross-agent benchmark headline numbers for tau2-bench and HotpotQA (harnesses
+  ship in this release; committed production matrix artifacts are still pending).
 - LoCoMo release-note headline numbers (pilot artifact exists; full comparison
-  pending provider capacity and larger query counts).
+  pending provider capacity, OpenClaw CLI availability, and larger query counts).
 
 ## [2.0.4] - 2026-06-14
 

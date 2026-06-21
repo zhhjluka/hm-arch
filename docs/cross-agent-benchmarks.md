@@ -272,9 +272,11 @@ point harness defaults at a developer's live agent configuration.
 
 ## Committed pilot artifacts
 
-The repository contains pilot artifacts for all three benchmark families. They
-record failures, unavailable agents, and unsupported cells instead of filling
-gaps with synthetic results; none is a complete release-scale comparison.
+The repository contains a committed LoCoMo real-CLI handoff under
+`benchmarks/cross_agent/fixtures/locomo/handoff/`. HotpotQA and tau2-bench
+harnesses write to `benchmark-results/` (gitignored local output); those paths are
+**not** committed in this release. Do not cite HotpotQA or tau2 headline numbers
+without generating and committing the corresponding `matrix_summary.json` first.
 
 The LoCoMo handoff scope and limitations are documented in
 [benchmarks/cross_agent/fixtures/locomo/handoff/README.md](../benchmarks/cross_agent/fixtures/locomo/handoff/README.md).
@@ -294,17 +296,22 @@ Failed, unavailable, and partial cells are first-class outcomes and are excluded
 from completed-query aggregates. Do not quote headline comparison numbers
 outside the artifact context.
 
-The HotpotQA pilot under `benchmark-results/hotpotqa/` records 40 matrix cells:
-4 completed, 4 failed, 8 pending, and 24 unsupported. Only Codex and Claude Code
-were available for those completed cells, so this is not a complete four-agent,
-five-backend comparison. Its manifest records `execution_mode` and
-`use_mock_agent`; mock smoke artifacts are kept separately under
-`benchmark-results/hotpotqa-smoke/`.
+### Local-only pilots (not committed)
 
-The tau2-bench pilot under `benchmark-results/tau2-comparison/` contains
-provenance and matrix status, but its provenance records `tau2_importable` as
-false and no real comparison cell completed. Treat it as an environment and
-availability record, not as benchmark results suitable for a headline.
+When generated locally, HotpotQA output defaults to
+`benchmark-results/hotpotqa/` and tau2-bench output to
+`benchmark-results/tau2-comparison/`. These directories are gitignored. Treat
+any local matrix summary as provisional until committed under
+`benchmarks/cross_agent/fixtures/` or an equivalent tracked handoff path.
+
+The HotpotQA harness records per-cell `status` values (`completed`, `failed`,
+`pending`, `unsupported`). Only `completed` cells with `runner_mode=real` and
+`use_mock_agent=false` support headline retrieval comparisons.
+
+The tau2-bench harness records environment availability (`tau2_importable`) and
+matrix cell status. When `tau2_importable` is false or no real cell completes,
+treat the run as an availability record, not benchmark results suitable for a
+headline.
 
 ## External service requirements
 

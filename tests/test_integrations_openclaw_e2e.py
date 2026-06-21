@@ -270,16 +270,27 @@ class TestOpenClawE2EPackagingPaths:
         home.mkdir()
         workdir.mkdir()
         state_dir = home / "openclaw-state"
+        standalone_fixture = _REPO_ROOT / "dist" / "standalone" / "hm-arch"
         env = os.environ.copy()
         env.update(
             {
                 "HOME": str(home),
                 "OPENCLAW_STATE_DIR": str(state_dir),
                 "HM_ARCH_HOME": str(home / "hm-arch-home"),
-                "HM_ARCH_PYTHON": sys.executable,
-                "HM_ARCH_PIP_SPEC": str(_REPO_ROOT),
             }
         )
+        if standalone_fixture.is_file():
+            # Prefer a source-built standalone that includes OpenClaw wiring.
+            env["HM_ARCH_STANDALONE_FIXTURE"] = str(standalone_fixture)
+            env["HM_ARCH_RUNTIME"] = "standalone"
+        else:
+            env.update(
+                {
+                    "HM_ARCH_PYTHON": sys.executable,
+                    "HM_ARCH_PIP_SPEC": str(_REPO_ROOT),
+                    "HM_ARCH_RUNTIME": "python",
+                }
+            )
         cli = installer_dir / "dist" / "cli.js"
         install = subprocess.run(
             ["node", str(cli), "install", "openclaw"],
