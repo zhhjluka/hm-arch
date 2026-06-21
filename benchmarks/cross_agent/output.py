@@ -55,7 +55,11 @@ def write_summary_json(path: Path, result: BenchmarkRunResult) -> None:
 
 def write_queries_csv(path: Path, result: BenchmarkRunResult) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=_QUERY_CSV_FIELDS)
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=_QUERY_CSV_FIELDS,
+            lineterminator="\n",
+        )
         writer.writeheader()
         for record in result.queries:
             writer.writerow(

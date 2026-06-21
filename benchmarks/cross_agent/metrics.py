@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import string
 
 from .types import AggregateMetrics, QueryRecord
 
@@ -22,6 +23,25 @@ def exact_match_accuracy(expected: str | None, prediction: str | None) -> float 
     if expected is None or prediction is None:
         return None
     return 1.0 if normalize_answer(expected) == normalize_answer(prediction) else 0.0
+
+
+def _normalize_hotpotqa_answer(text: str) -> str:
+    lowered = text.lower()
+    without_punctuation = "".join(char for char in lowered if char not in string.punctuation)
+    without_articles = re.sub(r"\b(a|an|the)\b", " ", without_punctuation)
+    return " ".join(without_articles.split())
+
+
+def hotpotqa_exact_match_accuracy(
+    expected: str | None,
+    prediction: str | None,
+) -> float | None:
+    """HotpotQA exact match using the dataset's standard answer normalization."""
+    if expected is None or prediction is None:
+        return None
+    expected_normalized = _normalize_hotpotqa_answer(expected)
+    prediction_normalized = _normalize_hotpotqa_answer(prediction)
+    return 1.0 if expected_normalized == prediction_normalized else 0.0
 
 
 def retrieval_hit_rate(

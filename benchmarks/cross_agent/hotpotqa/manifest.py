@@ -31,7 +31,7 @@ _AGENT_EXECUTABLE_NAMES: dict[AgentKind, tuple[str, ...]] = {
 }
 
 _AGENT_INVOCATION_TEMPLATES: dict[AgentKind, str] = {
-    AgentKind.CODEX: "codex exec --json [--disable memories] <prompt>",
+    AgentKind.CODEX: "codex exec --json --skip-git-repo-check [--disable memories] <prompt>",
     AgentKind.CLAUDE_CODE: "claude -p <prompt> --output-format json",
     AgentKind.HERMES: "hermes -z <prompt>",
     AgentKind.OPENCLAW: (

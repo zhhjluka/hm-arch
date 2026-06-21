@@ -26,6 +26,7 @@ from .failure_provenance import build_query_failure_provenance
 from .metrics import (
     aggregate_query_records,
     exact_match_accuracy,
+    hotpotqa_exact_match_accuracy,
     retrieval_hit_rate,
 )
 from .output import (
@@ -435,7 +436,12 @@ class CrossAgentBenchmarkHarness:
             total_ms = agent_out.agent_time_ms
         else:
             total_ms = (time.perf_counter() - t0) * 1000.0
-        accuracy = exact_match_accuracy(query.expected_answer, agent_out.answer)
+        accuracy_fn = (
+            hotpotqa_exact_match_accuracy
+            if config.family is BenchmarkFamily.HOTPOTQA
+            else exact_match_accuracy
+        )
+        accuracy = accuracy_fn(query.expected_answer, agent_out.answer)
         hit_rate = (
             None
             if hook_managed

@@ -10,8 +10,16 @@ from pathlib import Path
 from typing import Any
 
 from ..compatibility import CellImplementation, lookup_matrix_cell
+from ..fixtures.hotpotqa import load_hotpotqa_config
 from ..metrics import approximate_token_count
-from ..types import AgentKind, AgentOutcome, BenchmarkQuery, BenchmarkRunConfig, MemoryBackendKind
+from ..types import (
+    AgentKind,
+    AgentOutcome,
+    BenchmarkFamily,
+    BenchmarkQuery,
+    BenchmarkRunConfig,
+    MemoryBackendKind,
+)
 from .cli_parsers import (
     parse_claude_json_output,
     parse_codex_exec_jsonl,
@@ -303,6 +311,9 @@ class CliAgentRunner(ABC):
     def _format_prompt(self, payload: dict[str, Any]) -> str:
         context = str(payload.get("context", "")).strip()
         question = str(payload.get("question", "")).strip()
+        if self.config.family is BenchmarkFamily.HOTPOTQA:
+            template = str(load_hotpotqa_config()["answer_prompt_template"])
+            return template.format(context=context, question=question)
         if context:
             return f"{context}\n\nQuestion: {question}"
         return question
@@ -408,6 +419,7 @@ class CodexCliAgentRunner(CliAgentRunner):
             executable,
             "exec",
             "--json",
+            "--skip-git-repo-check",
             prompt,
         ]
         if self.config.backend is not MemoryBackendKind.NATIVE_MEMORY:

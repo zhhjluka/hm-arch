@@ -215,8 +215,9 @@ def build_matrix_summary(
             nm_acc = [row.mean_accuracy for row in no_memory_rows if row.mean_accuracy is not None]
             if hm_acc and nm_acc and statistics.mean(hm_acc) != statistics.mean(nm_acc):
                 tradeoffs.append(
-                    "HM-Arch improves answer accuracy over no-memory by supplying recalled context "
-                    f"(mean accuracy {statistics.mean(hm_acc):.2f} vs {statistics.mean(nm_acc):.2f})."
+                    "Answer accuracy comparison "
+                    f"(HM-Arch mean {statistics.mean(hm_acc):.2f}; "
+                    f"no-memory mean {statistics.mean(nm_acc):.2f})."
                 )
             k5_recall = next(
                 (
@@ -240,7 +241,7 @@ def build_matrix_summary(
                 and k5_recall != k20_recall
             ):
                 tradeoffs.append(
-                    "HM-Arch retrieval hit rate scales with top-k "
+                    "HM-Arch retrieval hit rate by top-k "
                     f"(k=5: {k5_recall:.2f}, k=20: {k20_recall:.2f})."
                 )
             hm_latency = [
@@ -253,9 +254,9 @@ def build_matrix_summary(
             ]
             if hm_latency and nm_latency:
                 tradeoffs.append(
-                    "Recall adds latency versus no-memory "
-                    f"(mean query time {statistics.mean(hm_latency):.1f} ms vs "
-                    f"{statistics.mean(nm_latency):.1f} ms)."
+                    "Mean query time comparison "
+                    f"(HM-Arch {statistics.mean(hm_latency):.1f} ms; "
+                    f"no-memory {statistics.mean(nm_latency):.1f} ms)."
                 )
             hm_tokens = [
                 row.total_input_tokens for row in hm_arch_rows if row.total_input_tokens is not None
@@ -267,9 +268,9 @@ def build_matrix_summary(
             ]
             if hm_tokens and nm_tokens and statistics.mean(hm_tokens) != statistics.mean(nm_tokens):
                 tradeoffs.append(
-                    "Higher top-k and recalled context increase input tokens "
-                    f"(HM-Arch mean {statistics.mean(hm_tokens):.0f} vs "
-                    f"no-memory {statistics.mean(nm_tokens):.0f})."
+                    "Input token comparison "
+                    f"(HM-Arch mean {statistics.mean(hm_tokens):.0f}; "
+                    f"no-memory mean {statistics.mean(nm_tokens):.0f})."
                 )
             token_sources = sorted(
                 {

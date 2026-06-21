@@ -22,6 +22,7 @@ from benchmarks.cross_agent.fixtures.synthetic import all_synthetic_fixtures
 from benchmarks.cross_agent.metrics import (
     approximate_token_count,
     exact_match_accuracy,
+    hotpotqa_exact_match_accuracy,
     retrieval_hit_rate,
 )
 from benchmarks.cross_agent.protocol import AgentRunner, MemoryBackend
@@ -372,6 +373,9 @@ def test_all_agents_use_synthetic_runner() -> None:
 def test_metric_helpers() -> None:
     assert exact_match_accuracy("Seattle", "  seattle ") == 1.0
     assert exact_match_accuracy("Seattle", "Boston") == 0.0
+    assert hotpotqa_exact_match_accuracy("Norway", "Norway.") == 1.0
+    assert hotpotqa_exact_match_accuracy("The Hague", "Hague") == 1.0
+    assert hotpotqa_exact_match_accuracy("Norway", "Sweden") == 0.0
     assert retrieval_hit_rate(("a", "b"), ("a", "c")) == 0.5
     assert approximate_token_count("one two\nthree") == 3
 

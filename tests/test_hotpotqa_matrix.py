@@ -311,3 +311,69 @@ def test_build_matrix_summary_skips_equal_accuracy_tradeoff() -> None:
     tradeoff_text = " ".join(summary["tradeoffs"])
     assert "0.50 vs 0.50" not in tradeoff_text
     assert "improves answer accuracy" not in tradeoff_text
+
+
+def test_build_matrix_summary_uses_neutral_metric_comparisons() -> None:
+    hm_row = HotpotqaCellSummary(
+        agent="codex",
+        backend="hm_arch",
+        top_k=5,
+        status="run",
+        rationale="",
+        execution_mode="comparison",
+        use_mock_agent=False,
+        runner_implementation="codex-cli",
+        agent_executable="codex",
+        executable_source="path",
+        cli_mode="real",
+        run_id="run-hm",
+        query_count=2,
+        mean_accuracy=0.25,
+        mean_retrieval_hit_rate=0.25,
+        mean_supporting_fact_recall=0.25,
+        mean_query_time_ms=40.0,
+        p95_query_time_ms=45.0,
+        total_input_tokens=40,
+        total_output_tokens=10,
+        total_failure_count=0,
+        completed_query_count=2,
+        index_storage_bytes=None,
+    )
+    nm_row = HotpotqaCellSummary(
+        agent="codex",
+        backend="no_memory",
+        top_k=5,
+        status="run",
+        rationale="",
+        execution_mode="comparison",
+        use_mock_agent=False,
+        runner_implementation="codex-cli",
+        agent_executable="codex",
+        executable_source="path",
+        cli_mode="real",
+        run_id="run-nm",
+        query_count=2,
+        mean_accuracy=0.75,
+        mean_retrieval_hit_rate=0.0,
+        mean_supporting_fact_recall=None,
+        mean_query_time_ms=80.0,
+        p95_query_time_ms=85.0,
+        total_input_tokens=80,
+        total_output_tokens=10,
+        total_failure_count=0,
+        completed_query_count=2,
+        index_storage_bytes=None,
+    )
+    summary = build_matrix_summary(
+        cell_summaries=[hm_row, nm_row],
+        output_root=Path("benchmark-results/hotpotqa"),
+        execution_mode="comparison",
+        use_mock_agent=False,
+    )
+    tradeoff_text = " ".join(summary["tradeoffs"])
+    assert "Answer accuracy comparison" in tradeoff_text
+    assert "Mean query time comparison" in tradeoff_text
+    assert "Input token comparison" in tradeoff_text
+    assert "improves" not in tradeoff_text
+    assert "adds latency" not in tradeoff_text
+    assert "increase input tokens" not in tradeoff_text

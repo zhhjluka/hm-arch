@@ -1,8 +1,0 @@
-{
-  "status": "pending",
-  "agent": "codex",
-  "backend": "hm_arch",
-  "top_k": 5,
-  "seed": 0,
-  "rationale": "Agent CLI executable not found on PATH; install the host agent (codex, claude, hermes) and re-run with --use-real-cli."
-}
