@@ -42,6 +42,7 @@ class HotpotqaCellSummary:
     total_output_tokens: int | None
     total_failure_count: int | None
     index_storage_bytes: int | None
+    completed_query_count: int | None = None
     input_token_sources: list[str] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -119,6 +120,7 @@ def summarize_cell(
           total_input_tokens=None,
           total_output_tokens=None,
           total_failure_count=None,
+          completed_query_count=None,
           index_storage_bytes=None,
       )
 
@@ -148,9 +150,19 @@ def summarize_cell(
       total_input_tokens=result.aggregates.total_input_tokens,
       total_output_tokens=result.aggregates.total_output_tokens,
       total_failure_count=result.aggregates.total_failure_count,
+      completed_query_count=result.aggregates.completed_query_count,
       index_storage_bytes=_storage_bytes(result.storage_dir),
       input_token_sources=token_sources or None,
   )
+
+
+def _cell_completed_successfully(row: HotpotqaCellSummary) -> bool:
+    """True when every query in the cell completed without failures."""
+    if row.query_count == 0:
+        return False
+    if row.completed_query_count is None:
+        return False
+    return row.completed_query_count == row.query_count
 
 
 def build_matrix_summary(
@@ -170,7 +182,15 @@ def build_matrix_summary(
         and row.use_mock_agent is False
         and row.executable_source != "fake_double"
     ]
-    executed = comparison_rows
+    attempted = comparison_rows
+    completed = [row for row in comparison_rows if _cell_completed_successfully(row)]
+    failed = [
+        row
+        for row in comparison_rows
+        if row.query_count > 0
+        and not _cell_completed_successfully(row)
+        and (row.total_failure_count or 0) > 0
+    ]
     test_double = [
         row
         for row in cell_summaries
@@ -187,13 +207,13 @@ def build_matrix_summary(
     unsupported = [row for row in cell_summaries if row.status == CellStatus.UNSUPPORTED.value]
 
     tradeoffs: list[str] = []
-    if not use_mock_agent and executed:
-        hm_arch_rows = [row for row in executed if row.backend == "hm_arch"]
-        no_memory_rows = [row for row in executed if row.backend == "no_memory"]
+    if not use_mock_agent and completed:
+        hm_arch_rows = [row for row in completed if row.backend == "hm_arch"]
+        no_memory_rows = [row for row in completed if row.backend == "no_memory"]
         if hm_arch_rows and no_memory_rows:
             hm_acc = [row.mean_accuracy for row in hm_arch_rows if row.mean_accuracy is not None]
             nm_acc = [row.mean_accuracy for row in no_memory_rows if row.mean_accuracy is not None]
-            if hm_acc and nm_acc:
+            if hm_acc and nm_acc and statistics.mean(hm_acc) != statistics.mean(nm_acc):
                 tradeoffs.append(
                     "HM-Arch improves answer accuracy over no-memory by supplying recalled context "
                     f"(mean accuracy {statistics.mean(hm_acc):.2f} vs {statistics.mean(nm_acc):.2f})."
@@ -214,7 +234,11 @@ def build_matrix_summary(
                 ),
                 None,
             )
-            if k5_recall is not None and k20_recall is not None:
+            if (
+                k5_recall is not None
+                and k20_recall is not None
+                and k5_recall != k20_recall
+            ):
                 tradeoffs.append(
                     "HM-Arch retrieval hit rate scales with top-k "
                     f"(k=5: {k5_recall:.2f}, k=20: {k20_recall:.2f})."
@@ -241,7 +265,7 @@ def build_matrix_summary(
                 for row in no_memory_rows
                 if row.total_input_tokens is not None
             ]
-            if hm_tokens and nm_tokens:
+            if hm_tokens and nm_tokens and statistics.mean(hm_tokens) != statistics.mean(nm_tokens):
                 tradeoffs.append(
                     "Higher top-k and recalled context increase input tokens "
                     f"(HM-Arch mean {statistics.mean(hm_tokens):.0f} vs "
@@ -250,7 +274,7 @@ def build_matrix_summary(
             token_sources = sorted(
                 {
                     source
-                    for row in executed
+                    for row in completed
                     for source in (row.input_token_sources or [])
                 }
             )
@@ -260,12 +284,17 @@ def build_matrix_summary(
                     + ", ".join(token_sources)
                     + " CLI usage fields where available."
                 )
+    elif not use_mock_agent and attempted and not completed:
+        tradeoffs.append(
+            "No valid completed comparisons: all executed cells recorded agent or recall "
+            "failures. See per-query failure_reason and agent_exit_code in queries.jsonl."
+        )
     elif test_double:
         tradeoffs.append(
             "Test-double CLI cells completed for harness validation only; "
             "accuracy, latency, and token metrics are not agent conclusions."
         )
-    elif pending and not executed:
+    elif pending and not attempted:
         tradeoffs.append(
             "No host agent CLIs were available for comparison; install codex, claude, "
             "or hermes and re-run scripts/run_hotpotqa_matrix.py --use-real-cli."
@@ -283,7 +312,9 @@ def build_matrix_summary(
         "answer_prompt_template": config["answer_prompt_template"],
         "top_k_values": [5, 20],
         "matrix_size": len(list(iter_hotpotqa_matrix_cells())),
-        "executed_cells": len(executed),
+        "executed_cells": len(attempted),
+        "completed_cells": len(completed),
+        "failed_cells": len(failed),
         "test_double_cells": len(test_double),
         "mock_smoke_cells": len(mock_smoke),
         "pending_cells": len(pending),

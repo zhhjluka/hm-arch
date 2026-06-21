@@ -129,6 +129,7 @@ def resolve_comparison_executable(
         path = resolve_agent_executable(
             agent.value,
             default_names=_AGENT_EXECUTABLE_NAMES[agent],
+            production_only=True,
         )
         if path is not None:
             source = "path"

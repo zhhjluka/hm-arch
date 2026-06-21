@@ -53,10 +53,11 @@ def aggregate_query_records(records: list[QueryRecord]) -> AggregateMetrics:
     hit_rates = [
         r.retrieval_hit_rate for r in records if r.retrieval_hit_rate is not None
     ]
+    completed = [r for r in records if r.failure_count == 0]
 
     return AggregateMetrics(
         query_count=len(records),
-        completed_query_count=len(records),
+        completed_query_count=len(completed),
         mean_accuracy=(sum(accuracies) / len(accuracies)) if accuracies else None,
         task_success_rate=(sum(1 for s in successes if s) / len(successes))
         if successes

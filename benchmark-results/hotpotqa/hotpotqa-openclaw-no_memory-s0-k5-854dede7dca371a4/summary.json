@@ -32,9 +32,9 @@
       "accuracy": 0.0,
       "task_success": null,
       "retrieval_hit_rate": 0.0,
-      "recall_time_ms": 0.00027500209398567677,
-      "agent_time_ms": 4473.311708017718,
-      "query_time_ms": 4473.48195000086,
+      "recall_time_ms": 0.0002820161171257496,
+      "agent_time_ms": 4482.904786011204,
+      "query_time_ms": 4482.983408990549,
       "input_tokens": 0,
       "output_tokens": 0,
       "failure_count": 1,
@@ -48,7 +48,13 @@
       ],
       "recall_context_chars": 0,
       "recall_hit_count": 0,
-      "agent_managed": false
+      "agent_managed": false,
+      "failure_reason": "agent: CLI exited 1: [diagnostic] lane task error: lane=main durationMs=1832 error=\"Error: No API key found for provider \"openai\". Auth store: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent/auth-profiles.json (agentDir: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent). Configure auth for this agent (openclaw agents add <id>) or c...",
+      "failure_category": "agent_cli_exit",
+      "recall_failure_reason": null,
+      "agent_failure_reason": "CLI exited 1: [diagnostic] lane task error: lane=main durationMs=1832 error=\"Error: No API key found for provider \"openai\". Auth store: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent/auth-profiles.json (agentDir: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent). Configure auth for this agent (openclaw agents add <id>) or c...",
+      "agent_exit_code": 1,
+      "agent_timed_out": false
     },
     {
       "query_id": "hotpot-q2",
@@ -59,9 +65,9 @@
       "accuracy": 0.0,
       "task_success": null,
       "retrieval_hit_rate": 0.0,
-      "recall_time_ms": 0.00014799297787249088,
-      "agent_time_ms": 4331.701558985515,
-      "query_time_ms": 4331.759124994278,
+      "recall_time_ms": 0.0001650187186896801,
+      "agent_time_ms": 4233.261271001538,
+      "query_time_ms": 4233.320084982552,
       "input_tokens": 0,
       "output_tokens": 0,
       "failure_count": 1,
@@ -74,7 +80,13 @@
       ],
       "recall_context_chars": 0,
       "recall_hit_count": 0,
-      "agent_managed": false
+      "agent_managed": false,
+      "failure_reason": "agent: CLI exited 1: [diagnostic] lane task error: lane=main durationMs=1708 error=\"Error: No API key found for provider \"openai\". Auth store: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent/auth-profiles.json (agentDir: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent). Configure auth for this agent (openclaw agents add <id>) or c...",
+      "failure_category": "agent_cli_exit",
+      "recall_failure_reason": null,
+      "agent_failure_reason": "CLI exited 1: [diagnostic] lane task error: lane=main durationMs=1708 error=\"Error: No API key found for provider \"openai\". Auth store: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent/auth-profiles.json (agentDir: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent). Configure auth for this agent (openclaw agents add <id>) or c...",
+      "agent_exit_code": 1,
+      "agent_timed_out": false
     },
     {
       "query_id": "hotpot-q3",
@@ -85,9 +97,9 @@
       "accuracy": 0.0,
       "task_success": null,
       "retrieval_hit_rate": 0.0,
-      "recall_time_ms": 0.00014199758879840374,
-      "agent_time_ms": 4315.086404996691,
-      "query_time_ms": 4315.131883980939,
+      "recall_time_ms": 0.00014898250810801983,
+      "agent_time_ms": 4306.10825898475,
+      "query_time_ms": 4306.156709993957,
       "input_tokens": 0,
       "output_tokens": 0,
       "failure_count": 1,
@@ -100,7 +112,13 @@
       ],
       "recall_context_chars": 0,
       "recall_hit_count": 0,
-      "agent_managed": false
+      "agent_managed": false,
+      "failure_reason": "agent: CLI exited 1: [diagnostic] lane task error: lane=main durationMs=1754 error=\"Error: No API key found for provider \"openai\". Auth store: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent/auth-profiles.json (agentDir: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent). Configure auth for this agent (openclaw agents add <id>) or c...",
+      "failure_category": "agent_cli_exit",
+      "recall_failure_reason": null,
+      "agent_failure_reason": "CLI exited 1: [diagnostic] lane task error: lane=main durationMs=1754 error=\"Error: No API key found for provider \"openai\". Auth store: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent/auth-profiles.json (agentDir: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent). Configure auth for this agent (openclaw agents add <id>) or c...",
+      "agent_exit_code": 1,
+      "agent_timed_out": false
     },
     {
       "query_id": "hotpot-q4",
@@ -111,9 +129,9 @@
       "accuracy": 0.0,
       "task_success": null,
       "retrieval_hit_rate": 0.0,
-      "recall_time_ms": 0.00013501266948878765,
-      "agent_time_ms": 4339.320133993169,
-      "query_time_ms": 4339.367390988627,
+      "recall_time_ms": 0.0001720036379992962,
+      "agent_time_ms": 4523.86208702228,
+      "query_time_ms": 4523.9134230068885,
       "input_tokens": 0,
       "output_tokens": 0,
       "failure_count": 1,
@@ -127,7 +145,13 @@
       ],
       "recall_context_chars": 0,
       "recall_hit_count": 0,
-      "agent_managed": false
+      "agent_managed": false,
+      "failure_reason": "agent: CLI exited 1: [diagnostic] lane task error: lane=main durationMs=1924 error=\"Error: No API key found for provider \"openai\". Auth store: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent/auth-profiles.json (agentDir: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent). Configure auth for this agent (openclaw agents add <id>) or c...",
+      "failure_category": "agent_cli_exit",
+      "recall_failure_reason": null,
+      "agent_failure_reason": "CLI exited 1: [diagnostic] lane task error: lane=main durationMs=1924 error=\"Error: No API key found for provider \"openai\". Auth store: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent/auth-profiles.json (agentDir: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent). Configure auth for this agent (openclaw agents add <id>) or c...",
+      "agent_exit_code": 1,
+      "agent_timed_out": false
     },
     {
       "query_id": "hotpot-q5",
@@ -138,9 +162,9 @@
       "accuracy": 0.0,
       "task_success": null,
       "retrieval_hit_rate": 0.0,
-      "recall_time_ms": 0.00013801036402583122,
-      "agent_time_ms": 4450.692748010624,
-      "query_time_ms": 4450.739776977571,
+      "recall_time_ms": 0.00015099067240953445,
+      "agent_time_ms": 4579.076602007262,
+      "query_time_ms": 4579.130433994578,
       "input_tokens": 0,
       "output_tokens": 0,
       "failure_count": 1,
@@ -154,16 +178,22 @@
       ],
       "recall_context_chars": 0,
       "recall_hit_count": 0,
-      "agent_managed": false
+      "agent_managed": false,
+      "failure_reason": "agent: CLI exited 1: [diagnostic] lane task error: lane=main durationMs=1889 error=\"Error: No API key found for provider \"openai\". Auth store: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent/auth-profiles.json (agentDir: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent). Configure auth for this agent (openclaw agents add <id>) or c...",
+      "failure_category": "agent_cli_exit",
+      "recall_failure_reason": null,
+      "agent_failure_reason": "CLI exited 1: [diagnostic] lane task error: lane=main durationMs=1889 error=\"Error: No API key found for provider \"openai\". Auth store: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent/auth-profiles.json (agentDir: /workspace/benchmark-results/hotpotqa/hotpotqa-openclaw-no_memory-s0-k5-854dede7dca371a4/agent_workspace/agent_home/agents/main/agent). Configure auth for this agent (openclaw agents add <id>) or c...",
+      "agent_exit_code": 1,
+      "agent_timed_out": false
     }
   ],
   "aggregates": {
     "query_count": 5,
-    "completed_query_count": 5,
+    "completed_query_count": 0,
     "mean_accuracy": 0.0,
     "task_success_rate": null,
     "mean_retrieval_hit_rate": 0.0,
-    "mean_query_time_ms": 4382.096025388455,
+    "mean_query_time_ms": 4425.100812193705,
     "total_input_tokens": 0,
     "total_output_tokens": 0,
     "total_failure_count": 5
@@ -171,7 +201,7 @@
   "environment": {
     "python": "3.12.3",
     "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-    "timestamp_utc": "2026-06-21T07:31:26.972809+00:00"
+    "timestamp_utc": "2026-06-21T07:48:35.430401+00:00"
   },
   "agent_metadata": {
     "matrix_implementation": "real",

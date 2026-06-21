@@ -179,6 +179,12 @@ class QueryRecord:
     recall_context_chars: int = 0
     recall_hit_count: int = 0
     agent_managed: bool = False
+    failure_reason: str | None = None
+    failure_category: str | None = None
+    recall_failure_reason: str | None = None
+    agent_failure_reason: str | None = None
+    agent_exit_code: int | None = None
+    agent_timed_out: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

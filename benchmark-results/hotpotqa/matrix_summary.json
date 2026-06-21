@@ -14,6 +14,8 @@
   ],
   "matrix_size": 40,
   "executed_cells": 4,
+  "completed_cells": 0,
+  "failed_cells": 4,
   "test_double_cells": 0,
   "mock_smoke_cells": 0,
   "pending_cells": 12,
@@ -36,15 +38,12 @@
     }
   },
   "agent_cli_unavailable": [
-    "hermes",
     "codex",
+    "hermes",
     "claude_code"
   ],
   "tradeoffs": [
-    "HM-Arch improves answer accuracy over no-memory by supplying recalled context (mean accuracy 0.00 vs 0.00).",
-    "Recall adds latency versus no-memory (mean query time 1565.6 ms vs 4389.1 ms).",
-    "Higher top-k and recalled context increase input tokens (HM-Arch mean 0 vs no-memory 0).",
-    "Input token counts are sourced from estimated CLI usage fields where available."
+    "No valid completed comparisons: all executed cells recorded agent or recall failures. See per-query failure_reason and agent_exit_code in queries.jsonl."
   ],
   "cells": [
     {
@@ -64,12 +63,13 @@
       "mean_accuracy": 0.0,
       "mean_retrieval_hit_rate": 0.0,
       "mean_supporting_fact_recall": 0.0,
-      "mean_query_time_ms": 4382.096025388455,
-      "p95_query_time_ms": 4489.401471117162,
+      "mean_query_time_ms": 4425.100812193705,
+      "p95_query_time_ms": 4617.782341685961,
       "total_input_tokens": 0,
       "total_output_tokens": 0,
       "total_failure_count": 5,
-      "index_storage_bytes": 4780,
+      "index_storage_bytes": 10857,
+      "completed_query_count": 0,
       "input_token_sources": [
         "estimated"
       ]
@@ -91,12 +91,13 @@
       "mean_accuracy": 0.0,
       "mean_retrieval_hit_rate": 0.0,
       "mean_supporting_fact_recall": 0.0,
-      "mean_query_time_ms": 4396.105266193626,
-      "p95_query_time_ms": 4579.896836495027,
+      "mean_query_time_ms": 4509.71306959982,
+      "p95_query_time_ms": 4686.6966326284455,
       "total_input_tokens": 0,
       "total_output_tokens": 0,
       "total_failure_count": 5,
-      "index_storage_bytes": 4782,
+      "index_storage_bytes": 10862,
+      "completed_query_count": 0,
       "input_token_sources": [
         "estimated"
       ]
@@ -124,6 +125,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -149,6 +151,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -168,12 +171,13 @@
       "mean_accuracy": 0.0,
       "mean_retrieval_hit_rate": null,
       "mean_supporting_fact_recall": 0.0,
-      "mean_query_time_ms": 1550.6889144016895,
-      "p95_query_time_ms": 1581.7856556910556,
+      "mean_query_time_ms": 1559.939571598079,
+      "p95_query_time_ms": 1578.121421005926,
       "total_input_tokens": 0,
       "total_output_tokens": 0,
       "total_failure_count": 5,
-      "index_storage_bytes": 94802,
+      "index_storage_bytes": 98762,
+      "completed_query_count": 0,
       "input_token_sources": [
         "estimated"
       ]
@@ -195,12 +199,13 @@
       "mean_accuracy": 0.0,
       "mean_retrieval_hit_rate": null,
       "mean_supporting_fact_recall": 0.0,
-      "mean_query_time_ms": 1580.5024528002832,
-      "p95_query_time_ms": 1675.4822812858038,
+      "mean_query_time_ms": 1534.7088533919305,
+      "p95_query_time_ms": 1553.19306087913,
       "total_input_tokens": 0,
       "total_output_tokens": 0,
       "total_failure_count": 5,
-      "index_storage_bytes": 94802,
+      "index_storage_bytes": 98774,
+      "completed_query_count": 0,
       "input_token_sources": [
         "estimated"
       ]
@@ -228,6 +233,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -253,6 +259,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -278,6 +285,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -303,6 +311,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -328,6 +337,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -353,6 +363,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -378,6 +389,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -403,6 +415,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -428,6 +441,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -453,6 +467,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -478,6 +493,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -503,6 +519,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -528,6 +545,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -553,6 +571,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -578,6 +597,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -603,6 +623,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -628,6 +649,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -653,6 +675,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -678,6 +701,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -703,6 +727,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -728,6 +753,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -753,6 +779,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -778,6 +805,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -803,6 +831,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -828,6 +857,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -853,6 +883,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -878,6 +909,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -903,6 +935,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -928,6 +961,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -953,6 +987,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -978,6 +1013,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -1003,6 +1039,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -1028,6 +1065,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     },
     {
@@ -1053,6 +1091,7 @@
       "total_output_tokens": null,
       "total_failure_count": null,
       "index_storage_bytes": null,
+      "completed_query_count": null,
       "input_token_sources": null
     }
   ]

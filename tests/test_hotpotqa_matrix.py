@@ -23,6 +23,8 @@ from benchmarks.cross_agent.hotpotqa import (
     run_hotpotqa_matrix,
     runnable_non_openclaw_cells,
 )
+from benchmarks.cross_agent.hotpotqa.manifest import resolve_comparison_executable
+from benchmarks.cross_agent.hotpotqa.summary import HotpotqaCellSummary, build_matrix_summary
 from benchmarks.cross_agent.types import AgentKind, BenchmarkFamily, MemoryBackendKind
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -198,3 +200,114 @@ def test_run_hotpotqa_matrix_comparison_without_cli_marks_pending(
     ]
     assert len(cli_pending) == 16
     assert all("not found on PATH" in row["rationale"] for row in cli_pending)
+
+
+def test_production_resolution_ignores_bench_env_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PATH", "")
+    monkeypatch.setenv("HM_ARCH_BENCH_CODEX_EXECUTABLE", "/bin/false")
+    assert resolve_comparison_executable(AgentKind.CODEX, allow_test_double=False) is None
+
+
+def test_build_matrix_summary_excludes_all_failed_cells_from_tradeoffs() -> None:
+    failed_row = HotpotqaCellSummary(
+        agent="openclaw",
+        backend="hm_arch",
+        top_k=5,
+        status="run",
+        rationale="",
+        execution_mode="comparison",
+        use_mock_agent=False,
+        runner_implementation="openclaw-cli",
+        agent_executable="openclaw",
+        executable_source="path",
+        cli_mode="real",
+        run_id="hotpotqa-openclaw-hm_arch-s0-k5-test",
+        query_count=5,
+        mean_accuracy=0.0,
+        mean_retrieval_hit_rate=None,
+        mean_supporting_fact_recall=0.0,
+        mean_query_time_ms=1500.0,
+        p95_query_time_ms=1600.0,
+        total_input_tokens=0,
+        total_output_tokens=0,
+        total_failure_count=5,
+        completed_query_count=0,
+        index_storage_bytes=None,
+    )
+    summary = build_matrix_summary(
+        cell_summaries=[failed_row],
+        output_root=Path("benchmark-results/hotpotqa"),
+        execution_mode="comparison",
+        use_mock_agent=False,
+    )
+    assert summary["executed_cells"] == 1
+    assert summary["completed_cells"] == 0
+    assert summary["failed_cells"] == 1
+    assert summary["tradeoffs"] == [
+        "No valid completed comparisons: all executed cells recorded agent or recall "
+        "failures. See per-query failure_reason and agent_exit_code in queries.jsonl."
+    ]
+
+
+def test_build_matrix_summary_skips_equal_accuracy_tradeoff() -> None:
+    hm_row = HotpotqaCellSummary(
+        agent="codex",
+        backend="hm_arch",
+        top_k=5,
+        status="run",
+        rationale="",
+        execution_mode="comparison",
+        use_mock_agent=False,
+        runner_implementation="codex-cli",
+        agent_executable="codex",
+        executable_source="path",
+        cli_mode="real",
+        run_id="run-hm",
+        query_count=2,
+        mean_accuracy=0.5,
+        mean_retrieval_hit_rate=0.5,
+        mean_supporting_fact_recall=0.5,
+        mean_query_time_ms=100.0,
+        p95_query_time_ms=110.0,
+        total_input_tokens=100,
+        total_output_tokens=10,
+        total_failure_count=0,
+        completed_query_count=2,
+        index_storage_bytes=None,
+    )
+    nm_row = HotpotqaCellSummary(
+        agent="codex",
+        backend="no_memory",
+        top_k=5,
+        status="run",
+        rationale="",
+        execution_mode="comparison",
+        use_mock_agent=False,
+        runner_implementation="codex-cli",
+        agent_executable="codex",
+        executable_source="path",
+        cli_mode="real",
+        run_id="run-nm",
+        query_count=2,
+        mean_accuracy=0.5,
+        mean_retrieval_hit_rate=0.0,
+        mean_supporting_fact_recall=None,
+        mean_query_time_ms=50.0,
+        p95_query_time_ms=55.0,
+        total_input_tokens=50,
+        total_output_tokens=5,
+        total_failure_count=0,
+        completed_query_count=2,
+        index_storage_bytes=None,
+    )
+    summary = build_matrix_summary(
+        cell_summaries=[hm_row, nm_row],
+        output_root=Path("benchmark-results/hotpotqa"),
+        execution_mode="comparison",
+        use_mock_agent=False,
+    )
+    tradeoff_text = " ".join(summary["tradeoffs"])
+    assert "0.50 vs 0.50" not in tradeoff_text
+    assert "improves answer accuracy" not in tradeoff_text

@@ -39,8 +39,8 @@
     }
   },
   "agent_cli_unavailable": [
-    "hermes",
     "codex",
+    "hermes",
     "claude_code"
   ]
 }

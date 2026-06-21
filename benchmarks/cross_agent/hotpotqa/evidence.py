@@ -45,6 +45,11 @@ def build_retrieval_evidence_rows(
         "recall_hit_count": record.recall_hit_count,
         "recall_time_ms": record.recall_time_ms,
         "agent_managed": record.agent_managed,
+        "failure_reason": record.failure_reason,
+        "failure_category": record.failure_category,
+        "agent_failure_reason": record.agent_failure_reason,
+        "agent_exit_code": record.agent_exit_code,
+        "agent_timed_out": record.agent_timed_out,
       }
     )
   return rows

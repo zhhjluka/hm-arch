@@ -32,9 +32,9 @@
       "accuracy": 0.0,
       "task_success": null,
       "retrieval_hit_rate": 0.3333333333333333,
-      "recall_time_ms": 59.68547298107296,
-      "agent_time_ms": 0.053580006351694465,
-      "query_time_ms": 59.75584700354375,
+      "recall_time_ms": 19.742770004086196,
+      "agent_time_ms": 0.052185001550242305,
+      "query_time_ms": 19.81324900407344,
       "input_tokens": 128,
       "output_tokens": 1,
       "failure_count": 0,
@@ -50,7 +50,13 @@
       ],
       "recall_context_chars": 858,
       "recall_hit_count": 5,
-      "agent_managed": false
+      "agent_managed": false,
+      "failure_reason": null,
+      "failure_category": null,
+      "recall_failure_reason": null,
+      "agent_failure_reason": null,
+      "agent_exit_code": null,
+      "agent_timed_out": null
     },
     {
       "query_id": "hotpot-q2",
@@ -61,9 +67,9 @@
       "accuracy": 1.0,
       "task_success": null,
       "retrieval_hit_rate": 1.0,
-      "recall_time_ms": 64.90801202016883,
-      "agent_time_ms": 0.03123600617982447,
-      "query_time_ms": 64.95620199711993,
+      "recall_time_ms": 50.201519014080986,
+      "agent_time_ms": 0.03358698450028896,
+      "query_time_ms": 50.25420099264011,
       "input_tokens": 114,
       "output_tokens": 1,
       "failure_count": 0,
@@ -80,7 +86,13 @@
       ],
       "recall_context_chars": 740,
       "recall_hit_count": 5,
-      "agent_managed": false
+      "agent_managed": false,
+      "failure_reason": null,
+      "failure_category": null,
+      "recall_failure_reason": null,
+      "agent_failure_reason": null,
+      "agent_exit_code": null,
+      "agent_timed_out": null
     },
     {
       "query_id": "hotpot-q3",
@@ -91,9 +103,9 @@
       "accuracy": 0.0,
       "task_success": null,
       "retrieval_hit_rate": 0.5,
-      "recall_time_ms": 57.36554300528951,
-      "agent_time_ms": 0.05110297934152186,
-      "query_time_ms": 57.4321530002635,
+      "recall_time_ms": 30.41512399795465,
+      "agent_time_ms": 0.05388399586081505,
+      "query_time_ms": 30.485129012959078,
       "input_tokens": 129,
       "output_tokens": 1,
       "failure_count": 0,
@@ -109,7 +121,13 @@
       ],
       "recall_context_chars": 837,
       "recall_hit_count": 5,
-      "agent_managed": false
+      "agent_managed": false,
+      "failure_reason": null,
+      "failure_category": null,
+      "recall_failure_reason": null,
+      "agent_failure_reason": null,
+      "agent_exit_code": null,
+      "agent_timed_out": null
     },
     {
       "query_id": "hotpot-q4",
@@ -120,9 +138,9 @@
       "accuracy": 1.0,
       "task_success": null,
       "retrieval_hit_rate": 0.3333333333333333,
-      "recall_time_ms": 60.63405898748897,
-      "agent_time_ms": 0.030392984626814723,
-      "query_time_ms": 60.67962400265969,
+      "recall_time_ms": 44.36021202127449,
+      "agent_time_ms": 0.030486000468954444,
+      "query_time_ms": 44.40655300277285,
       "input_tokens": 109,
       "output_tokens": 1,
       "failure_count": 0,
@@ -138,7 +156,13 @@
       ],
       "recall_context_chars": 712,
       "recall_hit_count": 5,
-      "agent_managed": false
+      "agent_managed": false,
+      "failure_reason": null,
+      "failure_category": null,
+      "recall_failure_reason": null,
+      "agent_failure_reason": null,
+      "agent_exit_code": null,
+      "agent_timed_out": null
     },
     {
       "query_id": "hotpot-q5",
@@ -149,9 +173,9 @@
       "accuracy": 1.0,
       "task_success": null,
       "retrieval_hit_rate": 0.3333333333333333,
-      "recall_time_ms": 48.43004798749462,
-      "agent_time_ms": 0.037801015423610806,
-      "query_time_ms": 48.483298014616594,
+      "recall_time_ms": 41.68603598373011,
+      "agent_time_ms": 0.0318520178552717,
+      "query_time_ms": 41.7360270221252,
       "input_tokens": 112,
       "output_tokens": 1,
       "failure_count": 0,
@@ -167,7 +191,13 @@
       ],
       "recall_context_chars": 744,
       "recall_hit_count": 5,
-      "agent_managed": false
+      "agent_managed": false,
+      "failure_reason": null,
+      "failure_category": null,
+      "recall_failure_reason": null,
+      "agent_failure_reason": null,
+      "agent_exit_code": null,
+      "agent_timed_out": null
     }
   ],
   "aggregates": {
@@ -176,7 +206,7 @@
     "mean_accuracy": 0.6,
     "task_success_rate": null,
     "mean_retrieval_hit_rate": 0.5,
-    "mean_query_time_ms": 58.26142480364069,
+    "mean_query_time_ms": 37.339031806914136,
     "total_input_tokens": 592,
     "total_output_tokens": 5,
     "total_failure_count": 0
@@ -184,7 +214,7 @@
   "environment": {
     "python": "3.12.3",
     "platform": "Linux-6.12.58+-x86_64-with-glibc2.39",
-    "timestamp_utc": "2026-06-21T07:28:32.285134+00:00"
+    "timestamp_utc": "2026-06-21T07:48:31.205930+00:00"
   },
   "agent_metadata": {
     "matrix_implementation": "real",
