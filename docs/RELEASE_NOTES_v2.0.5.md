@@ -47,7 +47,7 @@ Committed pilot artifacts and methodology:
 | Dataset | Committed artifact | Status |
 |---------|-------------------|--------|
 | LoCoMo | `benchmarks/cross_agent/fixtures/locomo/handoff/matrix_summary_real.json` | Real-CLI pilot (1 conversation, 3 queries/cell) |
-| HotpotQA | `benchmark-results/hotpotqa/matrix_summary.json` | Incomplete pilot (partial matrix; many `pending`/`unsupported` cells) |
+| HotpotQA | `benchmark-results/hotpotqa/matrix_summary.json` | Incomplete pilot (4 completed / 4 failed / 8 pending / 24 unsupported) |
 | tau2-bench | `benchmark-results/tau2-comparison/` (`matrix_status.json`, `summary_table.json`) | Availability record (`tau2_importable=false`; no completed real cells) |
 
 Reproduce the LoCoMo handoff:
@@ -73,10 +73,11 @@ python scripts/run_tau2_bench_comparison.py --smoke
   `runner_mode=real` and `test_double_mode=false` support headline comparison
   claims. OpenClaw cells in the committed pilot are `unavailable` when the
   OpenClaw CLI is absent on the host.
-- **HotpotQA pilot** — committed artifact records partial real-CLI runs
-  (`status=run` / `failed` / `pending`). Do not publish headline retrieval
-  comparisons until cells reach `completed` with `runner_mode=real` and
-  `use_mock_agent=false`.
+- **HotpotQA pilot** — committed artifact records partial real-CLI runs using
+  `status=run` rows. Derive completed vs failed from `completed_query_count` and
+  `total_failure_count` (4 completed / 4 failed / 8 pending / 24 unsupported in the
+  committed pilot). Do not publish headline retrieval comparisons outside that
+  incomplete pilot context.
 - **tau2-bench pilot** — committed artifact is an availability record when
   `tau2_importable` is false or agent CLIs are absent. Do not present
   `summary_table.json` rows as successful benchmark comparisons.

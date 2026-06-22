@@ -40,8 +40,8 @@ publication steps and maintainer approval rules.
 
 - LoCoMo committed handoff is a real-CLI pilot with blocked OpenClaw cells when
   the CLI is absent; headline comparison claims require `completed` cells only.
-- HotpotQA committed pilot (`benchmark-results/hotpotqa/`) is incomplete: partial
-  `run`/`failed`/`pending` cells; do not publish headline retrieval comparisons.
+- HotpotQA committed pilot (`benchmark-results/hotpotqa/`) is incomplete:
+  4 completed / 4 failed / 8 pending / 24 unsupported (`status=run` encodes outcomes).
 - tau2-bench committed pilot (`benchmark-results/tau2-comparison/`) is an
   availability record (`tau2_importable=false`); no completed real cells.
 

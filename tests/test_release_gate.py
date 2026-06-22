@@ -15,6 +15,8 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.validate_release_gate import (  # noqa: E402
+    _classify_hotpotqa_cell_outcome,
+    _derive_hotpotqa_counts,
     check_benchmark_doc_claims,
     check_docs_mention_openclaw,
     check_openclaw_plugin_version,
@@ -84,6 +86,63 @@ def test_hotpotqa_artifact_is_git_tracked_and_audited() -> None:
     assert is_git_tracked(HOTPOTQA_SUMMARY)
     issues = [line for line in validate_hotpotqa_artifacts() if not line.startswith("INFO: ")]
     assert issues == []
+
+    summary = json.loads(HOTPOTQA_SUMMARY.read_text(encoding="utf-8"))
+    derived = _derive_hotpotqa_counts(summary["cells"])
+    assert derived == {
+        "completed": summary["completed_cells"],
+        "failed": summary["failed_cells"],
+        "pending": summary["pending_cells"],
+        "unsupported": summary["unsupported_cells"],
+        "run": 0,
+    }
+    info = " ".join(line for line in validate_hotpotqa_artifacts() if line.startswith("INFO: "))
+    assert "4 completed, 4 failed, 8 pending, 24 unsupported" in info
+
+
+def test_hotpotqa_run_row_outcome_classification() -> None:
+    successful = {
+        "status": "run",
+        "completed_query_count": 5,
+        "total_failure_count": 0,
+        "mean_accuracy": 0.6,
+    }
+    failed = {
+        "status": "run",
+        "completed_query_count": 0,
+        "total_failure_count": 5,
+        "mean_accuracy": 0.0,
+    }
+    assert _classify_hotpotqa_cell_outcome(successful) == "completed"
+    assert _classify_hotpotqa_cell_outcome(failed) == "failed"
+
+
+def test_hotpotqa_gate_rejects_counter_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts import validate_release_gate as gate
+
+    payload = {
+        "cells": [
+            {
+                "status": "run",
+                "completed_query_count": 5,
+                "total_failure_count": 0,
+            },
+        ],
+        "completed_cells": 0,
+        "failed_cells": 0,
+        "pending_cells": 0,
+        "unsupported_cells": 0,
+    }
+
+    def fake_read_text(self: Path, encoding: str = "utf-8") -> str:  # noqa: ARG001
+        if self == gate.HOTPOTQA_SUMMARY:
+            return json.dumps(payload)
+        raise AssertionError(f"unexpected read_text: {self}")
+
+    monkeypatch.setattr(gate, "is_git_tracked", lambda _path: True)
+    monkeypatch.setattr(Path, "read_text", fake_read_text)
+    errors = gate.validate_hotpotqa_artifacts()
+    assert any("completed_cells=0 does not match derived completed count 1" in err for err in errors)
 
 
 def test_tau2_artifact_is_git_tracked_and_audited() -> None:

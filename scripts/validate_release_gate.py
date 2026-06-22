@@ -292,6 +292,40 @@ def validate_locomo_handoff() -> list[str]:
     return errors + [f"INFO: {note}" for note in notes]
 
 
+def _classify_hotpotqa_cell_outcome(cell: dict[str, Any]) -> str:
+    """Derive pilot outcome from HotpotQA matrix_summary cell schema."""
+    status = str(cell.get("status", "")).lower()
+    if status in {"unsupported", "pending", "completed", "failed"}:
+        return status
+    if status == "run":
+        completed = int(cell.get("completed_query_count") or 0)
+        failures = int(cell.get("total_failure_count") or 0)
+        if completed > 0 and failures == 0:
+            return "completed"
+        if failures > 0:
+            return "failed"
+        return "run"
+    return status or "unknown"
+
+
+def _derive_hotpotqa_counts(cells: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {"completed": 0, "failed": 0, "pending": 0, "unsupported": 0, "run": 0}
+    for cell in cells:
+        outcome = _classify_hotpotqa_cell_outcome(cell)
+        if outcome in counts:
+            counts[outcome] += 1
+    return counts
+
+
+def _hotpotqa_top_level_counter_keys() -> dict[str, str]:
+    return {
+        "completed": "completed_cells",
+        "failed": "failed_cells",
+        "pending": "pending_cells",
+        "unsupported": "unsupported_cells",
+    }
+
+
 def validate_hotpotqa_artifacts() -> list[str]:
     errors: list[str] = []
     if not HOTPOTQA_SUMMARY.is_file():
@@ -304,6 +338,24 @@ def validate_hotpotqa_artifacts() -> list[str]:
     if not cells:
         errors.append("HotpotQA matrix_summary.json has no cells")
 
+    derived = _derive_hotpotqa_counts(cells)
+    for outcome, summary_key in _hotpotqa_top_level_counter_keys().items():
+        expected = summary.get(summary_key)
+        if expected is None:
+            errors.append(f"HotpotQA matrix_summary.json missing top-level {summary_key}")
+            continue
+        if int(expected) != derived[outcome]:
+            errors.append(
+                f"HotpotQA {summary_key}={expected} does not match derived "
+                f"{outcome} count {derived[outcome]} from cell schema",
+            )
+
+    if derived["run"] > 0:
+        errors.append(
+            f"HotpotQA has {derived['run']} ambiguous run cells that could not be "
+            "classified as completed or failed",
+        )
+
     blocked_with_claims = _blocked_cells_with_metric_claims(
         cells,
         metric_keys=("mean_accuracy", "mean_retrieval_hit_rate"),
@@ -314,18 +366,16 @@ def validate_hotpotqa_artifacts() -> list[str]:
             + ", ".join(blocked_with_claims),
         )
 
-    completed_cells = [cell for cell in cells if cell.get("status") == "completed"]
-    pending_cells = [cell for cell in cells if cell.get("status") == "pending"]
     if summary.get("use_mock_agent"):
         errors.append("HotpotQA committed artifact uses use_mock_agent=true")
 
     notes = [
         "HotpotQA pilot: "
-        f"{len(completed_cells)} completed cells, "
-        f"{len(pending_cells)} pending, "
-        f"{summary.get('unsupported_cells', 0)} unsupported",
+        f"{derived['completed']} completed, {derived['failed']} failed, "
+        f"{derived['pending']} pending, {derived['unsupported']} unsupported "
+        "(derived from status=run query outcomes)",
     ]
-    if pending_cells or len(completed_cells) < summary.get("matrix_size", 0):
+    if derived["pending"] or derived["unsupported"] or derived["failed"]:
         notes.append(
             "HotpotQA pilot is incomplete; do not publish headline comparisons",
         )
@@ -436,6 +486,10 @@ def check_benchmark_doc_claims() -> list[str]:
             errors.append(
                 "cross-agent-benchmarks.md must document HotpotQA committed pilot "
                 "as incomplete/partial",
+            )
+        if "status=run" not in lower_cross.replace(" ", "") and "status=`run`" not in lower_cross:
+            errors.append(
+                "cross-agent-benchmarks.md must document HotpotQA run-row outcome encoding",
             )
 
     if tau2_tracked:

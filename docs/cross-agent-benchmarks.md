@@ -277,7 +277,7 @@ The repository contains committed cross-agent benchmark pilots:
 | Dataset | Git-tracked artifact | Pilot status |
 |---------|---------------------|--------------|
 | LoCoMo | `benchmarks/cross_agent/fixtures/locomo/handoff/` | Real-CLI handoff (1 conversation, 3 queries/cell) |
-| HotpotQA | `benchmark-results/hotpotqa/matrix_summary.json` | **Incomplete pilot** — partial real-CLI runs (`run`/`failed`/`pending` cells; 24 `unsupported`) |
+| HotpotQA | `benchmark-results/hotpotqa/matrix_summary.json` | **Incomplete pilot** — 4 completed / 4 failed / 8 pending / 24 unsupported (`status=run` encodes outcomes) |
 | tau2-bench | `benchmark-results/tau2-comparison/` | **Availability record** — `tau2_importable=false`; all matrix cells `unavailable`/`unsupported` |
 
 Do not cite HotpotQA or tau2 headline comparison numbers from these artifacts until
@@ -314,11 +314,13 @@ python scripts/run_hotpotqa_matrix.py --use-real-cli
 
 Pilot limitations:
 
-- `matrix_size` is 40 cells; only a subset executed on the host that produced the
-  committed artifact.
-- Cells may be `run`, `failed`, `pending`, or `unsupported`. Only `completed` cells
-  with `runner_mode=real` and `use_mock_agent=false` support headline retrieval
-  comparisons.
+- `matrix_size` is 40 cells; the committed artifact records **4 completed**, **4 failed**,
+  **8 pending**, and **24 unsupported** cells (top-level counters match per-cell rows).
+- Executed cells use `status=run`. Derive outcomes from query counters:
+  - **completed run** — `completed_query_count > 0` and `total_failure_count == 0`
+  - **failed run** — `total_failure_count > 0` and `completed_query_count == 0`
+- `pending` and `unsupported` cells were never executed on the host that produced
+  the artifact. Do not treat their metrics as headline comparisons.
 - Top-level `tradeoffs` strings are host-specific notes, not release headline claims.
 
 ### tau2-bench committed pilot (`benchmark-results/tau2-comparison/`)

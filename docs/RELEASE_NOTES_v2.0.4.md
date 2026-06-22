@@ -49,3 +49,4 @@ cd packages/installer && npm test
 - Supported agents: Codex, Claude Code, Hermes
 - Supported standalone npm targets: linux x86_64/aarch64, darwin arm64, windows
   x86_64
+
