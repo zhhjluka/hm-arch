@@ -25,15 +25,11 @@ function createManager(
     requestTimeoutMs: config.requestTimeoutMs,
     startupTimeoutMs: config.startupTimeoutMs,
     maxRestartBackoffMs: config.maxRestartBackoffMs,
-    ...(options.onSpawn
-      ? {
-          spawn: (command: string, args: string[], spawnOptions) => {
-            const child = spawn(command, args, spawnOptions);
-            options.onSpawn?.(child);
-            return child;
-          },
-        }
-      : {}),
+    spawn: (command: string, args: string[], spawnOptions) => {
+      const child = spawn(command, args, { ...spawnOptions, env: ctx.sidecarEnv });
+      options.onSpawn?.(child);
+      return child;
+    },
   });
 }
 

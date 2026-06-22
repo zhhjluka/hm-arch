@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DEFAULT_PLUGIN_CONFIG, type PluginConfig } from "../src/config.js";
@@ -13,11 +13,20 @@ export type E2EContext = {
   workdir: string;
   dbPath: string;
   sidecarCommand: string[];
+  sidecarEnv: NodeJS.ProcessEnv;
   config: PluginConfig;
   cleanup: () => void;
 };
 
-function resolvePythonExecutable(): string {
+function currentSourceEnv(): NodeJS.ProcessEnv {
+  const sourceRoot = join(REPO_ROOT, "src");
+  return {
+    ...process.env,
+    PYTHONPATH: [sourceRoot, process.env.PYTHONPATH].filter(Boolean).join(delimiter),
+  };
+}
+
+function resolvePythonExecutable(env: NodeJS.ProcessEnv): string {
   const candidates = [
     process.env.HM_ARCH_PYTHON,
     process.env.PYTHON,
@@ -28,12 +37,9 @@ function resolvePythonExecutable(): string {
     if (!candidate) {
       continue;
     }
-    const probe = spawnSync(candidate, ["-c", "import hm_arch"], {
+    const probe = spawnSync(candidate, ["-c", "import hm_arch.integrations.openclaw.sidecar"], {
       encoding: "utf8",
-      env: {
-        ...process.env,
-        PYTHONPATH: process.env.PYTHONPATH ?? REPO_ROOT,
-      },
+      env,
     });
     if (probe.status === 0) {
       return candidate;
@@ -47,7 +53,7 @@ function resolvePythonExecutable(): string {
 
 export function hasPythonSidecarSupport(): boolean {
   try {
-    resolvePythonExecutable();
+    resolvePythonExecutable(currentSourceEnv());
     return true;
   } catch {
     return false;
@@ -55,7 +61,8 @@ export function hasPythonSidecarSupport(): boolean {
 }
 
 export function createE2EContext(overrides: Partial<PluginConfig> = {}): E2EContext {
-  const python = resolvePythonExecutable();
+  const sidecarEnv = currentSourceEnv();
+  const python = resolvePythonExecutable(sidecarEnv);
   const workdir = mkdtempSync(join(tmpdir(), "hm-arch-openclaw-e2e-"));
   const dbPath = join(workdir, "hm_arch_memory.db");
   const config: PluginConfig = {
@@ -71,6 +78,7 @@ export function createE2EContext(overrides: Partial<PluginConfig> = {}): E2ECont
     workdir,
     dbPath,
     sidecarCommand: config.sidecarCommand,
+    sidecarEnv,
     config,
     cleanup: () => {
       rmSync(workdir, { recursive: true, force: true });
