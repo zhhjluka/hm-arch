@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""MEM-79 release gate: validate versions, docs, and benchmark artifact claims."""
+"""MEM-79 release gate: readiness validation and optional release-time checks."""
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import subprocess
@@ -28,6 +29,7 @@ README = REPO_ROOT / "README.md"
 COMPAT_MATRIX = REPO_ROOT / "docs" / "agents" / "compatibility-matrix.md"
 CROSS_AGENT_DOCS = REPO_ROOT / "docs" / "cross-agent-benchmarks.md"
 CHANGELOG = REPO_ROOT / "CHANGELOG.md"
+RELEASE_READINESS = REPO_ROOT / "docs" / "openclaw-release-readiness.md"
 
 SUCCESS_STATUSES = frozenset({"completed"})
 BLOCKED_STATUSES = frozenset(
@@ -144,6 +146,29 @@ def check_docs_mention_openclaw() -> list[str]:
     return errors
 
 
+def check_release_readiness_doc() -> list[str]:
+    if not RELEASE_READINESS.is_file():
+        return [f"Missing release readiness doc: {RELEASE_READINESS}"]
+    text = RELEASE_READINESS.read_text(encoding="utf-8").lower()
+    errors: list[str] = []
+    required_phrases = [
+        "openclaw",
+        "benchmark",
+        "limitation",
+        "locomo",
+    ]
+    for phrase in required_phrases:
+        if phrase not in text:
+            errors.append(
+                f"docs/openclaw-release-readiness.md missing required topic: {phrase!r}",
+            )
+    if "unversioned" not in text:
+        errors.append(
+            "docs/openclaw-release-readiness.md must state findings are unversioned",
+        )
+    return errors
+
+
 def check_release_notes(version: str) -> list[str]:
     release_notes = release_notes_path(version)
     if not release_notes.is_file():
@@ -166,6 +191,36 @@ def check_release_notes(version: str) -> list[str]:
             f"{release_notes.name} still describes a three-agent line; "
             "OpenClaw must be listed",
         )
+    return errors
+
+
+def check_readiness_docs_do_not_speculate_next_version() -> list[str]:
+    errors: list[str] = []
+    readme = README.read_text(encoding="utf-8")
+    if re.search(r"prepared next release|prepares v\d+\.\d+\.\d+", readme, re.I):
+        errors.append(
+            "README.md must not advertise a prepared next release version",
+        )
+    for match in re.finditer(r"RELEASE_NOTES_v(\d+\.\d+\.\d+)\.md", readme):
+        version = match.group(1)
+        notes_path = release_notes_path(version)
+        if notes_path.is_file() and not git_tag_exists(version):
+            errors.append(
+                f"README.md references unpublished release notes v{version}",
+            )
+    return errors
+
+
+def check_release_target_alignment(release_version: str) -> list[str]:
+    python_version = read_python_version()
+    errors: list[str] = []
+    if python_version != release_version:
+        errors.append(
+            f"src/hm_arch/_version.py is {python_version} but "
+            f"--release-version {release_version} was requested",
+        )
+    errors.extend(check_version_not_already_published(release_version))
+    errors.extend(check_release_notes(release_version))
     return errors
 
 
@@ -524,19 +579,44 @@ def check_benchmark_doc_claims() -> list[str]:
     return errors
 
 
-def main() -> int:
-    errors: list[str] = []
-    python_version = read_python_version()
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Validate OpenClaw release readiness and benchmark artifacts.",
+    )
+    parser.add_argument(
+        "--release-version",
+        metavar="X.Y.Z",
+        help=(
+            "Release-time checks only: verify __version__, unpublished tag, and "
+            "versioned release notes for the selected target. Omit during normal "
+            "readiness validation."
+        ),
+    )
+    return parser.parse_args(argv)
 
-    errors.extend(check_version_not_already_published(python_version))
+
+def run_readiness_checks() -> list[str]:
+    python_version = read_python_version()
+    errors: list[str] = []
     errors.extend(run_verify_release_versions())
     errors.extend(check_openclaw_plugin_version(python_version))
     errors.extend(check_docs_mention_openclaw())
-    errors.extend(check_release_notes(python_version))
+    errors.extend(check_release_readiness_doc())
+    errors.extend(check_readiness_docs_do_not_speculate_next_version())
     errors.extend(validate_locomo_handoff())
     errors.extend(validate_hotpotqa_artifacts())
     errors.extend(validate_tau2_artifacts())
     errors.extend(check_benchmark_doc_claims())
+    return errors
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    errors = run_readiness_checks()
+    python_version = read_python_version()
+
+    if args.release_version:
+        errors.extend(check_release_target_alignment(args.release_version))
 
     info_lines = [line[6:] for line in errors if line.startswith("INFO: ")]
     errors = [line for line in errors if not line.startswith("INFO: ")]
@@ -547,10 +627,15 @@ def main() -> int:
             print(f"  - {error}", file=sys.stderr)
         return 1
 
+    mode = (
+        f"release target v{args.release_version}"
+        if args.release_version
+        else "readiness (version-neutral)"
+    )
     print(
         "Release gate validation OK: "
-        f"hm-arch=={python_version}, OpenClaw integration documented, "
-        "LoCoMo/HotpotQA/tau2 benchmark artifacts audited",
+        f"mode={mode}, repository version hm-arch=={python_version}, "
+        "OpenClaw integration documented, LoCoMo/HotpotQA/tau2 artifacts audited",
     )
     for line in info_lines:
         print(f"  {line}")

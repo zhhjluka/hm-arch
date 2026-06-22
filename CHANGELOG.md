@@ -11,8 +11,6 @@ publication steps and maintainer approval rules.
 
 ## [Unreleased]
 
-## [2.0.5] - 2026-06-22
-
 ### Added
 
 - [docs/agents/openclaw.md](docs/agents/openclaw.md) — OpenClaw memory plugin
@@ -22,10 +20,10 @@ publication steps and maintainer approval rules.
   tau2-bench / HotpotQA methodology, five memory modes, agent × backend matrix,
   `real` / `mock-only` / `unavailable` / `unsupported` reporting rules, commands,
   result JSON schema, and committed pilot artifact references.
-- [docs/RELEASE_NOTES_v2.0.5.md](docs/RELEASE_NOTES_v2.0.5.md) — four-agent
-  OpenClaw integration, benchmark setup, and known limitations.
-- `scripts/validate_release_gate.py` — release gate for version coordination,
-  OpenClaw docs, and LoCoMo/HotpotQA/tau2 artifact provenance audits.
+- [docs/openclaw-release-readiness.md](docs/openclaw-release-readiness.md) —
+  unversioned OpenClaw integration and benchmark pilot readiness findings.
+- `scripts/validate_release_gate.py` — version-neutral release-readiness gate
+  with optional `--release-version` for maintainer release-time checks.
 
 ### Changed
 

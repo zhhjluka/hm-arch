@@ -343,7 +343,7 @@ def test_install_openclaw_plugin_version_mismatch(
     package_json = fixture_root / "package.json"
     original = package_json.read_text(encoding="utf-8")
     package_json.write_text(
-        original.replace('"version": "2.0.5"', '"version": "0.0.0"'),
+        original.replace('"version": "2.0.4"', '"version": "0.0.0"'),
         encoding="utf-8",
     )
     monkeypatch.setattr(

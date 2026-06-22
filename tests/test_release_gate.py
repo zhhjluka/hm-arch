@@ -20,9 +20,12 @@ from scripts.validate_release_gate import (  # noqa: E402
     check_benchmark_doc_claims,
     check_docs_mention_openclaw,
     check_openclaw_plugin_version,
-    check_release_notes,
+    check_release_readiness_doc,
+    check_release_target_alignment,
     check_version_not_already_published,
     is_git_tracked,
+    main,
+    run_readiness_checks,
     validate_hotpotqa_artifacts,
     validate_locomo_handoff,
     validate_tau2_artifacts,
@@ -50,6 +53,7 @@ def test_release_gate_script_exits_zero() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr or result.stdout
+    assert "mode=readiness (version-neutral)" in result.stdout
 
 
 def test_openclaw_plugin_version_matches_python() -> None:
@@ -62,10 +66,8 @@ def test_docs_mention_openclaw() -> None:
     assert check_docs_mention_openclaw() == []
 
 
-def test_release_notes_cover_openclaw_and_benchmarks() -> None:
-    from scripts.verify_release_versions import read_python_version
-
-    assert check_release_notes(read_python_version()) == []
+def test_release_readiness_doc_covers_openclaw_and_benchmarks() -> None:
+    assert check_release_readiness_doc() == []
 
 
 def test_locomo_handoff_has_openclaw_and_provenance() -> None:
@@ -159,7 +161,11 @@ def test_benchmark_docs_do_not_falsely_claim_uncommitted() -> None:
 
 def test_published_version_gate_rejects_existing_tag() -> None:
     assert check_version_not_already_published("2.0.4") != []
-    assert check_version_not_already_published("2.0.5") == []
+
+
+def test_release_target_alignment_rejects_published_version() -> None:
+    errors = check_release_target_alignment("2.0.4")
+    assert any("already published" in error for error in errors)
 
 
 def test_release_gate_rejects_false_not_committed_docs(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -200,19 +206,33 @@ def test_hotpotqa_gate_rejects_pending_cells_with_metric_claims() -> None:
     assert "pending" in blocked[0]
 
 
-def test_release_gate_rejects_already_published_target(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_release_gate_release_mode_requires_alignment(monkeypatch: pytest.MonkeyPatch) -> None:
     from scripts import validate_release_gate as gate
 
-    monkeypatch.setattr(gate, "git_tag_exists", lambda version: version == "2.0.5")
-    monkeypatch.setattr(gate, "read_python_version", lambda: "2.0.5")
+    monkeypatch.setattr(gate, "run_readiness_checks", lambda: [])
+    monkeypatch.setattr(gate, "read_python_version", lambda: "2.0.4")
+    monkeypatch.setattr(gate, "git_tag_exists", lambda version: version == "2.0.4")
+
+    assert main(["--release-version", "2.0.4"]) == 1
+
+
+def test_readiness_checks_do_not_require_release_notes(monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts import validate_release_gate as gate
+
     monkeypatch.setattr(gate, "run_verify_release_versions", lambda: [])
     monkeypatch.setattr(gate, "check_openclaw_plugin_version", lambda _v: [])
     monkeypatch.setattr(gate, "check_docs_mention_openclaw", lambda: [])
-    monkeypatch.setattr(gate, "check_release_notes", lambda _v: [])
+    monkeypatch.setattr(gate, "check_release_readiness_doc", lambda: [])
+    monkeypatch.setattr(gate, "check_readiness_docs_do_not_speculate_next_version", lambda: [])
     monkeypatch.setattr(gate, "validate_locomo_handoff", lambda: [])
     monkeypatch.setattr(gate, "validate_hotpotqa_artifacts", lambda: [])
     monkeypatch.setattr(gate, "validate_tau2_artifacts", lambda: [])
     monkeypatch.setattr(gate, "check_benchmark_doc_claims", lambda: [])
 
-    with mock.patch.object(sys, "argv", ["validate_release_gate.py"]):
-        assert gate.main() == 1
+    assert run_readiness_checks() == []
+
+
+def test_no_speculative_version_references_remain() -> None:
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "2.0.5" not in readme
+    assert (REPO_ROOT / "docs" / "RELEASE_NOTES_v2.0.5.md").is_file() is False

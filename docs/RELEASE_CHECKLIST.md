@@ -40,6 +40,12 @@ uv run pytest && uv run python examples/release_smoke.py
 python scripts/validate_release_gate.py
 ```
 
+Release-time validation (only after maintainer selects a version):
+
+```bash
+python scripts/validate_release_gate.py --release-version X.Y.Z
+```
+
 Or with pip on Python 3.10+:
 
 ```bash
