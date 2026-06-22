@@ -213,7 +213,7 @@ def test_release_gate_release_mode_requires_alignment(monkeypatch: pytest.Monkey
     monkeypatch.setattr(gate, "read_python_version", lambda: "2.0.4")
     monkeypatch.setattr(gate, "git_tag_exists", lambda version: version == "2.0.4")
 
-    assert main(["--release-version", "2.0.4"]) == 1
+    assert main(["--target-version", "2.0.4"]) == 1
 
 
 def test_readiness_checks_do_not_require_release_notes(monkeypatch: pytest.MonkeyPatch) -> None:

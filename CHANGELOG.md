@@ -23,7 +23,7 @@ publication steps and maintainer approval rules.
 - [docs/openclaw-release-readiness.md](docs/openclaw-release-readiness.md) —
   unversioned OpenClaw integration and benchmark pilot readiness findings.
 - `scripts/validate_release_gate.py` — version-neutral release-readiness gate
-  with optional `--release-version` for maintainer release-time checks.
+  with optional `--target-version` for maintainer release-time checks.
 
 ### Changed
 

@@ -76,7 +76,7 @@ cd packages/openclaw-plugin && npm test
 Release-time gate (only after maintainer selects a version):
 
 ```bash
-python scripts/validate_release_gate.py --release-version X.Y.Z
+python scripts/validate_release_gate.py --target-version X.Y.Z
 ```
 
 Clean-machine npm verification (no Python on PATH at test time):

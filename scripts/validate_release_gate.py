@@ -217,7 +217,7 @@ def check_release_target_alignment(release_version: str) -> list[str]:
     if python_version != release_version:
         errors.append(
             f"src/hm_arch/_version.py is {python_version} but "
-            f"--release-version {release_version} was requested",
+            f"--target-version {release_version} was requested",
         )
     errors.extend(check_version_not_already_published(release_version))
     errors.extend(check_release_notes(release_version))
@@ -584,7 +584,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Validate OpenClaw release readiness and benchmark artifacts.",
     )
     parser.add_argument(
-        "--release-version",
+        "--target-version",
         metavar="X.Y.Z",
         help=(
             "Release-time checks only: verify __version__, unpublished tag, and "
@@ -615,8 +615,8 @@ def main(argv: list[str] | None = None) -> int:
     errors = run_readiness_checks()
     python_version = read_python_version()
 
-    if args.release_version:
-        errors.extend(check_release_target_alignment(args.release_version))
+    if args.target_version:
+        errors.extend(check_release_target_alignment(args.target_version))
 
     info_lines = [line[6:] for line in errors if line.startswith("INFO: ")]
     errors = [line for line in errors if not line.startswith("INFO: ")]
@@ -628,8 +628,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     mode = (
-        f"release target v{args.release_version}"
-        if args.release_version
+        f"release target v{args.target_version}"
+        if args.target_version
         else "readiness (version-neutral)"
     )
     print(
