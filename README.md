@@ -35,19 +35,19 @@ Most agent memory systems focus on storing and retrieving text. HM-Arch also mod
 
 ### Install
 
-**Current release (v2.0.4):** install from [PyPI](https://pypi.org/project/hm-arch/), [npm](https://www.npmjs.com/package/@hm-arch/installer), the [v2.0.4 GitHub Release](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.4), or from source (below).
+**Current public release (v2.0.4):** install from [PyPI](https://pypi.org/project/hm-arch/), [npm](https://www.npmjs.com/package/@hm-arch/installer), or the [v2.0.4 GitHub Release](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.4).
 
 **Release channels** (see [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md)):
 
-| Channel | Package | Current version | Install |
-|---------|---------|-----------------|---------|
+| Channel | Package | Current public version | Install |
+|---------|---------|----------------------|---------|
 | GitHub Releases | wheel + sdist + standalone binaries | v2.0.4 | [Download assets](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.4) |
-| PyPI | `hm-arch` | latest stable | `pip install hm-arch` |
-| npm | `@hm-arch/installer` | latest stable | `npm install -g @hm-arch/installer` |
+| PyPI | `hm-arch` | latest stable (v2.0.4) | `pip install hm-arch` |
+| npm | `@hm-arch/installer` | latest stable (v2.0.4) | `npm install -g @hm-arch/installer` |
 
 All public channels use the same semver from `src/hm_arch/_version.py`. Automated agents must not create tags, GitHub Releases, or registry uploads without explicit maintainer instruction. See [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) and [docs/VERSIONING.md](docs/VERSIONING.md).
 
-#### Install from the GitHub Release (current)
+#### Install from the GitHub Release (current public)
 
 Download `hm_arch-2.0.4-py3-none-any.whl` from the [v2.0.4 release page](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.4), then install it in a Python 3.10+ environment:
 
@@ -372,7 +372,8 @@ The default test suite runs fully offline. Benchmark tests are marked separately
 | [docs/agents/openclaw.md](docs/agents/openclaw.md) | OpenClaw memory plugin and sidecar setup |
 | [docs/RELEASE_NOTES_v1.0.0.md](docs/RELEASE_NOTES_v1.0.0.md) | v1.0.0 release notes |
 | [docs/RELEASE_NOTES_v2.0.0.md](docs/RELEASE_NOTES_v2.0.0.md) | v2.0.0 coordinated release notes |
-| [docs/RELEASE_NOTES_v2.0.4.md](docs/RELEASE_NOTES_v2.0.4.md) | v2.0.4 three-agent validation and latest install guidance |
+| [docs/openclaw-release-readiness.md](docs/openclaw-release-readiness.md) | OpenClaw integration and benchmark pilot readiness (unversioned) |
+| [docs/RELEASE_NOTES_v2.0.4.md](docs/RELEASE_NOTES_v2.0.4.md) | v2.0.4 current public release notes |
 | [docs/v2-migration-guide.md](docs/v2-migration-guide.md) | v2.0.0 migration and compatibility |
 | [docs/agents/README.md](docs/agents/README.md) | Codex, Claude Code, and Hermes setup |
 | [docs/pypi-clean-install.md](docs/pypi-clean-install.md) | pip / pipx clean-install verification |

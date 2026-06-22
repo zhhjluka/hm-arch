@@ -30,8 +30,11 @@ Clean-install verification for maintainers:
 Manual smoke tests for all agents:
 [integration-cli-smoke.md](../integration-cli-smoke.md) (includes OpenClaw).
 
-Release notes for the latest patch release:
+Release notes for the latest public release:
 [RELEASE_NOTES_v2.0.4.md](../RELEASE_NOTES_v2.0.4.md).
+
+OpenClaw integration readiness (unversioned validation findings):
+[openclaw-release-readiness.md](../openclaw-release-readiness.md).
 
 Memory export, import, migration, and sharing policies:
 [memory-sharing-policies.md](../memory-sharing-policies.md).

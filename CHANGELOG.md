@@ -19,7 +19,11 @@ publication steps and maintainer approval rules.
 - [docs/cross-agent-benchmarks.md](docs/cross-agent-benchmarks.md) — LoCoMo /
   tau2-bench / HotpotQA methodology, five memory modes, agent × backend matrix,
   `real` / `mock-only` / `unavailable` / `unsupported` reporting rules, commands,
-  result JSON schema, and LoCoMo pilot artifact references.
+  result JSON schema, and committed pilot artifact references.
+- [docs/openclaw-release-readiness.md](docs/openclaw-release-readiness.md) —
+  unversioned OpenClaw integration and benchmark pilot readiness findings.
+- `scripts/validate_release_gate.py` — version-neutral release-readiness gate
+  with optional `--target-version` for maintainer release-time checks.
 
 ### Changed
 
@@ -30,13 +34,14 @@ publication steps and maintainer approval rules.
   [docs/agents/README.md](docs/agents/README.md), [docs/benchmarks.md](docs/benchmarks.md) —
   synchronized OpenClaw and cross-agent documentation links.
 
-### Pending
+### Known limitations
 
-- Cross-agent benchmark headline numbers for tau2-bench and HotpotQA (pilot
-  artifacts are committed, but full matrix execution and release validation are
-  still pending).
-- LoCoMo release-note headline numbers (pilot artifact exists; full comparison
-  pending provider capacity and larger query counts).
+- LoCoMo committed handoff is a real-CLI pilot with blocked OpenClaw cells when
+  the CLI is absent; headline comparison claims require `completed` cells only.
+- HotpotQA committed pilot (`benchmark-results/hotpotqa/`) is incomplete:
+  4 completed / 4 failed / 8 pending / 24 unsupported (`status=run` encodes outcomes).
+- tau2-bench committed pilot (`benchmark-results/tau2-comparison/`) is an
+  availability record (`tau2_importable=false`); no completed real cells.
 
 ## [2.0.4] - 2026-06-14
 

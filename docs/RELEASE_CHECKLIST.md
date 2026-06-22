@@ -37,6 +37,13 @@ Run from a clean clone or fresh virtual environment:
 ```bash
 uv sync
 uv run pytest && uv run python examples/release_smoke.py
+python scripts/validate_release_gate.py
+```
+
+Release-time validation (only after maintainer selects a version):
+
+```bash
+python scripts/validate_release_gate.py --target-version X.Y.Z
 ```
 
 Or with pip on Python 3.10+:
@@ -206,7 +213,7 @@ Manual `npm publish` is only for recovery when the workflow is unavailable.
 
 | Step | Command / artifact | Agent allowed? |
 |------|-------------------|----------------|
-| Test | `uv run pytest`, `examples/release_smoke.py` | Yes |
+| Test | `uv run pytest`, `examples/release_smoke.py`, `scripts/validate_release_gate.py` | Yes |
 | npm installer test | `cd packages/installer && npm ci && npm test` | Yes |
 | Build | `uv run --with build python -m build --outdir dist` (Python >= 3.10) | Yes (local only) |
 | Verify install | wheel + sdist in throwaway venvs; pip/pipx per [pypi-clean-install.md](pypi-clean-install.md) | Yes |

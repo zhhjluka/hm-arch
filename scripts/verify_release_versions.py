@@ -11,6 +11,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 VERSION_PY = REPO_ROOT / "src" / "hm_arch" / "_version.py"
 PACKAGE_JSON = REPO_ROOT / "packages" / "installer" / "package.json"
+OPENCLAW_PLUGIN_JSON = REPO_ROOT / "packages" / "openclaw-plugin" / "package.json"
 BUNDLED_JSON = REPO_ROOT / "packages" / "installer" / "src" / "bundled-version.json"
 INSTALLER_JSON = REPO_ROOT / "packages" / "installer" / "src" / "installer-version.json"
 SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
@@ -37,14 +38,20 @@ def main() -> int:
     npm_version = read_json_version(PACKAGE_JSON)
     bundled_version = read_json_version(BUNDLED_JSON)
     installer_version = read_json_version(INSTALLER_JSON)
+    openclaw_plugin_version = (
+        read_json_version(OPENCLAW_PLUGIN_JSON) if OPENCLAW_PLUGIN_JSON.is_file() else None
+    )
 
     errors: list[str] = []
-    for label, value in [
+    version_checks: list[tuple[str, str]] = [
         ("python", python_version),
         ("npm", npm_version),
         ("bundled", bundled_version),
         ("installer-generated", installer_version),
-    ]:
+    ]
+    if openclaw_plugin_version is not None:
+        version_checks.append(("openclaw-plugin", openclaw_plugin_version))
+    for label, value in version_checks:
         if not SEMVER.match(value):
             errors.append(f"{label} version is not semver: {value!r}")
 
@@ -61,6 +68,11 @@ def main() -> int:
             "npm package version differs from Python __version__ "
             f"({npm_version} != {python_version}); record intentional skew in release notes",
         )
+    if openclaw_plugin_version is not None and openclaw_plugin_version != python_version:
+        errors.append(
+            "OpenClaw plugin version differs from Python __version__ "
+            f"({openclaw_plugin_version} != {python_version})",
+        )
 
     if errors:
         print("Release version coordination check FAILED:", file=sys.stderr)
@@ -68,9 +80,14 @@ def main() -> int:
             print(f"  - {error}", file=sys.stderr)
         return 1
 
+    plugin_note = (
+        f", @hm-arch/openclaw-plugin=={openclaw_plugin_version}"
+        if openclaw_plugin_version is not None
+        else ""
+    )
     print(
         "Release version coordination OK: "
-        f"hm-arch=={python_version}, @hm-arch/installer=={npm_version}",
+        f"hm-arch=={python_version}, @hm-arch/installer=={npm_version}{plugin_note}",
     )
     return 0
 
