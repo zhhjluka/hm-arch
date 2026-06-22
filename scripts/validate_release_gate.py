@@ -18,14 +18,31 @@ LOCOMO_HANDOFF = (
     REPO_ROOT / "benchmarks" / "cross_agent" / "fixtures" / "locomo" / "handoff"
 )
 LOCOMO_SUMMARY = LOCOMO_HANDOFF / "matrix_summary_real.json"
+HOTPOTQA_ROOT = REPO_ROOT / "benchmark-results" / "hotpotqa"
+HOTPOTQA_SUMMARY = HOTPOTQA_ROOT / "matrix_summary.json"
+TAU2_ROOT = REPO_ROOT / "benchmark-results" / "tau2-comparison"
+TAU2_MATRIX_STATUS = TAU2_ROOT / "matrix_status.json"
+TAU2_SUMMARY_TABLE = TAU2_ROOT / "summary_table.json"
+TAU2_PROVENANCE = TAU2_ROOT / "provenance.json"
 README = REPO_ROOT / "README.md"
 COMPAT_MATRIX = REPO_ROOT / "docs" / "agents" / "compatibility-matrix.md"
 CROSS_AGENT_DOCS = REPO_ROOT / "docs" / "cross-agent-benchmarks.md"
-RELEASE_NOTES = REPO_ROOT / "docs" / "RELEASE_NOTES_v2.0.4.md"
+CHANGELOG = REPO_ROOT / "CHANGELOG.md"
 
 SUCCESS_STATUSES = frozenset({"completed"})
 BLOCKED_STATUSES = frozenset(
-    {"unsupported", "unavailable", "failed", "partial", "pending", "mock-only"},
+    {
+        "unsupported",
+        "unavailable",
+        "failed",
+        "partial",
+        "pending",
+        "mock-only",
+        "run",
+    },
+)
+FALSE_SUCCESS_STATUSES = frozenset(
+    {"unsupported", "unavailable", "mock-only", "pending"},
 )
 
 
@@ -37,12 +54,40 @@ def read_python_version() -> str:
     return match.group(1)
 
 
+def release_notes_path(version: str) -> Path:
+    return REPO_ROOT / "docs" / f"RELEASE_NOTES_v{version}.md"
+
+
 def read_json_version(path: Path) -> str:
     payload = json.loads(path.read_text(encoding="utf-8"))
     version = payload.get("version")
     if not isinstance(version, str):
         raise SystemExit(f"Invalid version in {path}")
     return version
+
+
+def is_git_tracked(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    rel = path.relative_to(REPO_ROOT).as_posix()
+    result = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", rel],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def git_tag_exists(version: str) -> bool:
+    result = subprocess.run(
+        ["git", "tag", "-l", f"v{version}"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return bool(result.stdout.strip())
 
 
 def run_verify_release_versions() -> list[str]:
@@ -55,6 +100,15 @@ def run_verify_release_versions() -> list[str]:
     )
     if result.returncode != 0:
         return [result.stderr.strip() or "verify_release_versions.py failed"]
+    return []
+
+
+def check_version_not_already_published(version: str) -> list[str]:
+    if git_tag_exists(version):
+        return [
+            f"Release version {version} is already published as git tag v{version}; "
+            "bump src/hm_arch/_version.py before running the release gate",
+        ]
     return []
 
 
@@ -90,10 +144,11 @@ def check_docs_mention_openclaw() -> list[str]:
     return errors
 
 
-def check_release_notes() -> list[str]:
-    if not RELEASE_NOTES.is_file():
-        return [f"Missing release notes: {RELEASE_NOTES}"]
-    text = RELEASE_NOTES.read_text(encoding="utf-8").lower()
+def check_release_notes(version: str) -> list[str]:
+    release_notes = release_notes_path(version)
+    if not release_notes.is_file():
+        return [f"Missing release notes: {release_notes}"]
+    text = release_notes.read_text(encoding="utf-8").lower()
     errors: list[str] = []
     required_phrases = [
         "openclaw",
@@ -104,11 +159,12 @@ def check_release_notes() -> list[str]:
     for phrase in required_phrases:
         if phrase not in text:
             errors.append(
-                f"docs/RELEASE_NOTES_v2.0.4.md missing required topic: {phrase!r}",
+                f"{release_notes.name} missing required topic: {phrase!r}",
             )
     if "three-agent" in text and "four-agent" not in text:
         errors.append(
-            "Release notes still describe a three-agent line; OpenClaw must be listed",
+            f"{release_notes.name} still describes a three-agent line; "
+            "OpenClaw must be listed",
         )
     return errors
 
@@ -122,6 +178,8 @@ def _cell_blocks_headline(cell: dict[str, Any]) -> bool:
         return True
     if cell.get("test_double_mode"):
         return True
+    if cell.get("use_mock_agent"):
+        return True
     if status not in SUCCESS_STATUSES:
         return True
     completed = cell.get("completed_query_count")
@@ -130,9 +188,39 @@ def _cell_blocks_headline(cell: dict[str, Any]) -> bool:
     return False
 
 
+def _blocked_cells_with_metric_claims(
+    cells: list[dict[str, Any]],
+    *,
+    metric_keys: tuple[str, ...] = ("mean_accuracy",),
+    statuses: frozenset[str] = FALSE_SUCCESS_STATUSES,
+) -> list[str]:
+    blocked: list[str] = []
+    for cell in cells:
+        status = str(cell.get("status", "")).lower()
+        if status not in statuses and not cell.get("use_mock_agent") and not cell.get(
+            "test_double_mode",
+        ):
+            continue
+        coordinate = cell.get("coordinate") or (
+            f"{cell.get('agent')}/{cell.get('backend')}"
+            + (f" k{cell['top_k']}" if cell.get("top_k") is not None else "")
+        )
+        for key in metric_keys:
+            value = cell.get(key)
+            if value is None:
+                continue
+            if isinstance(value, (int, float)) and float(value) == 0.0:
+                continue
+            blocked.append(f"{coordinate} ({key}={value}, status={status})")
+            break
+    return blocked
+
+
 def validate_locomo_handoff() -> list[str]:
     if not LOCOMO_SUMMARY.is_file():
         return [f"Missing committed LoCoMo handoff artifact: {LOCOMO_SUMMARY}"]
+    if not is_git_tracked(LOCOMO_SUMMARY):
+        return [f"LoCoMo handoff artifact is not git-tracked: {LOCOMO_SUMMARY}"]
 
     summary = json.loads(LOCOMO_SUMMARY.read_text(encoding="utf-8"))
     errors: list[str] = []
@@ -156,10 +244,23 @@ def validate_locomo_handoff() -> list[str]:
     ]
     completed = [cell for cell in headline_candidates if cell.get("status") == "completed"]
     blocked_presented_as_success = [
-        cell["coordinate"]
+        coord
         for cell in headline_candidates
-        if _cell_blocks_headline(cell) and cell.get("mean_accuracy") not in (None, 0.0)
+        for coord in _blocked_cells_with_metric_claims(
+            [cell],
+            statuses=FALSE_SUCCESS_STATUSES,
+        )
     ]
+    blocked_presented_as_success.extend(
+        [
+            f"{cell.get('coordinate')} (status={cell.get('status')})"
+            for cell in headline_candidates
+            if _cell_blocks_headline(cell)
+            and cell.get("status") not in FALSE_SUCCESS_STATUSES
+            and cell.get("mean_accuracy") not in (None, 0.0)
+            and cell.get("status") != "completed"
+        ],
+    )
     if blocked_presented_as_success:
         errors.append(
             "LoCoMo cells present blocked statuses with non-null accuracy claims: "
@@ -191,25 +292,181 @@ def validate_locomo_handoff() -> list[str]:
     return errors + [f"INFO: {note}" for note in notes]
 
 
-def check_uncommitted_benchmark_docs() -> list[str]:
-    """Ensure docs do not claim committed hotpotqa/tau2 artifacts that are absent."""
+def validate_hotpotqa_artifacts() -> list[str]:
+    errors: list[str] = []
+    if not HOTPOTQA_SUMMARY.is_file():
+        return [f"Missing HotpotQA matrix summary: {HOTPOTQA_SUMMARY}"]
+    if not is_git_tracked(HOTPOTQA_SUMMARY):
+        errors.append(f"HotpotQA matrix summary is not git-tracked: {HOTPOTQA_SUMMARY}")
+
+    summary = json.loads(HOTPOTQA_SUMMARY.read_text(encoding="utf-8"))
+    cells = summary.get("cells", [])
+    if not cells:
+        errors.append("HotpotQA matrix_summary.json has no cells")
+
+    blocked_with_claims = _blocked_cells_with_metric_claims(
+        cells,
+        metric_keys=("mean_accuracy", "mean_retrieval_hit_rate"),
+    )
+    if blocked_with_claims:
+        errors.append(
+            "HotpotQA cells present blocked statuses with metric claims: "
+            + ", ".join(blocked_with_claims),
+        )
+
+    completed_cells = [cell for cell in cells if cell.get("status") == "completed"]
+    pending_cells = [cell for cell in cells if cell.get("status") == "pending"]
+    if summary.get("use_mock_agent"):
+        errors.append("HotpotQA committed artifact uses use_mock_agent=true")
+
+    notes = [
+        "HotpotQA pilot: "
+        f"{len(completed_cells)} completed cells, "
+        f"{len(pending_cells)} pending, "
+        f"{summary.get('unsupported_cells', 0)} unsupported",
+    ]
+    if pending_cells or len(completed_cells) < summary.get("matrix_size", 0):
+        notes.append(
+            "HotpotQA pilot is incomplete; do not publish headline comparisons",
+        )
+    return errors + [f"INFO: {note}" for note in notes]
+
+
+def validate_tau2_artifacts() -> list[str]:
+    errors: list[str] = []
+    required = [
+        (TAU2_MATRIX_STATUS, "matrix_status.json"),
+        (TAU2_SUMMARY_TABLE, "summary_table.json"),
+        (TAU2_PROVENANCE, "provenance.json"),
+    ]
+    for path, label in required:
+        if not path.is_file():
+            errors.append(f"Missing tau2-bench artifact: {path}")
+            continue
+        if not is_git_tracked(path):
+            errors.append(f"tau2-bench {label} is not git-tracked: {path}")
+
+    if errors:
+        return errors
+
+    matrix_status = json.loads(TAU2_MATRIX_STATUS.read_text(encoding="utf-8"))
+    summary_table = json.loads(TAU2_SUMMARY_TABLE.read_text(encoding="utf-8"))
+    provenance = json.loads(TAU2_PROVENANCE.read_text(encoding="utf-8"))
+
+    if provenance.get("tau2_importable") is False:
+        notes = ["tau2-bench: tau2_importable=false (availability record only)"]
+    else:
+        notes = ["tau2-bench: tau2_importable=true"]
+
+    completed_cells = [
+        cell for cell in matrix_status if cell.get("status") == "completed"
+    ]
+    if completed_cells:
+        errors.append(
+            "tau2-bench matrix_status.json reports completed cells without a "
+            "production-ready pilot; audit before release",
+        )
+
+    blocked_rows: list[str] = []
+    for row in summary_table.get("rows", []):
+        status = str(row.get("status", "")).lower()
+        excluded = row.get("excluded_from_benchmark_table", False)
+        metric_keys = (
+            "retail_task_success_rate",
+            "retail_mean_accuracy",
+            "airline_task_success_rate",
+            "airline_mean_accuracy",
+            "mean_query_time_ms",
+        )
+        has_metric = any(row.get(key) not in (None, 0, 0.0) for key in metric_keys)
+        if status in BLOCKED_STATUSES or excluded:
+            if has_metric:
+                blocked_rows.append(
+                    f"{row.get('agent')}/{row.get('backend')} "
+                    f"(status={status}, excluded={excluded})",
+                )
+        elif status not in SUCCESS_STATUSES and has_metric:
+            blocked_rows.append(f"{row.get('agent')}/{row.get('backend')} (status={status})")
+
+    if blocked_rows:
+        errors.append(
+            "tau2-bench summary_table rows present blocked statuses with metric claims: "
+            + ", ".join(blocked_rows),
+        )
+
+    notes.append(
+        f"tau2-bench matrix: {len(completed_cells)} completed cells, "
+        f"{len(matrix_status)} total status rows",
+    )
+    return errors + [f"INFO: {note}" for note in notes]
+
+
+def check_benchmark_doc_claims() -> list[str]:
+    """Reject docs that falsely claim HotpotQA/tau2 artifacts are uncommitted."""
     errors: list[str] = []
     cross_agent = CROSS_AGENT_DOCS.read_text(encoding="utf-8")
-    hotpotqa_path = REPO_ROOT / "benchmark-results" / "hotpotqa" / "matrix_summary.json"
-    tau2_path = REPO_ROOT / "benchmark-results" / "tau2-comparison" / "matrix_summary.json"
+    changelog = CHANGELOG.read_text(encoding="utf-8")
+    lower_cross = cross_agent.lower()
 
-    if "benchmark-results/hotpotqa/" in cross_agent and not hotpotqa_path.is_file():
-        if "not committed" not in cross_agent.lower() and "gitignored" not in cross_agent:
-            errors.append(
-                "cross-agent-benchmarks.md references benchmark-results/hotpotqa/ "
-                "but no committed artifact exists; document as local-only output",
+    hotpotqa_tracked = is_git_tracked(HOTPOTQA_SUMMARY)
+    tau2_tracked = is_git_tracked(TAU2_MATRIX_STATUS)
+
+    false_uncommitted_phrases = (
+        "not committed",
+        "local only",
+        "gitignored",
+        "no committed production matrix",
+    )
+
+    if hotpotqa_tracked:
+        for phrase in false_uncommitted_phrases:
+            hotpotqa_context = re.search(
+                rf"hotpotqa[^\n]{{0,200}}{re.escape(phrase)}",
+                lower_cross,
+                flags=re.IGNORECASE,
             )
-    if "benchmark-results/tau2-comparison/" in cross_agent and not tau2_path.is_file():
-        if "not committed" not in cross_agent.lower() and "gitignored" not in cross_agent:
+            if hotpotqa_context:
+                errors.append(
+                    "cross-agent-benchmarks.md falsely claims HotpotQA artifacts are "
+                    f"uncommitted ({phrase!r}); "
+                    f"{HOTPOTQA_SUMMARY.relative_to(REPO_ROOT)} is git-tracked",
+                )
+                break
+        if "incomplete pilot" not in lower_cross and "partial matrix" not in lower_cross:
             errors.append(
-                "cross-agent-benchmarks.md references benchmark-results/tau2-comparison/ "
-                "but no committed artifact exists; document as local-only output",
+                "cross-agent-benchmarks.md must document HotpotQA committed pilot "
+                "as incomplete/partial",
             )
+
+    if tau2_tracked:
+        for phrase in false_uncommitted_phrases:
+            tau2_context = re.search(
+                rf"tau2[^\n]{{0,200}}{re.escape(phrase)}",
+                lower_cross,
+                flags=re.IGNORECASE,
+            )
+            if tau2_context:
+                errors.append(
+                    "cross-agent-benchmarks.md falsely claims tau2-bench artifacts are "
+                    f"uncommitted ({phrase!r}); "
+                    f"{TAU2_ROOT.relative_to(REPO_ROOT)} is git-tracked",
+                )
+                break
+        if (
+            "availability record" not in lower_cross
+            and "tau2_importable" not in lower_cross
+        ):
+            errors.append(
+                "cross-agent-benchmarks.md must document tau2-bench committed "
+                "artifact pilot/availability status",
+            )
+
+    if hotpotqa_tracked and "still pending" in changelog.lower():
+        if re.search(r"hotpotqa[^\n]*still pending", changelog, flags=re.IGNORECASE):
+            errors.append(
+                "CHANGELOG.md falsely claims HotpotQA committed artifacts are still pending",
+            )
+
     return errors
 
 
@@ -217,12 +474,15 @@ def main() -> int:
     errors: list[str] = []
     python_version = read_python_version()
 
+    errors.extend(check_version_not_already_published(python_version))
     errors.extend(run_verify_release_versions())
     errors.extend(check_openclaw_plugin_version(python_version))
     errors.extend(check_docs_mention_openclaw())
-    errors.extend(check_release_notes())
+    errors.extend(check_release_notes(python_version))
     errors.extend(validate_locomo_handoff())
-    errors.extend(check_uncommitted_benchmark_docs())
+    errors.extend(validate_hotpotqa_artifacts())
+    errors.extend(validate_tau2_artifacts())
+    errors.extend(check_benchmark_doc_claims())
 
     info_lines = [line[6:] for line in errors if line.startswith("INFO: ")]
     errors = [line for line in errors if not line.startswith("INFO: ")]
@@ -236,7 +496,7 @@ def main() -> int:
     print(
         "Release gate validation OK: "
         f"hm-arch=={python_version}, OpenClaw integration documented, "
-        "LoCoMo handoff artifacts audited",
+        "LoCoMo/HotpotQA/tau2 benchmark artifacts audited",
     )
     for line in info_lines:
         print(f"  {line}")

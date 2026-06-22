@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.4"><img src="https://img.shields.io/badge/release-v2.0.4-111111" alt="GitHub Release v2.0.4"></a>
+  <a href="https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.5"><img src="https://img.shields.io/badge/release-v2.0.5-111111" alt="GitHub Release v2.0.5"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB" alt="Python 3.10+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-4C9A7D" alt="Apache-2.0 License"></a>
   <a href="https://github.com/zhhjluka/hm-arch/actions"><img src="https://img.shields.io/badge/CI-passing-4C9A7D" alt="CI passing"></a>
@@ -35,13 +35,13 @@ Most agent memory systems focus on storing and retrieving text. HM-Arch also mod
 
 ### Install
 
-**Current release (v2.0.4):** install from [PyPI](https://pypi.org/project/hm-arch/), [npm](https://www.npmjs.com/package/@hm-arch/installer), the [v2.0.4 GitHub Release](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.4), or from source (below).
+**Current release (v2.0.5):** install from [PyPI](https://pypi.org/project/hm-arch/), [npm](https://www.npmjs.com/package/@hm-arch/installer), the [v2.0.5 GitHub Release](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.5), or from source (below).
 
 **Release channels** (see [docs/agent-integration-roadmap.md](docs/agent-integration-roadmap.md)):
 
 | Channel | Package | Current version | Install |
 |---------|---------|-----------------|---------|
-| GitHub Releases | wheel + sdist + standalone binaries | v2.0.4 | [Download assets](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.4) |
+| GitHub Releases | wheel + sdist + standalone binaries | v2.0.5 | [Download assets](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.5) |
 | PyPI | `hm-arch` | latest stable | `pip install hm-arch` |
 | npm | `@hm-arch/installer` | latest stable | `npm install -g @hm-arch/installer` |
 
@@ -49,12 +49,12 @@ All public channels use the same semver from `src/hm_arch/_version.py`. Automate
 
 #### Install from the GitHub Release (current)
 
-Download `hm_arch-2.0.4-py3-none-any.whl` from the [v2.0.4 release page](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.4), then install it in a Python 3.10+ environment:
+Download `hm_arch-2.0.5-py3-none-any.whl` from the [v2.0.5 release page](https://github.com/zhhjluka/hm-arch/releases/tag/v2.0.5), then install it in a Python 3.10+ environment:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/hm_arch-2.0.4-py3-none-any.whl
+python -m pip install /path/to/hm_arch-2.0.5-py3-none-any.whl
 ```
 
 For development from source:
@@ -372,7 +372,8 @@ The default test suite runs fully offline. Benchmark tests are marked separately
 | [docs/agents/openclaw.md](docs/agents/openclaw.md) | OpenClaw memory plugin and sidecar setup |
 | [docs/RELEASE_NOTES_v1.0.0.md](docs/RELEASE_NOTES_v1.0.0.md) | v1.0.0 release notes |
 | [docs/RELEASE_NOTES_v2.0.0.md](docs/RELEASE_NOTES_v2.0.0.md) | v2.0.0 coordinated release notes |
-| [docs/RELEASE_NOTES_v2.0.4.md](docs/RELEASE_NOTES_v2.0.4.md) | v2.0.4 three-agent validation and latest install guidance |
+| [docs/RELEASE_NOTES_v2.0.5.md](docs/RELEASE_NOTES_v2.0.5.md) | v2.0.5 four-agent OpenClaw integration and benchmark pilots |
+| [docs/RELEASE_NOTES_v2.0.4.md](docs/RELEASE_NOTES_v2.0.4.md) | v2.0.4 three-agent validation and install guidance |
 | [docs/v2-migration-guide.md](docs/v2-migration-guide.md) | v2.0.0 migration and compatibility |
 | [docs/agents/README.md](docs/agents/README.md) | Codex, Claude Code, and Hermes setup |
 | [docs/pypi-clean-install.md](docs/pypi-clean-install.md) | pip / pipx clean-install verification |

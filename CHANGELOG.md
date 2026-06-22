@@ -11,6 +11,8 @@ publication steps and maintainer approval rules.
 
 ## [Unreleased]
 
+## [2.0.5] - 2026-06-22
+
 ### Added
 
 - [docs/agents/openclaw.md](docs/agents/openclaw.md) — OpenClaw memory plugin
@@ -19,7 +21,11 @@ publication steps and maintainer approval rules.
 - [docs/cross-agent-benchmarks.md](docs/cross-agent-benchmarks.md) — LoCoMo /
   tau2-bench / HotpotQA methodology, five memory modes, agent × backend matrix,
   `real` / `mock-only` / `unavailable` / `unsupported` reporting rules, commands,
-  result JSON schema, and LoCoMo pilot artifact references.
+  result JSON schema, and committed pilot artifact references.
+- [docs/RELEASE_NOTES_v2.0.5.md](docs/RELEASE_NOTES_v2.0.5.md) — four-agent
+  OpenClaw integration, benchmark setup, and known limitations.
+- `scripts/validate_release_gate.py` — release gate for version coordination,
+  OpenClaw docs, and LoCoMo/HotpotQA/tau2 artifact provenance audits.
 
 ### Changed
 
@@ -30,12 +36,14 @@ publication steps and maintainer approval rules.
   [docs/agents/README.md](docs/agents/README.md), [docs/benchmarks.md](docs/benchmarks.md) —
   synchronized OpenClaw and cross-agent documentation links.
 
-### Pending
+### Known limitations
 
-- Cross-agent benchmark headline numbers for tau2-bench and HotpotQA (harnesses
-  ship in this release; committed production matrix artifacts are still pending).
-- LoCoMo release-note headline numbers (pilot artifact exists; full comparison
-  pending provider capacity, OpenClaw CLI availability, and larger query counts).
+- LoCoMo committed handoff is a real-CLI pilot with blocked OpenClaw cells when
+  the CLI is absent; headline comparison claims require `completed` cells only.
+- HotpotQA committed pilot (`benchmark-results/hotpotqa/`) is incomplete: partial
+  `run`/`failed`/`pending` cells; do not publish headline retrieval comparisons.
+- tau2-bench committed pilot (`benchmark-results/tau2-comparison/`) is an
+  availability record (`tau2_importable=false`); no completed real cells.
 
 ## [2.0.4] - 2026-06-14
 

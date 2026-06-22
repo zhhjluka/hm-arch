@@ -272,17 +272,24 @@ point harness defaults at a developer's live agent configuration.
 
 ## Committed pilot artifacts
 
-The repository contains a committed LoCoMo real-CLI handoff under
-`benchmarks/cross_agent/fixtures/locomo/handoff/`. HotpotQA and tau2-bench
-harnesses write to `benchmark-results/` (gitignored local output); those paths are
-**not** committed in this release. Do not cite HotpotQA or tau2 headline numbers
-without generating and committing the corresponding `matrix_summary.json` first.
+The repository contains committed cross-agent benchmark pilots:
+
+| Dataset | Git-tracked artifact | Pilot status |
+|---------|---------------------|--------------|
+| LoCoMo | `benchmarks/cross_agent/fixtures/locomo/handoff/` | Real-CLI handoff (1 conversation, 3 queries/cell) |
+| HotpotQA | `benchmark-results/hotpotqa/matrix_summary.json` | **Incomplete pilot** — partial real-CLI runs (`run`/`failed`/`pending` cells; 24 `unsupported`) |
+| tau2-bench | `benchmark-results/tau2-comparison/` | **Availability record** — `tau2_importable=false`; all matrix cells `unavailable`/`unsupported` |
+
+Do not cite HotpotQA or tau2 headline comparison numbers from these artifacts until
+cells reach `completed` with `runner_mode=real` and `use_mock_agent=false`. The
+HotpotQA committed summary records partial Claude Code/Codex runs only; OpenClaw and
+Hermes cells remain `pending` when their CLIs are absent.
 
 The LoCoMo handoff scope and limitations are documented in
 [benchmarks/cross_agent/fixtures/locomo/handoff/README.md](../benchmarks/cross_agent/fixtures/locomo/handoff/README.md).
 
-| Property | Pilot value |
-|----------|-------------|
+| Property | LoCoMo pilot value |
+|----------|-------------------|
 | Dataset | `locomo10-sample` / `2024-03-sample` |
 | Conversations | 1 |
 | Queries per completed cell | 3 |
@@ -290,28 +297,47 @@ The LoCoMo handoff scope and limitations are documented in
 | Accuracy metric | Normalized exact match (not official LoCoMo token F1) |
 | Artifact | `benchmarks/cross_agent/fixtures/locomo/handoff/matrix_summary_real.json` |
 
-Read per-cell `status`, `runner_mode`, and `mean_accuracy` from the artifact;
+Read per-cell `status`, `runner_mode`, and `mean_accuracy` from each artifact;
 the top-level `test_double_mode` flag identifies offline test-double output.
-Failed, unavailable, and partial cells are first-class outcomes and are excluded
-from completed-query aggregates. Do not quote headline comparison numbers
+Failed, unavailable, partial, and pending cells are first-class outcomes and are
+excluded from completed-query aggregates. Do not quote headline comparison numbers
 outside the artifact context.
 
-### Local-only pilots (not committed)
+### HotpotQA committed pilot (`benchmark-results/hotpotqa/`)
 
-When generated locally, HotpotQA output defaults to
-`benchmark-results/hotpotqa/` and tau2-bench output to
-`benchmark-results/tau2-comparison/`. These directories are gitignored. Treat
-any local matrix summary as provisional until committed under
-`benchmarks/cross_agent/fixtures/` or an equivalent tracked handoff path.
+Git-tracked matrix summary and per-run summaries under `benchmark-results/hotpotqa/`.
+Regenerate with:
 
-The HotpotQA harness records per-cell `status` values (`completed`, `failed`,
-`pending`, `unsupported`). Only `completed` cells with `runner_mode=real` and
-`use_mock_agent=false` support headline retrieval comparisons.
+```bash
+python scripts/run_hotpotqa_matrix.py --use-real-cli
+```
 
-The tau2-bench harness records environment availability (`tau2_importable`) and
-matrix cell status. When `tau2_importable` is false or no real cell completes,
-treat the run as an availability record, not benchmark results suitable for a
-headline.
+Pilot limitations:
+
+- `matrix_size` is 40 cells; only a subset executed on the host that produced the
+  committed artifact.
+- Cells may be `run`, `failed`, `pending`, or `unsupported`. Only `completed` cells
+  with `runner_mode=real` and `use_mock_agent=false` support headline retrieval
+  comparisons.
+- Top-level `tradeoffs` strings are host-specific notes, not release headline claims.
+
+### tau2-bench committed pilot (`benchmark-results/tau2-comparison/`)
+
+Git-tracked availability record: `matrix_status.json`, `summary_table.json`,
+`provenance.json`, and roll-up tables. Regenerate with:
+
+```bash
+python scripts/run_tau2_bench_comparison.py
+```
+
+Pilot limitations:
+
+- `provenance.json` records `tau2_importable` and agent CLI availability for the
+  host that produced the artifact.
+- When `tau2_importable` is false or agent CLIs are absent, treat the directory as
+  an availability record, not benchmark results suitable for a headline.
+- `summary_table.json` rows may set `excluded_from_benchmark_table=true` for
+  scripted-user pilot runs that are not benchmark-eligible.
 
 ## External service requirements
 
